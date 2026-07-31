@@ -1,0 +1,62 @@
+{
+  "name": "@elftia/plugin-byo-providers",
+  "version": "0.2.4",
+  "private": true,
+  "description": "Standalone first-party BYO Providers app-extension for Elftia.",
+  "license": "MIT",
+  "author": {
+    "name": "ATELIER AI LTD.",
+    "url": "https://elftia.com"
+  },
+  "type": "module",
+  "files": [
+    "dist/byo-providers/"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean-dist.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build:renderer": "vite build --config vite.renderer.config.ts",
+    "build:main": "vite build --config vite.main.config.ts",
+    "build": "node scripts/build.mjs",
+    "check:imports": "node scripts/check-import-closure.mjs",
+    "check:manifest": "node scripts/check-manifest.mjs",
+    "check:permissions": "node scripts/check-permissions.mjs",
+    "check:leaks": "node scripts/check-bundle-leaks.mjs",
+    "check:terminology": "node scripts/check-terminology.mjs",
+    "check:reproducible": "node scripts/check-reproducible.mjs",
+    "i18n:harvest:llm": "node scripts/harvest-i18n.mjs",
+    "i18n:harvest:media": "node scripts/harvest-media-i18n.mjs",
+    "artifact:describe": "node scripts/describe-artifact.mjs",
+    "verify": "npm run typecheck && npm test && npm run check:imports && npm run check:terminology && npm run build && npm run check:reproducible"
+  },
+  "dependencies": {
+    "@omnicross/contracts": "0.1.5",
+    "@radix-ui/react-dialog": "1.1.15",
+    "clsx": "2.1.1",
+    "lucide-react": "0.515.0",
+    "tailwind-merge": "3.3.1"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@elftia/agent-spec": "1.25.0",
+    "@elftia/plugin-types": "1.25.0",
+    "@types/node": "22.15.30",
+    "@types/react": "18.2.43",
+    "@types/react-dom": "18.2.17",
+    "@types/react-test-renderer": "18.0.7",
+    "@vitejs/plugin-react": "4.6.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-test-renderer": "18.2.0",
+    "typescript": "5.6.3",
+    "vite": "7.0.4",
+    "vitest": "4.0.7"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

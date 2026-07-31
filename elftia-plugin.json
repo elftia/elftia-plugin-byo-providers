@@ -1,0 +1,30 @@
+{
+  "name": "byo-providers",
+  "version": "0.2.4",
+  "kind": "app-extension",
+  "permissions": [
+    "host:llm-config",
+    "host:media-config",
+    "host:search-config",
+    "host:subscription-auth",
+    "host:agent-config",
+    "host:cli-runtime",
+    "host:secrets-pack"
+  ],
+  "displayName": "BYO Providers",
+  "description": "First-party BYO credential-entry plugin. Credentials travel inward through dedicated masked host services; provider/account/CLI reads expose status and masked metadata only.",
+  "contributes": {
+    "renderer": {
+      "entry": "index.mjs",
+      "requiredMajor": 1,
+      "requiredMinor": 20,
+      "builtAgainst": "1.25.0"
+    },
+    "main": {
+      "entry": "index.cjs",
+      "requiredMajor": 1,
+      "requiredMinor": 27,
+      "builtAgainst": "1.25.0"
+    }
+  }
+}
