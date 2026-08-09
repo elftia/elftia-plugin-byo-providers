@@ -520,6 +520,41 @@ const RELAY_CASES: RelayCase[] = [
   },
 
   {
+    ipc: 'storage.listProviders',
+    service: 'objectStorageConfig',
+    method: 'listProviders',
+    args: [],
+  },
+  {
+    ipc: 'storage.updateProvider',
+    service: 'objectStorageConfig',
+    method: 'updateProvider',
+    payload: { id: 601, patch: { bucket: 'media' } },
+    args: ['601', { bucket: 'media' }],
+  },
+  {
+    ipc: 'storage.setCredentials',
+    service: 'objectStorageConfig',
+    method: 'setCredentials',
+    payload: { id: 'aws-s3', credentials: { accessKeyId: 'inward-ak' } },
+    args: ['aws-s3', { accessKeyId: 'inward-ak' }],
+  },
+  {
+    ipc: 'storage.clearCredentials',
+    service: 'objectStorageConfig',
+    method: 'clearCredentials',
+    payload: { id: 602 },
+    args: ['602'],
+  },
+  {
+    ipc: 'storage.setDefaultProvider',
+    service: 'objectStorageConfig',
+    method: 'setDefaultProvider',
+    payload: { id: 'cloudflare-r2' },
+    args: ['cloudflare-r2'],
+  },
+
+  {
     ipc: 'secretsPack.export',
     service: 'secretsPack',
     method: 'export',
@@ -542,6 +577,7 @@ const SERVICE_NAMES = [
   'subscriptionAuth',
   'agentConfig',
   'cliRuntime',
+  'objectStorageConfig',
   'secretsPack',
 ] as const;
 
@@ -597,7 +633,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(76);
+    expect(expectedMethods).toHaveLength(81);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

@@ -114,6 +114,51 @@ export interface HostSecretsPackLike {
   import(args: HostSecretsPackArgs): Promise<HostSecretsPackImportResult>;
 }
 
+export interface HostObjectStorageProviderConfig {
+  readonly bucket: string;
+  readonly region?: string;
+  readonly endpoint?: string;
+  readonly prefix?: string;
+  readonly publicBaseUrl?: string;
+  readonly urlMode: 'signed' | 'public';
+  readonly expiresInSeconds?: number;
+  readonly forcePathStyle?: boolean;
+}
+
+export interface HostObjectStorageProvider {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly kind: 's3' | 'oss';
+  readonly isDefault: boolean;
+  readonly configured: boolean;
+  readonly ready: boolean;
+  readonly config: HostObjectStorageProviderConfig;
+  readonly accessKeyId?: never;
+  readonly secretAccessKey?: never;
+  readonly sessionToken?: never;
+}
+
+export interface HostObjectStorageMutationResult {
+  readonly success: boolean;
+  readonly provider?: HostObjectStorageProvider;
+  readonly error?: string;
+}
+
+export interface HostObjectStorageConfigLike {
+  listProviders(): Promise<readonly HostObjectStorageProvider[]>;
+  updateProvider(
+    id: string,
+    patch: Partial<HostObjectStorageProviderConfig>,
+  ): Promise<HostObjectStorageMutationResult>;
+  setCredentials(
+    id: string,
+    credentials: { accessKeyId?: string; secretAccessKey?: string; sessionToken?: string },
+  ): Promise<HostObjectStorageMutationResult>;
+  clearCredentials(id: string): Promise<HostObjectStorageMutationResult>;
+  setDefaultProvider(id: string | null): Promise<HostObjectStorageMutationResult>;
+}
+
 export interface HostModelTestResult {
   readonly success: boolean;
   readonly message: string;
@@ -151,6 +196,7 @@ export type AgentBackendHostServices = SdkAgentBackendHostServices & {
   readonly agentConfig?: HostAgentConfigLike;
   readonly cliRuntime?: HostCliRuntimeLike;
   readonly secretsPack?: HostSecretsPackLike;
+  readonly objectStorageConfig?: HostObjectStorageConfigLike;
 };
 
 export type AgentBackendHostApi = Omit<SdkAgentBackendHostApi, 'services'> & {

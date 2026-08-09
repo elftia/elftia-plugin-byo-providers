@@ -1,11 +1,12 @@
 {
   "name": "byo-providers",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
     "host:media-config",
     "host:search-config",
+    "host:object-storage-config",
     "host:subscription-auth",
     "host:agent-config",
     "host:cli-runtime",
@@ -23,7 +24,7 @@
     "main": {
       "entry": "index.cjs",
       "requiredMajor": 1,
-      "requiredMinor": 27,
+      "requiredMinor": 46,
       "builtAgainst": "1.25.0"
     }
   }

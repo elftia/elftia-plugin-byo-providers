@@ -56,6 +56,29 @@ describe('credential boundaries', () => {
     expectNotReturned(searchResult, searchKey);
   });
 
+  it('keeps object storage credentials inward-only', async () => {
+    const accessKeyId = 'SENTINEL_STORAGE_ACCESS_KEY';
+    const secretAccessKey = 'SENTINEL_STORAGE_SECRET_KEY';
+    const sessionToken = 'SENTINEL_STORAGE_SESSION_TOKEN';
+    const write = vi.fn(async () => ({
+      success: true,
+      provider: { id: 'aws-s3', configured: true, ready: true },
+    }));
+    const methods = methodsFor({ objectStorageConfig: { setCredentials: write } });
+
+    const result = await methods['storage.setCredentials']({
+      id: 'aws-s3',
+      credentials: { accessKeyId, secretAccessKey, sessionToken },
+    });
+
+    expect(write).toHaveBeenCalledWith('aws-s3', {
+      accessKeyId,
+      secretAccessKey,
+      sessionToken,
+    });
+    expectNotReturned(result, accessKeyId, secretAccessKey, sessionToken);
+  });
+
   it('keeps OAuth verifiers/manual tokens inward-only and CLI reads descriptor-only', async () => {
     const verifier = 'SENTINEL_OAUTH_VERIFIER';
     const token = 'SENTINEL_MANUAL_TOKEN';

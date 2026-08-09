@@ -11,6 +11,8 @@ vi.mock('../src/renderer/llmConfigClient', () => ({
 }));
 
 vi.mock('../src/renderer/host/vendored/useTranslation', () => ({
+  readLocale: () => 'en',
+  registerLlmI18n: () => undefined,
   useTranslation: () => (key: string) =>
     ({
       'providerSettings.presets.title': 'Quick Add Provider',

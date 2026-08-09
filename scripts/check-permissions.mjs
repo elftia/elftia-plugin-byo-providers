@@ -8,6 +8,7 @@ const serviceToPermission = new Map([
   ['llmConfig', 'host:llm-config'],
   ['mediaConfig', 'host:media-config'],
   ['searchConfig', 'host:search-config'],
+  ['objectStorageConfig', 'host:object-storage-config'],
   ['subscriptionAuth', 'host:subscription-auth'],
   ['agentConfig', 'host:agent-config'],
   ['cliRuntime', 'host:cli-runtime'],

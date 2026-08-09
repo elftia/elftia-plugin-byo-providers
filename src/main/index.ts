@@ -96,6 +96,9 @@ export function activate(host: AgentBackendHostApi): void {
   const secretsPackMissing = () => {
     throw new Error('[byo-providers] host.services.secretsPack is unavailable');
   };
+  const storageMissing = () => {
+    throw new Error('[byo-providers] host.services.objectStorageConfig is unavailable');
+  };
   const llm = () => host.services.llmConfig ?? missing();
   const media = () => host.services.mediaConfig ?? mediaMissing();
   const search = () => host.services.searchConfig ?? searchMissing();
@@ -107,6 +110,7 @@ export function activate(host: AgentBackendHostApi): void {
   // P2b-2 (`byo-p2-llm-2`) — the encrypted credential migration-pack port
   // (host-API 1.27). `testModel` rides the EXISTING `host.services.llmConfig`.
   const secretsPack = () => host.services.secretsPack ?? secretsPackMissing();
+  const storage = () => host.services.objectStorageConfig ?? storageMissing();
   /** Narrow an IPC payload's `mediaType` to the port's discriminator union. */
   const asMediaType = (v: unknown): MediaType => String(v) as MediaType;
 
@@ -400,6 +404,27 @@ export function activate(host: AgentBackendHostApi): void {
     'cliRt.launchTerminal': async (p) =>
       (await cliRt()?.launchTerminal(asRecord(p) as never)) ?? cliRtMissing(),
     'cliRt.listBackends': async () => (await cliRt()?.listBackends()) ?? [],
+
+    // ══ OBJECT STORAGE — masked config + write-only credentials ══
+    'storage.listProviders': async () => (await storage()?.listProviders()) ?? [],
+    'storage.updateProvider': async (p) => {
+      const { id, patch } = asRecord(p);
+      return (await storage()?.updateProvider(String(id), asRecord(patch))) ?? storageMissing();
+    },
+    'storage.setCredentials': async (p) => {
+      const { id, credentials } = asRecord(p);
+      return (
+        (await storage()?.setCredentials(String(id), asRecord(credentials))) ?? storageMissing()
+      );
+    },
+    'storage.clearCredentials': async (p) =>
+      (await storage()?.clearCredentials(String(asRecord(p).id))) ?? storageMissing(),
+    'storage.setDefaultProvider': async (p) => {
+      const id = asRecord(p).id;
+      return (
+        (await storage()?.setDefaultProvider(id === null ? null : String(id))) ?? storageMissing()
+      );
+    },
 
     // ══ SECRETS-PACK (P2b-2) — encrypted credential migration pack over host.services.secretsPack ══
     // PASSPHRASE-IN, COUNTS/PATH/STATUS-OUT: each verb relays ONLY the passphrase

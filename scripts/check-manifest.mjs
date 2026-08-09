@@ -13,6 +13,7 @@ const requiredPermissions = [
   'host:llm-config',
   'host:media-config',
   'host:search-config',
+  'host:object-storage-config',
   'host:subscription-auth',
   'host:agent-config',
   'host:cli-runtime',
@@ -28,7 +29,7 @@ assert(manifest.name === 'byo-providers', 'manifest name must be byo-providers')
 assert(manifest.kind === 'app-extension', 'manifest kind must be app-extension');
 assert(
   JSON.stringify(manifest.permissions) === JSON.stringify(requiredPermissions),
-  'manifest permissions must be the exact seven dedicated BYO permissions',
+  'manifest permissions must be the exact dedicated BYO permissions',
 );
 assert(!manifest.permissions.includes('host:secrets-write'), 'host:secrets-write is forbidden');
 assert(

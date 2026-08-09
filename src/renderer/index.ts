@@ -72,6 +72,7 @@ export function activate(host: AgentUiHostApi): void {
 
   // The search api-provider mini-tab (sidebar + ProviderPanel) is lazy too (P2d).
   const LazySearchProviderSettings = React.lazy(() => import('./search/SearchProviderSettings'));
+  const LazyObjectStorageSettings = React.lazy(() => import('./storage/ObjectStorageSettings'));
 
   // P2e (`byo-p2-subscription`) — the subscription/OAuth/CLI-account tab + the
   // Code CLI runtime tab, both lazy (the heavy card trees split off `activate`).
@@ -161,6 +162,25 @@ export function activate(host: AgentUiHostApi): void {
           React.Suspense,
           { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
           h(LazySearchProviderSettings),
+        ),
+      ),
+  });
+
+  // Object storage is an independent file-delivery capability, not a model
+  // provider, so it intentionally sits outside `modelProvidersGroup`.
+  host.settings.registerSection({
+    id: 'object-storage',
+    label: readObjectStorageSectionLabel(),
+    order: 125,
+    pinToTop: true,
+    render: () =>
+      h(
+        'div',
+        { className: 'h-full', 'data-testid': 'byo-providers-object-storage-section' },
+        h(
+          React.Suspense,
+          { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
+          h(LazyObjectStorageSettings),
         ),
       ),
   });
@@ -289,6 +309,17 @@ function readSubscriptionSectionLabel(): string {
       return 'サブスクリプション';
     default:
       return 'Subscriptions';
+  }
+}
+
+function readObjectStorageSectionLabel(): string {
+  switch (readLocale()) {
+    case 'zh':
+      return '对象存储';
+    case 'ja':
+      return 'オブジェクトストレージ';
+    default:
+      return 'Object Storage';
   }
 }
 
