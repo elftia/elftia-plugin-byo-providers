@@ -41,10 +41,10 @@ describe('renderer activation', () => {
     ]);
     expect(sections.every(({ pinToTop }) => pinToTop === true)).toBe(true);
 
-    for (const section of sections.slice(0, 7)) {
+    for (const section of sections.slice(0, 8)) {
       expect(section.group).toMatchObject({ id: 'model-providers', order: 0 });
     }
-    expect(sections[7]?.group).toBeUndefined();
+    expect((sections[0]?.group as { label: () => string }).label()).toBe('Providers');
     expect(sections[8]?.group).toBeUndefined();
     expect(sections[9]?.group).toBeUndefined();
 

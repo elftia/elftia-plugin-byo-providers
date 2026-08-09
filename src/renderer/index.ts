@@ -47,17 +47,17 @@ export function activate(host: AgentUiHostApi): void {
   const React = host.react.instance;
   const h = React.createElement;
 
-  // The shared "模型提供商" (Model Providers) collapsible-parent descriptor
-  // (`settings-section-groups`, host-API v1.28). Attached to the 7 provider-config
-  // sections (LLM + 5 media + Search) so they bucket under ONE collapsible parent;
+  // The shared "提供商" (Providers) collapsible-parent descriptor
+  // (`settings-section-groups`, host-API v1.28). Attached to the 8 provider-config
+  // sections (LLM + 5 media + Search + Object Storage) under ONE parent;
   // `order: 0` slots the parent at the very top of the pinned block. The label is
   // a thunk resolved per render from the plugin's OWN i18n (locale-following;
   // never a renderer i18n key). No `defaultExpanded` ⇒ defaults expanded (the
   // pre-split `modelSelection: true` behavior). No `icon` (label-only parent —
   // keeps the diff small).
-  const modelProvidersGroup = {
+  const providersGroup = {
     id: 'model-providers',
-    label: () => readModelProvidersGroupLabel(),
+    label: () => readProvidersGroupLabel(),
     order: 0,
   } as const;
 
@@ -98,7 +98,7 @@ export function activate(host: AgentUiHostApi): void {
     // Locale-resolved label from the plugin's own i18n bundle (never an i18n key).
     label: readLlmSectionLabel(),
     order: 100,
-    group: modelProvidersGroup,
+    group: providersGroup,
     pinToTop: true,
     render: () =>
       h(
@@ -117,7 +117,7 @@ export function activate(host: AgentUiHostApi): void {
       id: `media-${mediaType}`,
       label: readMediaSectionLabel(mediaType),
       order: 110 + idx,
-      group: modelProvidersGroup,
+      group: providersGroup,
       pinToTop: true,
       render: () =>
         h(
@@ -149,7 +149,7 @@ export function activate(host: AgentUiHostApi): void {
     id: 'search-providers',
     label: readSearchSectionLabel(),
     order: 120,
-    group: modelProvidersGroup,
+    group: providersGroup,
     pinToTop: true,
     render: () =>
       h(
@@ -166,12 +166,13 @@ export function activate(host: AgentUiHostApi): void {
       ),
   });
 
-  // Object storage is an independent file-delivery capability, not a model
-  // provider, so it intentionally sits outside `modelProvidersGroup`.
+  // Object storage is a file-delivery provider and lives beside the model,
+  // media, and search providers in the shared provider group.
   host.settings.registerSection({
     id: 'object-storage',
     label: readObjectStorageSectionLabel(),
     order: 125,
+    group: providersGroup,
     pinToTop: true,
     render: () =>
       h(
@@ -202,7 +203,7 @@ export function activate(host: AgentUiHostApi): void {
     label: readSubscriptionSectionLabel(),
     order: 130,
     // UNGROUPED (independent flat item) but pinned to the top block — sits
-    // directly after the "模型提供商" collapsible parent, not nested under it.
+    // directly after the "提供商" collapsible parent, not nested under it.
     pinToTop: true,
     render: () =>
       h(
@@ -256,20 +257,20 @@ function readLlmSectionLabel(): string {
 }
 
 /**
- * The "模型提供商" (Model Providers) collapsible-PARENT label, localized to the
+ * The "提供商" (Providers) collapsible-PARENT label, localized to the
  * host's active locale via the plugin's own `readLocale()` (NEVER a renderer
  * i18n key). Inlined like the sibling section-label helpers — the three strings
  * have no single-word seed key. Resolved per render through the `group.label`
  * thunk so the parent label follows locale changes.
  */
-function readModelProvidersGroupLabel(): string {
+function readProvidersGroupLabel(): string {
   switch (readLocale()) {
     case 'zh':
-      return '模型提供商';
+      return '提供商';
     case 'ja':
-      return 'モデルプロバイダー';
+      return 'プロバイダー';
     default:
-      return 'Model Providers';
+      return 'Providers';
   }
 }
 
