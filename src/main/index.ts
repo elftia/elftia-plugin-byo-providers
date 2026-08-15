@@ -60,7 +60,11 @@
  *
  * @module byo-providers/main/index
  */
-import type { AgentBackendHostApi, HostMediaType } from '@byo/domain/plugin-types';
+import type {
+  AgentBackendHostApi,
+  HostMediaProviderSecretField,
+  HostMediaType,
+} from '@byo/domain/plugin-types';
 
 /** Local alias for the media discriminator union. */
 type MediaType = HostMediaType;
@@ -231,6 +235,17 @@ export function activate(host: AgentBackendHostApi): void {
       return (
         (await media()?.setProviderKey(asMediaType(mediaType), String(id), String(apiKey ?? ''))) ??
         mediaMissing()
+      );
+    },
+    'media.setProviderSecret': async (p) => {
+      const { mediaType, id, field, value } = asRecord(p);
+      return (
+        (await media()?.setProviderSecret?.(
+          String(mediaType) as 'video',
+          String(id),
+          String(field) as HostMediaProviderSecretField,
+          String(value ?? ''),
+        )) ?? mediaMissing()
       );
     },
 

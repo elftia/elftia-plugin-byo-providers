@@ -32,10 +32,16 @@ assert(
   'manifest permissions must be the exact dedicated BYO permissions',
 );
 assert(!manifest.permissions.includes('host:secrets-write'), 'host:secrets-write is forbidden');
+const builtAgainst = manifest.contributes.main.builtAgainst;
+const [builtMajor, builtMinor] = builtAgainst.split('.').map(Number);
+const sdkMajor = Number(sdk.version.split('.')[0]);
 assert(
-  manifest.contributes.renderer.builtAgainst === sdk.version &&
-    manifest.contributes.main.builtAgainst === sdk.version,
-  `manifest builtAgainst must equal locked SDK ${sdk.version}`,
+  manifest.contributes.renderer.builtAgainst === builtAgainst,
+  'renderer and main builtAgainst versions must match',
+);
+assert(
+  builtMajor === sdkMajor && builtMinor >= manifest.contributes.main.requiredMinor,
+  'manifest builtAgainst must share the locked SDK major and cover requiredMinor',
 );
 assert(
   manifest.contributes.renderer.entry === 'index.mjs',

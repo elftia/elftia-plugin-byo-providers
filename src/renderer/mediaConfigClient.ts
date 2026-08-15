@@ -32,8 +32,6 @@
  *
  * @module byo-providers/renderer/mediaConfigClient
  */
-import type { HostMediaType } from '@byo/domain/plugin-types';
-
 import type { AsrProviderState, AsrProviderUpdatePayload } from '@byo/domain/asr-types';
 import type {
   CustomImageProviderInput,
@@ -41,6 +39,7 @@ import type {
   MediaProviderUpdatePayload,
 } from '@byo/domain/media-types';
 import type { MusicProviderState, MusicProviderUpdatePayload } from '@byo/domain/music-types';
+import type { HostMediaProviderSecretField, HostMediaType } from '@byo/domain/plugin-types';
 import type { TtsProviderState, TtsProviderUpdatePayload } from '@byo/domain/tts-types';
 import type { CustomVideoProviderInput, VideoProviderState, VideoProviderUpdatePayload } from '@byo/domain/video-types';
 
@@ -48,6 +47,23 @@ import { getHost } from './host/hostBridge';
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
+}
+
+/** Ask the host renderer to invalidate the matching chat-facing provider cache. */
+function notifyProviderConfigChanged(mediaType: HostMediaType): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent('media-provider-config-changed', { detail: { mediaType } }),
+  );
+}
+
+function mutationSucceeded(result: unknown): boolean {
+  return !(
+    typeof result === 'object' &&
+    result !== null &&
+    'success' in result &&
+    (result as { success?: unknown }).success === false
+  );
 }
 
 type OpResult = { success: boolean; error?: string };
@@ -66,6 +82,15 @@ interface MediaTypeClient<State, UpdatePayload, CustomInput> {
   refreshUpstreamModels(id: string): Promise<RefreshResult<State>>;
   /** Write (or clear, when empty) the provider key — the ONLY media key-write path. */
   setProviderKey(id: string, apiKey: string): Promise<OpResult>;
+}
+
+interface VideoMediaTypeClient
+  extends MediaTypeClient<VideoProviderState, VideoProviderUpdatePayload, CustomVideoProviderInput> {
+  setProviderSecret(
+    id: string,
+    field: HostMediaProviderSecretField,
+    value: string,
+  ): Promise<OpResult>;
 }
 
 /**
@@ -87,6 +112,7 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
         id,
         patch: payload,
       });
+      if (mutationSucceeded(r)) notifyProviderConfigChanged(mediaType);
       return (r?.provider ?? r) as State;
     },
     createCustom: async (input) => {
@@ -94,11 +120,42 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
         mediaType,
         input,
       });
+      if (mutationSucceeded(r)) notifyProviderConfigChanged(mediaType);
       return (r?.provider ?? r) as State;
     },
-    deleteCustom: (id) => invoke('media.deleteProvider', { mediaType, id }),
-    refreshUpstreamModels: (id) => invoke('media.refreshUpstreamModels', { mediaType, id }),
-    setProviderKey: (id, apiKey) => invoke('media.setProviderKey', { mediaType, id, apiKey }),
+    deleteCustom: async (id) => {
+      const result = await invoke<{ success: boolean }>('media.deleteProvider', { mediaType, id });
+      if (mutationSucceeded(result)) notifyProviderConfigChanged(mediaType);
+      return result;
+    },
+    refreshUpstreamModels: async (id) => {
+      const result = await invoke<RefreshResult<State>>('media.refreshUpstreamModels', { mediaType, id });
+      if (mutationSucceeded(result)) notifyProviderConfigChanged(mediaType);
+      return result;
+    },
+    setProviderKey: async (id, apiKey) => {
+      const result = await invoke<OpResult>('media.setProviderKey', { mediaType, id, apiKey });
+      if (mutationSucceeded(result)) notifyProviderConfigChanged(mediaType);
+      return result;
+    },
+  };
+}
+
+function makeVideoTypeClient(): VideoMediaTypeClient {
+  return {
+    ...makeTypeClient<VideoProviderState, VideoProviderUpdatePayload, CustomVideoProviderInput>(
+      'video',
+    ),
+    setProviderSecret: async (id, field, value) => {
+      const result = await invoke<OpResult>('media.setProviderSecret', {
+        mediaType: 'video',
+        id,
+        field,
+        value,
+      });
+      if (mutationSucceeded(result)) notifyProviderConfigChanged('video');
+      return result;
+    },
   };
 }
 
@@ -108,13 +165,21 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
  */
 export const mediaConfigClient = {
   image: makeTypeClient<MediaProviderState, MediaProviderUpdatePayload, CustomImageProviderInput>('image'),
-  video: makeTypeClient<VideoProviderState, VideoProviderUpdatePayload, CustomVideoProviderInput>('video'),
+  video: makeVideoTypeClient(),
   music: makeTypeClient<MusicProviderState, MusicProviderUpdatePayload, { baseProviderId: string; name: string }>('music'),
   tts: makeTypeClient<TtsProviderState, TtsProviderUpdatePayload, { baseProviderId: string; name: string }>('tts'),
   asr: makeTypeClient<AsrProviderState, AsrProviderUpdatePayload, { baseProviderId: string; name: string }>('asr'),
   /** IMAGE-ONLY library reset (the port takes a bare `id`, no `mediaType`). */
-  resetImageProviderToDefaults: (id: string): Promise<{ success: boolean; provider?: MediaProviderState }> =>
-    invoke('media.resetProviderToDefaults', { id }),
+  resetImageProviderToDefaults: async (
+    id: string,
+  ): Promise<{ success: boolean; provider?: MediaProviderState }> => {
+    const result = await invoke<{ success: boolean; provider?: MediaProviderState }>(
+      'media.resetProviderToDefaults',
+      { id },
+    );
+    if (mutationSucceeded(result)) notifyProviderConfigChanged('image');
+    return result;
+  },
   /** List a media type's MASKED providers by discriminator (the generic hook). */
   listByType(mediaType: HostMediaType): Promise<unknown[]> {
     return invoke('media.listProviders', { mediaType });

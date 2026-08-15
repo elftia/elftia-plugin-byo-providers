@@ -27,13 +27,15 @@ describe('credential boundaries', () => {
   it('keeps LLM/media/search credentials inward-only', async () => {
     const llmKey = 'SENTINEL_LLM_KEY';
     const mediaKey = 'SENTINEL_MEDIA_KEY';
+    const byteplusSecret = 'SENTINEL_BYTEPLUS_SECRET';
     const searchKey = 'SENTINEL_SEARCH_KEY';
     const llmAdd = vi.fn(async () => ({ success: true, provider: { id: 'p', api_key: '', hasKey: true } }));
     const mediaWrite = vi.fn(async () => ({ success: true, hasKey: true }));
+    const mediaSecretWrite = vi.fn(async () => ({ success: true }));
     const searchWrite = vi.fn(async () => ({ success: true }));
     const methods = methodsFor({
       llmConfig: { addProvider: llmAdd },
-      mediaConfig: { setProviderKey: mediaWrite },
+      mediaConfig: { setProviderKey: mediaWrite, setProviderSecret: mediaSecretWrite },
       searchConfig: { setProviderKey: searchWrite },
     });
 
@@ -47,12 +49,25 @@ describe('credential boundaries', () => {
       providerId: 'tavily',
       apiKey: searchKey,
     });
+    const byteplusResult = await methods['media.setProviderSecret']({
+      mediaType: 'video',
+      id: 'video-seedance-vod',
+      field: 'byteplusSk',
+      value: byteplusSecret,
+    });
 
     expect(llmAdd).toHaveBeenCalledWith(expect.objectContaining({ api_key: llmKey }));
     expect(mediaWrite).toHaveBeenCalledWith('video', 'v', mediaKey);
+    expect(mediaSecretWrite).toHaveBeenCalledWith(
+      'video',
+      'video-seedance-vod',
+      'byteplusSk',
+      byteplusSecret,
+    );
     expect(searchWrite).toHaveBeenCalledWith('tavily', searchKey);
     expectNotReturned(llmResult, llmKey);
     expectNotReturned(mediaResult, mediaKey);
+    expectNotReturned(byteplusResult, byteplusSecret);
     expectNotReturned(searchResult, searchKey);
   });
 

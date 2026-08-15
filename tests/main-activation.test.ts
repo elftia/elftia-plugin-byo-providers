@@ -223,6 +223,18 @@ const RELAY_CASES: RelayCase[] = [
     payload: { mediaType: 'tts', id: 209, apiKey: 'inward-media-key' },
     args: ['tts', '209', 'inward-media-key'],
   },
+  {
+    ipc: 'media.setProviderSecret',
+    service: 'mediaConfig',
+    method: 'setProviderSecret',
+    payload: {
+      mediaType: 'video',
+      id: 'video-seedance-vod',
+      field: 'byteplusAk',
+      value: 'AKLT-inward',
+    },
+    args: ['video', 'video-seedance-vod', 'byteplusAk', 'AKLT-inward'],
+  },
 
   {
     ipc: 'search.getProviders',
@@ -633,7 +645,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(81);
+    expect(expectedMethods).toHaveLength(82);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

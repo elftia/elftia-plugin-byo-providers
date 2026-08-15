@@ -2,6 +2,7 @@ import type {
   AgentBackendHostApi as SdkAgentBackendHostApi,
   AgentBackendHostServices as SdkAgentBackendHostServices,
   HostLlmConfigLike as SdkHostLlmConfigLike,
+  HostMediaConfigLike as SdkHostMediaConfigLike,
   HostSubscriptionAuthLike as SdkHostSubscriptionAuthLike,
 } from '@elftia/plugin-types';
 
@@ -25,6 +26,17 @@ export type {
 } from '@elftia/plugin-types';
 
 export type HostCliBackendId = 'claude-code' | 'codex-cli' | 'gemini-cli';
+
+export type HostMediaProviderSecretField = 'byteplusAk' | 'byteplusSk';
+
+export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
+  setProviderSecret?(
+    mediaType: 'video',
+    id: string,
+    field: HostMediaProviderSecretField,
+    value: string,
+  ): Promise<{ success: boolean; error?: string }>;
+}
 
 export interface HostCliBackendConfig {
   readonly cliBackendId?: HostCliBackendId;
@@ -192,6 +204,7 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
 
 export type AgentBackendHostServices = SdkAgentBackendHostServices & {
   readonly llmConfig?: HostLlmConfigLike;
+  readonly mediaConfig?: HostMediaConfigLike;
   readonly subscriptionAuth?: HostSubscriptionAuthLike;
   readonly agentConfig?: HostAgentConfigLike;
   readonly cliRuntime?: HostCliRuntimeLike;

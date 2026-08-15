@@ -7,9 +7,8 @@
  * @module components/MediaProviderSettings/VideoProviderSettingsPanel
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
 import type { VideoProviderState } from '@byo/domain/video-types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Input, Select } from '../host/ui';
 import { useConfirmDialog } from '../host/vendored/useImperativeConfirm';
@@ -101,12 +100,9 @@ export function VideoProviderSettingsPanel() {
       const source = values ?? latestCredentialValuesRef.current;
       // byo-media-secret-hardening: secret fields (`secret: true`) route through
       // the one-way `setProviderKey` channel into SecretsService; non-secret
-      // fields ride the `update` patch. The video provider's secret fields are
-      // `apiKey` AND the BytePlus asset-library `byteplusAk`/`byteplusSk` — but
-      // the latter two have NO generation-side consumer and the IPC patch never
-      // declared them (a dead write path), so we intentionally persist ONLY the
-      // `apiKey` secret (the others are a no-op until/unless asset-library upload
-      // is wired). Plaintext secrets NEVER cross the `update` patch.
+      // fields ride the `update` patch. `apiKey` uses the general key method;
+      // BytePlus AK/SK use the video-only v1.49 secret method. Plaintext secrets
+      // NEVER cross the ordinary provider patch.
       // byo-media-key-display-restore Fix 1: `collectMediaSecretWrites` SKIPS an
       // empty secret field (empty = "leave the stored key unchanged").
       const { secretWrites, nonSecret } = collectMediaSecretWrites(
@@ -118,9 +114,10 @@ export function VideoProviderSettingsPanel() {
       setCredentialStatus('saving');
       try {
         for (const { key, value } of secretWrites) {
-          // Only `apiKey` has a live consumer; byteplusAk/Sk are vestigial (see above).
           if (key === 'apiKey') {
             await mediaConfigClient.video.setProviderKey(selectedProvider.id, value);
+          } else if (key === 'byteplusAk' || key === 'byteplusSk') {
+            await mediaConfigClient.video.setProviderSecret(selectedProvider.id, key, value);
           }
         }
         await mediaConfigClient.video.update(selectedProvider.id, updatePayload);
