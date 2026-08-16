@@ -74,6 +74,9 @@ type RefreshResult<S> = { success: boolean; provider?: S; message?: string };
  * state/payload/custom-input types of one media type. Mirrors the host's
  * `Agent{Type}ProvidersApi` (the subset the panels use).
  */
+/** The explicit reveal result (v1.50) — the one outward secret exception. */
+type RevealResult = { success: boolean; value?: string; error?: string };
+
 interface MediaTypeClient<State, UpdatePayload, CustomInput> {
   list(): Promise<State[]>;
   update(id: string, payload: UpdatePayload): Promise<State>;
@@ -82,6 +85,11 @@ interface MediaTypeClient<State, UpdatePayload, CustomInput> {
   refreshUpstreamModels(id: string): Promise<RefreshResult<State>>;
   /** Write (or clear, when empty) the provider key — the ONLY media key-write path. */
   setProviderKey(id: string, apiKey: string): Promise<OpResult>;
+  /**
+   * Reveal the stored provider key (v1.50) — user-initiated display only (the
+   * settings eye icon). Plain invoke: no provider-cache invalidation event.
+   */
+  revealProviderKey(id: string): Promise<RevealResult>;
 }
 
 interface VideoMediaTypeClient
@@ -91,6 +99,8 @@ interface VideoMediaTypeClient
     field: HostMediaProviderSecretField,
     value: string,
   ): Promise<OpResult>;
+  /** Reveal a stored BytePlus secret field (v1.50) — display only. */
+  revealProviderSecret(id: string, field: HostMediaProviderSecretField): Promise<RevealResult>;
 }
 
 /**
@@ -138,6 +148,8 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
       if (mutationSucceeded(result)) notifyProviderConfigChanged(mediaType);
       return result;
     },
+    revealProviderKey: (id) =>
+      invoke<RevealResult>('media.revealProviderKey', { mediaType, id }),
   };
 }
 
@@ -156,6 +168,12 @@ function makeVideoTypeClient(): VideoMediaTypeClient {
       if (mutationSucceeded(result)) notifyProviderConfigChanged('video');
       return result;
     },
+    revealProviderSecret: (id, field) =>
+      invoke<RevealResult>('media.revealProviderSecret', {
+        mediaType: 'video',
+        id,
+        field,
+      }),
   };
 }
 

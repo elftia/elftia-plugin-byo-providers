@@ -107,6 +107,14 @@ export const llmConfigClient = {
    */
   testModel: (providerId: string, modelId: string): Promise<HostModelTestResult> =>
     invoke('llm.testModel', { providerId, modelId }),
+  /**
+   * v1.50 (provider-key-reveal) — the ONE deliberate outward secret exception:
+   * fetch the stored key for USER-INITIATED display (the settings eye icon).
+   * Plain invoke (NOT `mutateProviders`) — a reveal is a read, it must not
+   * trigger provider-cache refresh churn.
+   */
+  revealProviderKey: (id: string): Promise<{ success: boolean; value?: string; error?: string }> =>
+    invoke('llm.revealProviderKey', { id }),
 
   // ── Presets ──────────────────────────────────────────────────────────────
   getProviderPresets: (): Promise<unknown> => invoke('llm.getProviderPresets'),

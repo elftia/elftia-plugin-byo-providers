@@ -3,6 +3,7 @@ import type {
   AgentBackendHostServices as SdkAgentBackendHostServices,
   HostLlmConfigLike as SdkHostLlmConfigLike,
   HostMediaConfigLike as SdkHostMediaConfigLike,
+  HostMediaType,
   HostSubscriptionAuthLike as SdkHostSubscriptionAuthLike,
 } from '@elftia/plugin-types';
 
@@ -29,6 +30,20 @@ export type HostCliBackendId = 'claude-code' | 'codex-cli' | 'gemini-cli';
 
 export type HostMediaProviderSecretField = 'byteplusAk' | 'byteplusSk';
 
+/**
+ * The explicit key-reveal result (host-API v1.50) — the ONE deliberate outward
+ * secret exception: carries the stored key for USER-INITIATED display (the
+ * settings eye icon). Local mirror of the SDK's `HostMediaKeyRevealResult` /
+ * `HostLlmKeyRevealResult` (this plugin pins an older SDK; the shapes are
+ * structural lower bounds, same as the other local extensions).
+ */
+export interface HostKeyRevealResult {
+  readonly success: boolean;
+  /** The stored secret (plaintext); `''` when none is stored. */
+  readonly value?: string;
+  readonly error?: string;
+}
+
 export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
   setProviderSecret?(
     mediaType: 'video',
@@ -36,6 +51,22 @@ export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
     field: HostMediaProviderSecretField,
     value: string,
   ): Promise<{ success: boolean; error?: string }>;
+  /** v1.50 — reveal the stored provider key (user-initiated display only). */
+  revealProviderKey?(
+    mediaType: HostMediaType,
+    id: string,
+  ): Promise<HostKeyRevealResult>;
+  /** v1.50 — reveal a stored video secret field (user-initiated display only). */
+  revealProviderSecret?(
+    mediaType: 'video',
+    id: string,
+    field: HostMediaProviderSecretField,
+  ): Promise<HostKeyRevealResult>;
+}
+
+export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
+  /** v1.50 — reveal the stored provider key (user-initiated display only). */
+  revealProviderKey?(providerId: string): Promise<HostKeyRevealResult>;
 }
 
 export interface HostCliBackendConfig {

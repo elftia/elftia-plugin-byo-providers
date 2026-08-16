@@ -407,13 +407,25 @@ export function VideoProviderSettingsPanel() {
         return;
       }
       try {
+        // Flush any pending debounced credential save FIRST — the refresh below
+        // re-syncs the form from the masked config and would otherwise both
+        // clear the field and cancel the pending save (provider-key-reveal).
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+          autoSaveTimeoutRef.current = null;
+          await flushCredentialSave();
+        }
         await mediaConfigClient.video.update(providerId, { enabled });
+        // The form-sync effect rebuilds formValues from the MASKED config
+        // (apiKey absent → '') — skipping the one-shot re-sync keeps a
+        // typed-but-unsaved key visible and untouched.
+        skipFormSyncRef.current = true;
         await refresh();
       } catch (error) {
         console.error('Failed to toggle video provider:', error);
       }
     },
-    [isHydrated, refresh]
+    [isHydrated, refresh, flushCredentialSave]
   );
 
   // 创建自定义 Provider
@@ -608,6 +620,21 @@ export function VideoProviderSettingsPanel() {
                 />
               }
               docsUrl={selectedProvider.docsUrl ?? selectedProvider.website}
+              hasStoredKey={(selectedProvider as { hasKey?: boolean }).hasKey === true}
+              revealScopeKey={selectedProvider.id}
+              onRevealSecret={async (fieldKey) => {
+                // BytePlus VOD secrets ride the field-suffixed reveal verb;
+                // every other secret field (the apiKey) uses the plain reveal.
+                if (fieldKey === 'byteplusAk' || fieldKey === 'byteplusSk') {
+                  const r = await mediaConfigClient.video.revealProviderSecret(
+                    selectedProvider.id,
+                    fieldKey
+                  );
+                  return r.success ? (r.value ?? '') : null;
+                }
+                const r = await mediaConfigClient.video.revealProviderKey(selectedProvider.id);
+                return r.success ? (r.value ?? '') : null;
+              }}
               t={t}
             />
           )}

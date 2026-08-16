@@ -18,7 +18,7 @@ import {
   X
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Badge, Button, Input, Switch } from '../../host/ui';
 
@@ -93,6 +93,20 @@ export interface ProviderDetailsPanelProps {
   beforeFooterSlot?: ReactNode;
   /** 文档链接 */
   docsUrl?: string;
+  /**
+   * provider-key-reveal: whether the provider has a stored key (the masked
+   * provider's `hasKey`). Drives the "key is set" placeholder + whether the
+   * eye-on reveal is worth fetching.
+   */
+  hasStoredKey?: boolean;
+  /**
+   * provider-key-reveal: fetch the stored secret for display. Returns the
+   * plaintext (or `''` when nothing is stored), or `null` on failure. The
+   * revealed value is shown READ-ONLY — it never enters `formValues`/autosave.
+   */
+  onRevealSecret?: (fieldKey: string) => Promise<string | null>;
+  /** The scope (provider id) guarding against stale reveal fetches. */
+  revealScopeKey?: string;
   /** 翻译函数 */
   t: (key: string, params?: Record<string, string | number>) => string;
 }
@@ -150,16 +164,74 @@ export function ProviderDetailsPanel({
   afterModelsSlot,
   beforeFooterSlot,
   docsUrl,
+  hasStoredKey,
+  onRevealSecret,
+  revealScopeKey,
   t
 }: ProviderDetailsPanelProps) {
   // 控制密码字段显示/隐藏
   const [showSecretFields, setShowSecretFields] = useState<Record<string, boolean>>({});
+  // provider-key-reveal: per-field DISPLAY-ONLY overrides (the fetched stored
+  // secret). Never merged into `formValues`/`latestCredentialValuesRef` — the
+  // debounced autosave and the empty-skip guard stay untouched.
+  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({});
+  const [revealPending, setRevealPending] = useState<Record<string, boolean>>({});
+  // Stale-guard: a reveal resolving after a provider switch must be dropped.
+  const revealScopeRef = useRef(revealScopeKey);
+
+  useEffect(() => {
+    revealScopeRef.current = revealScopeKey;
+    setRevealedSecrets({});
+    setRevealPending({});
+  }, [revealScopeKey]);
+
+  const dropRevealed = (fieldKey: string) => {
+    setRevealedSecrets((prev) => {
+      if (!(fieldKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+  };
 
   const toggleSecretField = (fieldKey: string) => {
+    const nextShown = !showSecretFields[fieldKey];
     setShowSecretFields((prev) => ({
       ...prev,
-      [fieldKey]: !prev[fieldKey]
+      [fieldKey]: nextShown
     }));
+    if (!nextShown) {
+      // Hiding → drop the display override too.
+      dropRevealed(fieldKey);
+      return;
+    }
+    // Showing with an EMPTY field (the masked port never pre-fills a stored
+    // key) → fetch the stored secret for display-only.
+    const hasTypedValue = Boolean((formValues[fieldKey] ?? '').length);
+    if (
+      onRevealSecret &&
+      !hasTypedValue &&
+      !(fieldKey in revealedSecrets) &&
+      !revealPending[fieldKey]
+    ) {
+      const scope = revealScopeKey;
+      setRevealPending((prev) => ({ ...prev, [fieldKey]: true }));
+      onRevealSecret(fieldKey)
+        .then((value) => {
+          if (revealScopeRef.current !== scope) return; // stale — drop
+          if (typeof value === 'string' && value.length > 0) {
+            setRevealedSecrets((prev) => ({ ...prev, [fieldKey]: value }));
+          }
+        })
+        .catch(() => {
+          /* leave the field as-is (empty) — reveal is best-effort */
+        })
+        .finally(() => {
+          if (revealScopeRef.current === scope) {
+            setRevealPending((prev) => ({ ...prev, [fieldKey]: false }));
+          }
+        });
+    }
   };
 
   return (
@@ -230,6 +302,15 @@ export function ProviderDetailsPanel({
           field.key.toLowerCase().includes('url') ||
           field.key.toLowerCase().includes('base');
         const showDocsLink = isUrlField && docsUrl;
+        const lowerKey = field.key.toLowerCase();
+        const isApiKeyField = lowerKey === 'apikey' || lowerKey === 'api_key';
+        const revealed = revealedSecrets[field.key];
+        const showSetPlaceholder =
+          field.secret &&
+          isApiKeyField &&
+          hasStoredKey &&
+          revealed === undefined &&
+          !(formValues[field.key] ?? '').length;
 
         return (
           <div key={field.key} className="space-y-2">
@@ -255,10 +336,24 @@ export function ProviderDetailsPanel({
               <div className="relative">
                 <Input
                   type={showSecretFields[field.key] ? 'text' : 'password'}
-                  value={formValues[field.key] ?? ''}
-                  onChange={(e) => onFieldChange(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                  disabled={isCredentialSaving}
+                  value={revealed ?? formValues[field.key] ?? ''}
+                  onChange={(e) => {
+                    // Editing starts from a clean slate — a revealed value is
+                    // view-only and must never enter the editable/autosave state
+                    // (defense-in-depth under the readOnly below).
+                    if (revealed !== undefined) {
+                      dropRevealed(field.key);
+                      setShowSecretFields((prev) => ({ ...prev, [field.key]: true }));
+                    }
+                    onFieldChange(field.key, e.target.value);
+                  }}
+                  placeholder={
+                    showSetPlaceholder
+                      ? t('providerSettings.form.apiKeySetPlaceholder')
+                      : field.placeholder
+                  }
+                  disabled={isCredentialSaving || revealPending[field.key]}
+                  readOnly={revealed !== undefined}
                   className="pr-10"
                 />
                 <button

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import type {
   LLMProvider,
@@ -39,6 +39,58 @@ export function useProviderForm(
   const [inlineApiUrl, setInlineApiUrl] = useState('');
   const [inlineMaxConcurrency, setInlineMaxConcurrency] = useState('');
 
+  // ── provider-key-reveal: DISPLAY-ONLY fetched key ────────────────
+  // The explicit `revealProviderKey` verb (host-API v1.50) fetches the stored
+  // key for the eye icon. The value NEVER enters `inlineApiKey` (blur
+  // persistence + the leave-unchanged-on-empty guard stay untouched); it is
+  // shown read-only and dropped on hide/edit/provider-switch.
+  const [revealedApiKey, setRevealedApiKey] = useState<string | null>(null);
+  /** Live selected-provider id for stale-reveal guards. */
+  const selectedIdRef = useRef(selectedProviderId);
+  selectedIdRef.current = selectedProviderId;
+
+  const handleToggleShowApiKey = useCallback(
+    (next: boolean | undefined) => {
+      const shown = typeof next === 'boolean' ? next : !showApiKey;
+      setShowApiKey(shown);
+      if (!shown) {
+        setRevealedApiKey(null);
+        return;
+      }
+      // Showing with an EMPTY field (the masked port blanks a stored literal;
+      // a `$ENV` ref prefills and needs no fetch) → fetch for display-only.
+      if (
+        revealedApiKey === null &&
+        inlineApiKey.length === 0 &&
+        selectedProvider?.hasKey &&
+        selectedProviderId
+      ) {
+        const pid = selectedProviderId;
+        llmConfigClient.revealProviderKey?.(pid)
+          .then((r) => {
+            // Stale-guard: a provider switch must drop the resolved value.
+            if (selectedIdRef.current !== pid) return;
+            if (r.success && typeof r.value === 'string' && r.value.length > 0) {
+              setRevealedApiKey(r.value);
+            }
+          })
+          .catch(() => {
+            /* reveal is best-effort — the field just stays empty */
+          });
+      }
+    },
+    [showApiKey, revealedApiKey, inlineApiKey, selectedProvider, selectedProviderId]
+  );
+
+  /** Clear the display-only reveal (called when the user starts editing). */
+  const handleApiKeyInputChange = useCallback(
+    (value: string) => {
+      setRevealedApiKey(null);
+      setInlineApiKey(value);
+    },
+    [setInlineApiKey]
+  );
+
   const updateProviderState = useCallback((updated: LLMProvider) => {
     updateProviderInCache(updated);
   }, [updateProviderInCache]);
@@ -47,13 +99,15 @@ export function useProviderForm(
   const [prevSelectedId, setPrevSelectedId] = useState(selectedProvider?.id);
   if (prevSelectedId !== selectedProvider?.id) {
     setPrevSelectedId(selectedProvider?.id);
+    setRevealedApiKey(null);
     if (selectedProvider) {
       // The masked plugin port BLANKS `api_key` (it never returns a stored
       // plaintext key), so for a configured provider this resolves to '' — the
       // field starts EMPTY and the "已配置/configured" placeholder (driven by
-      // `hasKey`) signals a stored key. The eye reveals only the just-typed
-      // value; empty on blur = leave the stored key unchanged (Option-A). A
-      // `$ENV` ref is preserved verbatim by the mask (not a secret) and prefills.
+      // `hasKey`) signals a stored key. The eye fetches the stored key through
+      // the explicit reveal verb (v1.50); empty on blur = leave the stored key
+      // unchanged (Option-A). A `$ENV` ref is preserved verbatim by the mask
+      // (not a secret) and prefills.
       setInlineApiKey(selectedProvider.api_key || '');
       setInlineApiUrl(selectedProvider.api_base_url || '');
       setInlineName(getProviderDisplayName(t, selectedProvider));
@@ -437,6 +491,11 @@ export function useProviderForm(
     setShowTemplates,
     showApiKey,
     setShowApiKey,
+    // provider-key-reveal: prefer the toggle handler (fetch + display-only
+    // override); `setShowApiKey` stays exported for the legacy direct setters.
+    handleToggleShowApiKey,
+    revealedApiKey,
+    handleApiKeyInputChange,
     inlineName,
     setInlineName,
     inlineModelsEndpoint,

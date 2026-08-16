@@ -79,6 +79,9 @@ export function ProviderSettings() {
     setInlineModelsEndpoint,
     inlineApiKey,
     setInlineApiKey,
+    revealedApiKey,
+    handleToggleShowApiKey,
+    handleApiKeyInputChange,
     inlineApiUrl,
     setInlineApiUrl,
     inlineMaxConcurrency,
@@ -204,6 +207,9 @@ export function ProviderSettings() {
                 setInlineName={setInlineName}
                 inlineApiKey={inlineApiKey}
                 setInlineApiKey={setInlineApiKey}
+                revealedApiKey={revealedApiKey}
+                onToggleShowApiKey={handleToggleShowApiKey}
+                onApiKeyInputChange={handleApiKeyInputChange}
                 inlineApiUrl={inlineApiUrl}
                 setInlineApiUrl={setInlineApiUrl}
                 inlineModelsEndpoint={inlineModelsEndpoint}

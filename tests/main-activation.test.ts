@@ -78,6 +78,13 @@ const RELAY_CASES: RelayCase[] = [
     args: ['106', '107'],
   },
   {
+    ipc: 'llm.revealProviderKey',
+    service: 'llmConfig',
+    method: 'revealProviderKey',
+    payload: { id: 111 },
+    args: ['111'],
+  },
+  {
     ipc: 'llm.getProviderPresets',
     service: 'llmConfig',
     method: 'getProviderPresets',
@@ -234,6 +241,24 @@ const RELAY_CASES: RelayCase[] = [
       value: 'AKLT-inward',
     },
     args: ['video', 'video-seedance-vod', 'byteplusAk', 'AKLT-inward'],
+  },
+  {
+    ipc: 'media.revealProviderKey',
+    service: 'mediaConfig',
+    method: 'revealProviderKey',
+    payload: { mediaType: 'image', id: 210 },
+    args: ['image', '210'],
+  },
+  {
+    ipc: 'media.revealProviderSecret',
+    service: 'mediaConfig',
+    method: 'revealProviderSecret',
+    payload: {
+      mediaType: 'video',
+      id: 'video-seedance-vod',
+      field: 'byteplusSk',
+    },
+    args: ['video', 'video-seedance-vod', 'byteplusSk'],
   },
 
   {
@@ -645,7 +670,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(82);
+    expect(expectedMethods).toHaveLength(85);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

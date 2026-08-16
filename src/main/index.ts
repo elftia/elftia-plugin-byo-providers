@@ -53,9 +53,14 @@
  *     the process boundary. The optional `host.services.{llmConfig,mediaConfig}`
  *     is guarded (`?.`) so an unwired/old host yields a clear failure, not a crash.
  *   - Returned providers/keys are MASKED by the port (`api_key`/`apiKey` blanked +
- *     `hasKey`); no plaintext key ever flows OUTWARD. An LLM key carried INWARD in a
- *     provider/pool body is host-routed to the secret store, never echoed back; a
- *     MEDIA key crosses INWARD only via `media.setProviderKey` (never the patch).
+ *     `hasKey`); no plaintext key ever flows OUTWARD — EXCEPT the explicit
+ *     `revealProviderKey`/`revealProviderSecret` verbs (host-API 1.50, the one
+ *     deliberate outward exception for USER-INITIATED display: the settings eye
+ *     icon fetches the stored key on click; the revealed value rides a dedicated
+ *     `{success, value?, error?}` result, never a provider row). An LLM key
+ *     carried INWARD in a provider/pool body is host-routed to the secret store,
+ *     never echoed back; a MEDIA key crosses INWARD only via `media.setProviderKey`
+ *     (never the patch).
  *   - Imports NO `electron` / `@main` (Electron-free utilityProcess main build).
  *
  * @module byo-providers/main/index
@@ -146,6 +151,11 @@ export function activate(host: AgentBackendHostApi): void {
       const { providerId, modelId } = asRecord(p);
       return (await llm()?.testModel(String(providerId), String(modelId))) ?? missing();
     },
+    // v1.50 (provider-key-reveal) — the ONE deliberate outward secret exception,
+    // user-initiated display only (the settings eye icon). The value rides a
+    // dedicated `{success, value?, error?}` result, never a provider row.
+    'llm.revealProviderKey': async (p) =>
+      (await llm()?.revealProviderKey?.(String(asRecord(p).id))) ?? missing(),
 
     // ── Presets ──────────────────────────────────────────────────────────────
     'llm.getProviderPresets': async () => (await llm()?.getProviderPresets()) ?? [],
@@ -245,6 +255,25 @@ export function activate(host: AgentBackendHostApi): void {
           String(id),
           String(field) as HostMediaProviderSecretField,
           String(value ?? ''),
+        )) ?? mediaMissing()
+      );
+    },
+    // v1.50 (provider-key-reveal) — the ONE deliberate outward secret exception,
+    // user-initiated display only (the settings eye icon). Secrets-first read
+    // with a hydrated-config fallback; `{success: true, value: ''}` when unset.
+    'media.revealProviderKey': async (p) => {
+      const { mediaType, id } = asRecord(p);
+      return (
+        (await media()?.revealProviderKey?.(asMediaType(mediaType), String(id))) ?? mediaMissing()
+      );
+    },
+    'media.revealProviderSecret': async (p) => {
+      const { mediaType, id, field } = asRecord(p);
+      return (
+        (await media()?.revealProviderSecret?.(
+          String(mediaType) as 'video',
+          String(id),
+          String(field) as HostMediaProviderSecretField,
         )) ?? mediaMissing()
       );
     },

@@ -60,6 +60,10 @@ export function ImageProviderSettingsPanel() {
   // 自动保存状态
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipAutoSaveRef = useRef(false);
+  // provider-key-reveal: one-shot skip of the form re-sync (the other four media
+  // panels' mechanism) — set before a state splice that should NOT clobber the
+  // form (a masked re-sync blanks the secret field and drops a typed key).
+  const skipFormSyncRef = useRef(false);
   const [credentialStatus, setCredentialStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const latestCredentialValuesRef = useRef<Record<string, string>>({});
 
@@ -124,6 +128,12 @@ export function ImageProviderSettingsPanel() {
       }
       try {
         const updated = await mediaConfigClient.image.update(selectedProvider.id, payload);
+        // The splice below re-renders with a new provider object → the form-sync
+        // effect would rebuild formValues from the MASKED config (apiKey absent
+        // → '') and clobber a typed-but-unsaved key. Skip the one re-sync
+        // (create/delete switch to a DIFFERENT provider id — a fresh form is
+        // correct there, so they must NOT set this flag).
+        skipFormSyncRef.current = true;
         updateProviderState(updated);
         setProviderError(null);
 
@@ -364,6 +374,10 @@ export function ImageProviderSettingsPanel() {
     if (!selectedProvider) {
       return;
     }
+    if (skipFormSyncRef.current) {
+      skipFormSyncRef.current = false;
+      return;
+    }
     const fingerprint = JSON.stringify({
       id: selectedProvider.id,
       config: selectedProvider.config
@@ -413,6 +427,15 @@ export function ImageProviderSettingsPanel() {
   // 切换 Provider 启用状态
   const handleToggleProvider = async (provider: MediaProviderState, enabled: boolean) => {
     setUpdatingProviderId(provider.id);
+    // Flush any pending debounced credential save FIRST — the state splice in
+    // `persistProviderUpdate` re-syncs the form from the masked config and would
+    // otherwise both clear the field and leave the pending save unscheduled
+    // (provider-key-reveal; matches the other four media panels).
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+      await flushCredentialSave();
+    }
     await persistProviderUpdate({ enabled });
     setUpdatingProviderId(null);
   };
@@ -630,6 +653,12 @@ export function ImageProviderSettingsPanel() {
                   />
                 }
                 docsUrl={selectedProvider.docsUrl ?? selectedProvider.website}
+                hasStoredKey={(selectedProvider as { hasKey?: boolean }).hasKey === true}
+                revealScopeKey={selectedProvider.id}
+                onRevealSecret={async () => {
+                  const r = await mediaConfigClient.image.revealProviderKey(selectedProvider.id);
+                  return r.success ? (r.value ?? '') : null;
+                }}
                 t={t}
               />
             )}

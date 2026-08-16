@@ -1,6 +1,6 @@
 {
   "name": "byo-providers",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
@@ -19,13 +19,13 @@
       "entry": "index.mjs",
       "requiredMajor": 1,
       "requiredMinor": 20,
-      "builtAgainst": "1.49.0"
+      "builtAgainst": "1.50.0"
     },
     "main": {
       "entry": "index.cjs",
       "requiredMajor": 1,
-      "requiredMinor": 49,
-      "builtAgainst": "1.49.0"
+      "requiredMinor": 50,
+      "builtAgainst": "1.50.0"
     }
   }
 }

@@ -71,6 +71,61 @@ describe('credential boundaries', () => {
     expectNotReturned(searchResult, searchKey);
   });
 
+  // provider-key-reveal (host-API v1.50): the three reveal verbs are the ONE
+  // deliberate outward secret exception — they DO return the stored key, but
+  // ONLY on their dedicated `{success, value?}` result (never embedded in a
+  // provider row), and every OTHER verb stays inward-only.
+  it('reveals stored keys ONLY through the dedicated reveal verbs', async () => {
+    const storedLlmKey = 'SENTINEL_REVEALED_LLM_KEY';
+    const storedMediaKey = 'SENTINEL_REVEALED_MEDIA_KEY';
+    const storedByteplus = 'SENTINEL_REVEALED_BYTEPLUS';
+    const llmGet = vi.fn(async () => ({
+      id: 'p',
+      api_key: '',
+      hasKey: true,
+      models: [],
+    }));
+    const mediaList = vi.fn(async () => [
+      { id: 'p1', configured: true, hasKey: true, config: {}, models: [] },
+    ]);
+    const llmReveal = vi.fn(async () => ({ success: true, value: storedLlmKey }));
+    const mediaReveal = vi.fn(async () => ({ success: true, value: storedMediaKey }));
+    const mediaSecretReveal = vi.fn(async () => ({ success: true, value: storedByteplus }));
+    const methods = methodsFor({
+      llmConfig: { getProviders: llmGet, revealProviderKey: llmReveal },
+      mediaConfig: {
+        listProviders: mediaList,
+        revealProviderKey: mediaReveal,
+        revealProviderSecret: mediaSecretReveal,
+      },
+    });
+
+    const llmRevealed = await methods['llm.revealProviderKey']({ id: 'p' });
+    const mediaRevealed = await methods['media.revealProviderKey']({
+      mediaType: 'image',
+      id: 'p1',
+    });
+    const secretRevealed = await methods['media.revealProviderSecret']({
+      mediaType: 'video',
+      id: 'video-seedance-vod',
+      field: 'byteplusAk',
+    });
+
+    expect(llmReveal).toHaveBeenCalledWith('p');
+    expect(mediaReveal).toHaveBeenCalledWith('image', 'p1');
+    expect(mediaSecretReveal).toHaveBeenCalledWith('video', 'video-seedance-vod', 'byteplusAk');
+    // The reveal verbs carry the value OUT (the deliberate exception)...
+    expect(llmRevealed).toEqual({ success: true, value: storedLlmKey });
+    expect(mediaRevealed).toEqual({ success: true, value: storedMediaKey });
+    expect(secretRevealed).toEqual({ success: true, value: storedByteplus });
+    // ...but never as a provider row (dedicated result shape only).
+    expect(JSON.stringify(llmRevealed)).not.toContain('"provider"');
+    expect(JSON.stringify(mediaRevealed)).not.toContain('"provider"');
+    // And the ordinary reads still carry NO key.
+    expectNotReturned(await methods['llm.getProviders']({}), storedLlmKey, storedMediaKey);
+    expectNotReturned(await methods['media.listProviders']({ mediaType: 'image' }), storedMediaKey);
+  });
+
   it('keeps object storage credentials inward-only', async () => {
     const accessKeyId = 'SENTINEL_STORAGE_ACCESS_KEY';
     const secretAccessKey = 'SENTINEL_STORAGE_SECRET_KEY';

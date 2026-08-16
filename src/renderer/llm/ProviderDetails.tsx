@@ -33,6 +33,12 @@ interface ProviderDetailsProps {
   setInlineName: (val: string) => void;
   inlineApiKey: string;
   setInlineApiKey: (val: string) => void;
+  /** provider-key-reveal: display-only fetched key (overrides inlineApiKey when non-null). */
+  revealedApiKey?: string | null;
+  /** provider-key-reveal: eye toggle that fetches the stored key on show. */
+  onToggleShowApiKey?: (next: boolean | undefined) => void;
+  /** provider-key-reveal: input change that drops the display-only override. */
+  onApiKeyInputChange?: (val: string) => void;
   inlineApiUrl: string;
   setInlineApiUrl: (val: string) => void;
   inlineModelsEndpoint: string;
@@ -72,6 +78,9 @@ export function ProviderDetails({
   setInlineName,
   inlineApiKey,
   setInlineApiKey,
+  revealedApiKey,
+  onToggleShowApiKey,
+  onApiKeyInputChange,
   inlineApiUrl,
   setInlineApiUrl,
   inlineModelsEndpoint,
@@ -217,21 +226,30 @@ export function ProviderDetails({
           never returns a stored plaintext key, so the field starts EMPTY for a
           configured provider; `selectedProvider.hasKey` is the only "configured"
           signal — when set and the field is untouched we show the
-          "已配置/configured" (`apiKeySetPlaceholder`) affordance. The eye reveals
-          only what the user just typed this session. An empty blur leaves the
-          stored key unchanged (Option-A). */}
+          "已配置/configured" (`apiKeySetPlaceholder`) affordance. The eye fetches
+          the stored key through the explicit reveal verb (v1.50) and shows it
+          READ-ONLY (a revealed value never enters the editable/persist state);
+          hiding or editing drops it. An empty blur leaves the stored key
+          unchanged (Option-A). */}
       <FormField
         label={t('providerSettings.credentials.apiKey')}
         description={t('providerSettings.form.apiKeyHelper')}
       >
         <RevealableInput
           revealed={showApiKey}
-          onRevealedChange={setShowApiKey}
-          placeholder={selectedProvider.hasKey && inlineApiKey.length === 0
+          onRevealedChange={onToggleShowApiKey ?? setShowApiKey}
+          placeholder={selectedProvider.hasKey && inlineApiKey.length === 0 && revealedApiKey == null
             ? t('providerSettings.form.apiKeySetPlaceholder')
             : t('providerSettings.form.apiKeyPlaceholder')}
-          value={inlineApiKey}
-          onChange={(e) => setInlineApiKey(e.target.value)}
+          value={revealedApiKey ?? inlineApiKey}
+          readOnly={revealedApiKey != null}
+          onChange={(e) => {
+            if (revealedApiKey != null && onApiKeyInputChange) {
+              onApiKeyInputChange(e.target.value);
+            } else {
+              setInlineApiKey(e.target.value);
+            }
+          }}
           onBlur={() => {
             // Only persist a non-empty replacement; empty = leave unchanged.
             if (inlineApiKey.trim().length > 0 && inlineApiKey !== (selectedProvider.api_key || '')) {
