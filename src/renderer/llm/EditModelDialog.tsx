@@ -16,6 +16,10 @@ export interface EditModelEntry {
   openRouterProvider?: OpenRouterProviderRouting;
   vision?: boolean;
   reasoning?: boolean;
+  /** User override of the max context window (tokens); empty = auto. */
+  contextLength?: number;
+  /** User override of the auto-compaction threshold (0–100 %); empty = default. */
+  autoCompactThresholdPercent?: number;
 }
 interface EditModelDialogProps {
   selectedProvider: LLMProvider | null;
@@ -43,7 +47,7 @@ export function EditModelDialog({
   const handleClose = () => {
     setShowEditModelDialog(false);
     setEditingModel(null);
-    setEditModelEntry({ id: '', name: '', groupId: 'default', openRouterProvider: undefined, vision: undefined, reasoning: undefined });
+    setEditModelEntry({ id: '', name: '', groupId: 'default', openRouterProvider: undefined, vision: undefined, reasoning: undefined, contextLength: undefined, autoCompactThresholdPercent: undefined });
   };
 
   // ESC key handler
@@ -125,6 +129,44 @@ export function EditModelDialog({
                 </option>
               ))}
             </datalist>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              {t('providerSettings.modelsManager.editDialog.contextLength')}
+            </label>
+            <Input
+              type="number"
+              min={1}
+              value={editModelEntry.contextLength ?? ''}
+              onChange={(e) => setEditModelEntry(prev => ({
+                ...prev,
+                contextLength: e.target.value === '' ? undefined : Number(e.target.value),
+              }))}
+              placeholder={t('providerSettings.modelsManager.editDialog.contextLengthPlaceholder')}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('providerSettings.modelsManager.editDialog.contextLengthHelper')}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              {t('providerSettings.modelsManager.editDialog.autoCompactThreshold')}
+            </label>
+            <Input
+              type="number"
+              min={0}
+              max={95}
+              value={editModelEntry.autoCompactThresholdPercent ?? ''}
+              onChange={(e) => setEditModelEntry(prev => ({
+                ...prev,
+                autoCompactThresholdPercent: e.target.value === '' ? undefined : Number(e.target.value),
+              }))}
+              placeholder={t('providerSettings.modelsManager.editDialog.autoCompactThresholdPlaceholder')}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('providerSettings.modelsManager.editDialog.autoCompactThresholdHelper')}
+            </p>
           </div>
 
           <div className="flex items-center justify-between">

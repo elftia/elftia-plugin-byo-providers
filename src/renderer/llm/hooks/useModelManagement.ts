@@ -23,6 +23,15 @@ import {
 } from '../utils';
 
 /**
+ * Host-owned per-model auto-compaction override (change
+ * `tinyelf-auto-compact-user-config`). `autoCompactThresholdPercent` is
+ * persisted by the host main process but is NOT declared on the vendored
+ * `@omnicross/contracts` `ModelConfig` — carry it through a local widening so
+ * the edit dialog can round-trip it without widening a third package.
+ */
+export type EditableModelConfig = ModelConfig & { autoCompactThresholdPercent?: number };
+
+/**
  * Manages model CRUD operations, discovery, grouping, and editing.
  */
 export function useModelManagement(
@@ -50,7 +59,9 @@ export function useModelManagement(
     openRouterProvider?: OpenRouterProviderRouting;
     vision?: boolean;
     reasoning?: boolean;
-  }>({ id: '', name: '', groupId: 'default', openRouterProvider: undefined, vision: undefined, reasoning: undefined });
+    contextLength?: number;
+    autoCompactThresholdPercent?: number;
+  }>({ id: '', name: '', groupId: 'default', openRouterProvider: undefined, vision: undefined, reasoning: undefined, contextLength: undefined, autoCompactThresholdPercent: undefined });
 
   const updateProviderState = useCallback((updated: LLMProvider) => {
     updateProviderInCache(updated);
@@ -121,13 +132,13 @@ export function useModelManagement(
   const discoveryModels = discoveryResult?.models ?? [];
 
   // ── Helpers ─────────────────────────────────────────────────────
-  const getCurrentModelConfigs = (): ModelConfig[] => {
+  const getCurrentModelConfigs = (): EditableModelConfig[] => {
     if (!selectedProvider) return [];
-    if (selectedProvider.modelConfigs?.length) return selectedProvider.modelConfigs;
+    if (selectedProvider.modelConfigs?.length) return selectedProvider.modelConfigs as EditableModelConfig[];
     return (selectedProvider.models || []).map(id => ({ id, name: id, enabled: true }));
   };
 
-  const persistModelChanges = async (provider: LLMProvider, configs: ModelConfig[], overrideGroups?: ModelGroup[]) => {
+  const persistModelChanges = async (provider: LLMProvider, configs: EditableModelConfig[], overrideGroups?: ModelGroup[]) => {
     try {
       const payload = {
         id: provider.id,
@@ -291,7 +302,14 @@ export function useModelManagement(
           openRouterProvider: editModelEntry.openRouterProvider,
           vision: editModelEntry.vision,
           reasoning: editModelEntry.reasoning,
-        };
+          // User overrides (change `tinyelf-auto-compact-user-config`): empty
+          // fields clear the override; `autoCompactThresholdPercent` is host-
+          // owned (not declared on @omnicross ModelConfig) — spread it through.
+          contextLength: editModelEntry.contextLength,
+          ...(editModelEntry.autoCompactThresholdPercent !== undefined
+            ? { autoCompactThresholdPercent: editModelEntry.autoCompactThresholdPercent }
+            : {}),
+        } as EditableModelConfig;
       }
       return cfg;
     });
@@ -300,7 +318,7 @@ export function useModelManagement(
       showModelMessage('providerSettings.modelsManager.messages.updated');
       setShowEditModelDialog(false);
       setEditingModel(null);
-      setEditModelEntry({ id: '', name: '', groupId: 'default', openRouterProvider: undefined, vision: undefined, reasoning: undefined });
+      setEditModelEntry({ id: '', name: '', groupId: 'default', openRouterProvider: undefined, vision: undefined, reasoning: undefined, contextLength: undefined, autoCompactThresholdPercent: undefined });
     }
   };
 
@@ -345,6 +363,9 @@ export function useModelManagement(
       openRouterProvider: model.openRouterProvider,
       vision: model.vision,
       reasoning: model.reasoning,
+      contextLength: model.contextLength,
+      autoCompactThresholdPercent:
+        (model as { autoCompactThresholdPercent?: number }).autoCompactThresholdPercent,
     });
     setShowEditModelDialog(true);
   };

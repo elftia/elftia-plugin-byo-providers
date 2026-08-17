@@ -229,6 +229,12 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
           "groupPlaceholder": "Select or enter a group name",
           "submit": "Save",
           "cancel": "Cancel",
+          "contextLength": "Max context (tokens)",
+          "contextLengthPlaceholder": "Auto (from preset / discovery)",
+          "contextLengthHelper": "Override the model's context window. Leave empty to use the built-in value — useful for new models whose preset hasn't caught up yet.",
+          "autoCompactThreshold": "Auto-compaction threshold (%)",
+          "autoCompactThresholdPlaceholder": "Default (90% / 50% for 1M+ windows)",
+          "autoCompactThresholdHelper": "When the context reaches this percentage of the window, TinyElf compacts the conversation. Leave empty for the default; max 95%.",
           "vision": "Vision Capability",
           "visionHint": "Whether this model supports image/vision input",
           "reasoning": "Thinking Model",
@@ -419,14 +425,14 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
         "title": "Quick Add Provider",
         "added": "Added",
         "add": "Add",
-        "loadFailed": "Unable to load provider presets.",
-        "retry": "Retry",
         "features": {
           "search": "Search",
           "vision": "Vision",
           "mcp": "MCP",
           "codingPlan": "Coding Plan"
-        }
+        },
+        "loadFailed": "Unable to load provider presets.",
+        "retry": "Retry"
       },
       "alerts": {
         "deleteConfirm": "Are you sure you want to delete this provider?"
@@ -467,34 +473,6 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
         "maxPriceTooltip": "Set maximum price limits per million tokens. Leave empty for no limit.",
         "configured": "Configured"
       }
-    },
-    "apiMode": {
-      "label": "API Mode",
-      "standard": "Standard",
-      "codingPlan": "Coding Plan",
-      "tokenPlan": "Token Plan",
-      "apiKeyPrefixHint": "Keys for this plan typically begin with `{{prefix}}`. Hint only — not enforced.",
-      "dashscopeCodingPlanSeparateKey": "DashScope Coding Plan uses a separate API key from the standard endpoint.",
-      "baiduCodingPlanSeparateKey": "Qianfan Coding Plan uses a separate API key from the standard endpoint.",
-      "tencentTokenPlanAnthropicOnly": "Tencent Token Plan is Anthropic-protocol only.",
-      "xiaomiTokenPlanRegions": "Default baseUrl is `token-plan-cn.*`. You can manually edit it to `token-plan-sgp.*` or `token-plan-ams.*`.",
-      "confirmOverwriteTitle": "Switch API mode?",
-      "confirmOverwriteBody": "You have customized the API URL or API Key. Switching modes will overwrite them with the new mode's defaults — or keep your customizations and only update the mode label.",
-      "overwriteAndSwitch": "Overwrite and switch",
-      "keepCustomizations": "Keep customizations"
-    },
-    "presetName": {
-      "zhipu": "z.ai",
-      "zhipuBigmodel": "Zhipu GLM",
-      "volcengine": "Volcengine Ark",
-      "dashscope": "Alibaba DashScope",
-      "tencent": "Tencent Hunyuan",
-      "tencentAnthropic": "Tencent Hunyuan (Token Plan)",
-      "baidu": "Baidu Qianfan",
-      "kuaishou": "Kuaishou KwaiKAT",
-      "mthreads": "Moore Threads",
-      "xiaomiMimoOpenai": "Xiaomi MiMo (OpenAI)",
-      "xiaomiMimoAnthropic": "Xiaomi MiMo (Anthropic)"
     },
     "common": {
       "cancel": "Cancel",
@@ -727,6 +705,12 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
           "groupPlaceholder": "选择或输入分组名称",
           "submit": "保存",
           "cancel": "取消",
+          "contextLength": "最大上下文（tokens）",
+          "contextLengthPlaceholder": "自动（预设 / 发现值）",
+          "contextLengthHelper": "覆盖该模型的上下文窗口。留空则使用内置值——适合预设还没跟上的新模型。",
+          "autoCompactThreshold": "自动压缩阈值（%）",
+          "autoCompactThresholdPlaceholder": "默认（1M 以下 90% / 1M+ 50%）",
+          "autoCompactThresholdHelper": "当上下文达到窗口的这个百分比时，TinyElf 会压缩对话。留空使用默认；最大 95%。",
           "vision": "视觉能力",
           "visionHint": "此模型是否支持图片/视觉输入",
           "reasoning": "思考模型",
@@ -917,14 +901,14 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
         "title": "快速添加提供商",
         "added": "已添加",
         "add": "添加",
-        "loadFailed": "无法加载供应商预设。",
-        "retry": "重试",
         "features": {
           "search": "搜索",
           "vision": "视觉",
           "mcp": "MCP",
           "codingPlan": "Coding Plan"
-        }
+        },
+        "loadFailed": "无法加载供应商预设。",
+        "retry": "重试"
       },
       "alerts": {
         "deleteConfirm": "确定要删除该提供商吗？"
@@ -965,34 +949,6 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
         "maxPriceTooltip": "设置每百万 token 的最高价格限制。留空表示无限制。",
         "configured": "已配置"
       }
-    },
-    "apiMode": {
-      "label": "API 模式",
-      "standard": "按量付费",
-      "codingPlan": "Coding Plan",
-      "tokenPlan": "Token Plan",
-      "apiKeyPrefixHint": "该 plan 的 API Key 通常以 `{{prefix}}` 开头。仅为提示，不强制校验。",
-      "dashscopeCodingPlanSeparateKey": "百炼 Coding Plan 使用独立 API Key（与按量付费端点的 Key 不通用）。",
-      "baiduCodingPlanSeparateKey": "千帆 Coding Plan 使用独立 API Key（与按量付费端点的 Key 不通用）。",
-      "tencentTokenPlanAnthropicOnly": "腾讯云 Token Plan 仅支持 Anthropic 协议。",
-      "xiaomiTokenPlanRegions": "默认 baseUrl 是 `token-plan-cn.*`，可手动改为 `token-plan-sgp.*` 或 `token-plan-ams.*`。",
-      "confirmOverwriteTitle": "切换 API 模式？",
-      "confirmOverwriteBody": "你修改过 API URL 或 API Key。切换模式可以覆盖为新模式的默认值，或保留你的自定义只切换模式标签。",
-      "overwriteAndSwitch": "覆盖并切换",
-      "keepCustomizations": "保留自定义"
-    },
-    "presetName": {
-      "zhipu": "z.ai",
-      "zhipuBigmodel": "智谱 GLM",
-      "volcengine": "火山方舟",
-      "dashscope": "阿里云百炼",
-      "tencent": "腾讯云混元",
-      "tencentAnthropic": "腾讯云混元 (Token Plan)",
-      "baidu": "百度千帆",
-      "kuaishou": "快手 KwaiKAT",
-      "mthreads": "摩尔线程",
-      "xiaomiMimoOpenai": "小米 MiMo (OpenAI)",
-      "xiaomiMimoAnthropic": "小米 MiMo (Anthropic)"
     },
     "common": {
       "cancel": "取消",
@@ -1225,6 +1181,12 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
           "groupPlaceholder": "グループを選択または入力",
           "submit": "保存",
           "cancel": "キャンセル",
+          "contextLength": "最大コンテキスト（トークン）",
+          "contextLengthPlaceholder": "自動（プリセット / 検出値）",
+          "contextLengthHelper": "このモデルのコンテキストウィンドウを上書きします。空のままだと内蔵値を使用します——プリセットが未対応の新モデルに便利です。",
+          "autoCompactThreshold": "自動圧縮のしきい値（%）",
+          "autoCompactThresholdPlaceholder": "デフォルト（1M未満は90% / 1M以上は50%）",
+          "autoCompactThresholdHelper": "コンテキストがウィンドウのこの割合に達すると、TinyElf が会話を圧縮します。空のままだとデフォルト、最大95%です。",
           "vision": "ビジョン機能",
           "visionHint": "このモデルが画像/ビジョン入力をサポートするかどうか",
           "reasoning": "思考モデル",
@@ -1415,14 +1377,14 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
         "title": "プロバイダーを素早く追加",
         "added": "追加済み",
         "add": "追加",
-        "loadFailed": "プロバイダープリセットを読み込めませんでした。",
-        "retry": "再試行",
         "features": {
           "search": "検索",
           "vision": "ビジョン",
           "mcp": "MCP",
           "codingPlan": "Coding Plan"
-        }
+        },
+        "loadFailed": "プロバイダープリセットを読み込めませんでした。",
+        "retry": "再試行"
       },
       "alerts": {
         "deleteConfirm": "このプロバイダーを削除してもよろしいですか？"
@@ -1463,34 +1425,6 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
         "maxPriceTooltip": "100万トークンあたりの最大価格制限を設定。空は無制限。",
         "configured": "設定済み"
       }
-    },
-    "apiMode": {
-      "label": "API モード",
-      "standard": "従量課金",
-      "codingPlan": "Coding Plan",
-      "tokenPlan": "Token Plan",
-      "apiKeyPrefixHint": "このプランの API Key は通常 `{{prefix}}` で始まります。情報提供のみで、強制チェックはしません。",
-      "dashscopeCodingPlanSeparateKey": "百炼 Coding Plan は従量課金エンドポイントとは別の API Key を使用します。",
-      "baiduCodingPlanSeparateKey": "千帆 Coding Plan は従量課金エンドポイントとは別の API Key を使用します。",
-      "tencentTokenPlanAnthropicOnly": "Tencent Token Plan は Anthropic プロトコル専用です。",
-      "xiaomiTokenPlanRegions": "デフォルトの baseUrl は `token-plan-cn.*`。`token-plan-sgp.*` または `token-plan-ams.*` に手動で変更できます。",
-      "confirmOverwriteTitle": "API モードを切り替えますか？",
-      "confirmOverwriteBody": "API URL または API Key をカスタマイズしています。モード切り替えで新モードのデフォルト値に上書きするか、カスタマイズを保持してモードラベルのみ切り替えます。",
-      "overwriteAndSwitch": "上書きして切り替え",
-      "keepCustomizations": "カスタマイズを保持"
-    },
-    "presetName": {
-      "zhipu": "z.ai",
-      "zhipuBigmodel": "智譜 GLM",
-      "volcengine": "Volcengine Ark",
-      "dashscope": "Alibaba DashScope",
-      "tencent": "Tencent Hunyuan",
-      "tencentAnthropic": "Tencent Hunyuan (Token Plan)",
-      "baidu": "Baidu 千帆",
-      "kuaishou": "Kuaishou KwaiKAT",
-      "mthreads": "Moore Threads",
-      "xiaomiMimoOpenai": "Xiaomi MiMo (OpenAI)",
-      "xiaomiMimoAnthropic": "Xiaomi MiMo (Anthropic)"
     },
     "common": {
       "cancel": "キャンセル",
