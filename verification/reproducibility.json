@@ -5,7 +5,7 @@
   "files": [
     {
       "path": "elftia-plugin.json",
-      "sha256": "c35782ec4077870f857a61177b93ea92379b7289ae5acbc5a38ddbe86daade6c"
+      "sha256": "a74b20b5c44d96146150b63cdaec88d2f8ba3b69b4444c36a789dd9a499702c2"
     },
     {
       "path": "main/index.cjs",
