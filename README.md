@@ -31,12 +31,18 @@ npm run check:permissions
 npm run check:leaks
 npm run check:terminology
 npm run check:reproducible
+npm run verify:dist
+npm run release
 npm run artifact:describe
 ```
 
 `npm run build` starts by removing this repository's `dist/` directory, builds
 both process halves, copies the authored manifest, and runs the manifest,
 permission, leak, and terminology gates.
+
+The aggregate `npm run verify` chain also checks reproducibility, validates the
+completed `dist/byo-providers/` tree with `npm run verify:dist`, and finishes by
+running `npm run release`.
 
 ## Locale maintenance
 
@@ -59,7 +65,7 @@ escapes, and absolute filesystem literals.
 
 ## Artifact interface
 
-The only consumer-facing interface is:
+For host build-tree integration, the consumer-facing interface is:
 
 ```text
 dist/byo-providers/
@@ -73,6 +79,21 @@ dist/byo-providers/
 Some optional chunk/asset directories may be absent when empty. Consumers must
 copy the complete `dist/byo-providers/` directory and must not import this
 repository's source or build configuration.
+
+For standalone distribution, the current `0.2.12` producer emits:
+
+```text
+release/0.2.12/
+  byo-providers.epkg
+  byo-providers.json
+```
+
+`byo-providers.epkg` is an Elftia plugin package carried in a standard ZIP
+container, with exactly one `elftia-plugin.json` at the archive root. The
+same-stem `byo-providers.json` file is its external integrity sidecar and records
+the package identity, SHA-256, byte size, and file count. Distributors should
+keep the `.epkg` and sidecar together; this producer does not emit the legacy
+custom-magic EPKG format.
 
 Artifact synchronization is consumer-owned. This project deliberately contains
 no host checkout path and never writes into `resources/plugins/`. A host
