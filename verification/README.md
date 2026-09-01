@@ -32,7 +32,7 @@ The aggregate verification covers:
   EPKG v2 sidecars;
 - plugin-kit validation of the completed `dist/byo-providers/` tree via
   `npm run verify:dist`;
-- plugin-kit release of `release/0.2.13/byo-providers.epkg` as a standard ZIP
+- plugin-kit release of `release/0.2.14/byo-providers.epkg` as a standard ZIP
   container plus the same-stem `byo-providers.json` integrity sidecar.
 
 The normalized 35-file artifact inventory, tree hash, EPKG hash, and sidecar

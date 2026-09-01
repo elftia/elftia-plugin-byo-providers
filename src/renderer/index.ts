@@ -51,13 +51,22 @@ export function activate(host: AgentUiHostApi): void {
   // (`settings-section-groups`, host-API v1.28). Attached to the 8 provider-config
   // sections (LLM + 5 media + Search + Object Storage) under ONE parent;
   // `order: 0` slots the parent at the very top of the pinned block. The label is
-  // a thunk resolved per render from the plugin's OWN i18n (locale-following;
-  // never a renderer i18n key). No `defaultExpanded` ⇒ defaults expanded (the
+  // a thunk resolved per render from the plugin's OWN i18n (locale-following).
+  // The sibling `opaqueFrame.label` is its data-only projection for the
+  // compartment host's synchronous navigation surface. No `defaultExpanded` ⇒ defaults expanded (the
   // pre-split `modelSelection: true` behavior). No `icon` (label-only parent —
   // keeps the diff small).
   const providersGroup = {
     id: 'model-providers',
     label: () => readProvidersGroupLabel(),
+    opaqueFrame: {
+      label: {
+        kind: 'plugin-i18n',
+        namespace: 'byo-providers',
+        key: 'navigation.providersGroup',
+        fallback: 'Providers',
+      },
+    },
     order: 0,
   } as const;
 

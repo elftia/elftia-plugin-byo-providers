@@ -44,7 +44,19 @@ describe('renderer activation', () => {
     for (const section of sections.slice(0, 8)) {
       expect(section.group).toMatchObject({ id: 'model-providers', order: 0 });
     }
-    expect((sections[0]?.group as { label: () => string }).label()).toBe('Providers');
+    const providersGroup = sections[0]?.group as {
+      label: () => string;
+      opaqueFrame?: {
+        label?: Record<string, unknown>;
+      };
+    };
+    expect(providersGroup.label()).toBe('Providers');
+    expect(providersGroup.opaqueFrame?.label).toEqual({
+      kind: 'plugin-i18n',
+      namespace: 'byo-providers',
+      key: 'navigation.providersGroup',
+      fallback: 'Providers',
+    });
     expect(sections[8]?.group).toBeUndefined();
     expect(sections[9]?.group).toBeUndefined();
 
@@ -55,5 +67,10 @@ describe('renderer activation', () => {
     ];
     expect(namespace).toBe('byo-providers');
     expect(Object.keys(locales).sort()).toEqual(['en', 'ja', 'zh']);
+    expect(locales).toMatchObject({
+      en: { navigation: { providersGroup: 'Providers' } },
+      ja: { navigation: { providersGroup: 'プロバイダー' } },
+      zh: { navigation: { providersGroup: '提供商' } },
+    });
   });
 });
