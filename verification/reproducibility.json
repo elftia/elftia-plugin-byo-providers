@@ -5,7 +5,7 @@
   "files": [
     {
       "path": "elftia-plugin.json",
-      "sha256": "a74b20b5c44d96146150b63cdaec88d2f8ba3b69b4444c36a789dd9a499702c2"
+      "sha256": "2267f07d3026d2c8da360cafdfe7be08935df6090b3b1692612253a7001b2dfd"
     },
     {
       "path": "main/index.cjs",
@@ -143,5 +143,12 @@
       "path": "renderer/index.mjs",
       "sha256": "5e2891e173269e1b7f99d39f83ae9bb4900ec24561f18703ff2c7f508d08c388"
     }
-  ]
+  ],
+  "release": {
+    "epkgSha256": "ffea55bd332a273e00a2c8866212d876c236209540a682ef80f524fa0733736d",
+    "sidecarSha256": "08f2fa275714519c7ddf30febab8163c9d3034f29499b055701aff2364b447e2",
+    "size": 184503,
+    "fileCount": 35,
+    "treeSha256": "2df79029d6726950408ff47282a87a76fe871ec8056ac6d3638908188df29c61"
+  }
 }

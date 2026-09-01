@@ -48,8 +48,16 @@ assert(
   'renderer contribution must be index.mjs',
 );
 assert(
+  manifest.contributes.renderer.execution === 'opaque-frame-v1',
+  'renderer contribution must use opaque-frame-v1',
+);
+assert(
   manifest.contributes.main.entry === 'index.cjs',
   'main contribution must be index.cjs',
+);
+assert(
+  !Object.hasOwn(manifest.contributes.main, 'execution'),
+  'main contribution must not declare a renderer execution mode',
 );
 assert(
   JSON.stringify(emittedManifest) === JSON.stringify(manifest),

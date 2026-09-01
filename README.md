@@ -80,10 +80,10 @@ Some optional chunk/asset directories may be absent when empty. Consumers must
 copy the complete `dist/byo-providers/` directory and must not import this
 repository's source or build configuration.
 
-For standalone distribution, the current `0.2.12` producer emits:
+For standalone distribution, the current `0.2.13` producer emits:
 
 ```text
-release/0.2.12/
+release/0.2.13/
   byo-providers.epkg
   byo-providers.json
 ```

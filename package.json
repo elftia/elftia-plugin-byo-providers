@@ -1,6 +1,6 @@
 {
   "name": "@elftia/plugin-byo-providers",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "private": true,
   "description": "Standalone first-party BYO Providers app-extension for Elftia.",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "i18n:harvest:llm": "node scripts/harvest-i18n.mjs",
     "i18n:harvest:media": "node scripts/harvest-media-i18n.mjs",
     "artifact:describe": "node scripts/describe-artifact.mjs",
+    "stamp": "elftia-plugin stamp dist/byo-providers",
     "verify:dist": "elftia-plugin verify dist/byo-providers",
     "release": "elftia-plugin release dist/byo-providers --out release",
     "verify": "npm run typecheck && npm test && npm run check:imports && npm run check:terminology && npm run build && npm run check:reproducible && npm run verify:dist && npm run release"
@@ -45,7 +46,7 @@
   },
   "devDependencies": {
     "@elftia/agent-spec": "1.25.0",
-    "@elftia/plugin-kit": "^0.2.0",
+    "@elftia/plugin-kit": "0.2.1",
     "@elftia/plugin-types": "1.25.0",
     "@types/node": "22.15.30",
     "@types/react": "18.2.43",

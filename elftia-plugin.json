@@ -1,6 +1,6 @@
 {
   "name": "byo-providers",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
@@ -17,6 +17,7 @@
   "contributes": {
     "renderer": {
       "entry": "index.mjs",
+      "execution": "opaque-frame-v1",
       "requiredMajor": 1,
       "requiredMinor": 20,
       "builtAgainst": "1.50.0"
