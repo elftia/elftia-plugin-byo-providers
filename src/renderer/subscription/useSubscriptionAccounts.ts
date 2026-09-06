@@ -24,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type {
   AccountTokensSanitized,
+  DeviceFlowView,
   KimiDeviceFlowView,
   OAuthParams,
   SubscriptionAccountSanitized,
@@ -314,6 +315,75 @@ export function useSubscriptionAccounts() {
     [mutate],
   );
 
+  // ── Grok device flow (v1.65; display-only views, host holds deviceCode) ────
+  const startGrokLogin = useCallback(async (): Promise<DeviceFlowView> => {
+    return subscriptionAuthClient.startGrokDeviceFlow();
+  }, []);
+  const pollGrokFlow = useCallback(
+    async (sessionId: string): Promise<DeviceFlowView> => {
+      const view = await subscriptionAuthClient.pollGrokDeviceFlow(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelGrokFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelGrokDeviceFlow(sessionId);
+    },
+    [],
+  );
+
+  // ── Copilot device flow (v1.65; optional GHE domain rides the start) ───────
+  const startCopilotLogin = useCallback(
+    async (enterpriseUrl?: string): Promise<DeviceFlowView> => {
+      return subscriptionAuthClient.startCopilotDeviceFlow(enterpriseUrl);
+    },
+    [],
+  );
+  const pollCopilotFlow = useCallback(
+    async (sessionId: string): Promise<DeviceFlowView> => {
+      const view = await subscriptionAuthClient.pollCopilotDeviceFlow(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelCopilotFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelCopilotDeviceFlow(sessionId);
+    },
+    [],
+  );
+
+  // ── Grok / Copilot multi-account (same generic wrappers) ───────────────────
+  const setActiveGrokAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('grok', id)),
+    [mutate],
+  );
+  const removeGrokAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.removeAccount('grok', id)),
+    [mutate],
+  );
+  const updateGrokAccountLabel = useCallback(
+    (id: string, label: string) =>
+      mutate(() => subscriptionAuthClient.updateAccountLabel('grok', id, label)),
+    [mutate],
+  );
+  const setActiveCopilotAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('copilot', id)),
+    [mutate],
+  );
+  const removeCopilotAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.removeAccount('copilot', id)),
+    [mutate],
+  );
+  const updateCopilotAccountLabel = useCallback(
+    (id: string, label: string) =>
+      mutate(() => subscriptionAuthClient.updateAccountLabel('copilot', id, label)),
+    [mutate],
+  );
+
   // ── Token refresh ──────────────────────────────────────────────────────────
   const refreshToken = useCallback(
     async (platform: TokenPlatform): Promise<boolean> => {
@@ -363,6 +433,18 @@ export function useSubscriptionAccounts() {
     setActiveKimiAccount,
     removeKimiAccount,
     updateKimiAccountLabel,
+    startGrokLogin,
+    pollGrokFlow,
+    cancelGrokFlow,
+    setActiveGrokAccount,
+    removeGrokAccount,
+    updateGrokAccountLabel,
+    startCopilotLogin,
+    pollCopilotFlow,
+    cancelCopilotFlow,
+    setActiveCopilotAccount,
+    removeCopilotAccount,
+    updateCopilotAccountLabel,
     refreshToken,
   };
 }

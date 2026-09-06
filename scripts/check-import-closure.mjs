@@ -119,7 +119,7 @@ const lock = JSON.parse(await readFile(resolve(root, 'package-lock.json'), 'utf8
 for (const [name, expected] of [
   ['@elftia/plugin-types', '1.25.0'],
   ['@elftia/agent-spec', '1.25.0'],
-  ['@omnicross/contracts', '0.3.1'],
+  ['@omnicross/contracts', '0.4.2'],
 ]) {
   const entry = lock.packages?.[`node_modules/${name}`];
   if (

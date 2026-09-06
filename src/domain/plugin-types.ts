@@ -273,6 +273,22 @@ export interface HostKimiDeviceFlowView {
   readonly error?: string;
 }
 
+/**
+ * Display-only view of one in-flight Grok / Copilot device flow (host-API
+ * v1.65) — the same token-free shape as the Kimi view; copilot flows may
+ * carry the normalized `enterpriseUrl` back for display.
+ */
+export interface HostDeviceFlowView {
+  readonly sessionId: string;
+  readonly state: 'pending' | 'done' | 'error';
+  readonly verificationUri: string;
+  readonly verificationUriComplete?: string;
+  readonly userCode: string;
+  readonly error?: string;
+  /** Copilot only: the normalized GHE domain riding this flow (absent = personal). */
+  readonly enterpriseUrl?: string;
+}
+
 export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   setClaudeManualToken(
     accessToken: string,
@@ -301,6 +317,21 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   pollKimiDeviceFlow?(sessionId: string): Promise<HostKimiDeviceFlowView>;
   cancelKimiDeviceFlow?(sessionId: string): Promise<void>;
   refreshKimiToken?(): Promise<boolean>;
+  /** v1.65 — Grok RFC 8628 device flow (optional; feature-detected). */
+  startGrokDeviceFlow?(): Promise<HostDeviceFlowView>;
+  pollGrokDeviceFlow?(sessionId: string): Promise<HostDeviceFlowView>;
+  cancelGrokDeviceFlow?(sessionId: string): Promise<void>;
+  refreshGrokToken?(): Promise<boolean>;
+  /**
+   * v1.65 — GitHub Copilot RFC 8628 device flow (optional; feature-detected).
+   * `enterpriseUrl` (bare host or full URL) routes the chain onto a GitHub
+   * Enterprise host; normalized + validated HOST-side.
+   */
+  startCopilotDeviceFlow?(enterpriseUrl?: string): Promise<HostDeviceFlowView>;
+  pollCopilotDeviceFlow?(sessionId: string): Promise<HostDeviceFlowView>;
+  cancelCopilotDeviceFlow?(sessionId: string): Promise<void>;
+  /** v1.65 — local no-op restamp (ghu_ tokens have no exchange endpoint). */
+  refreshCopilotToken?(): Promise<boolean>;
 }
 
 export type AgentBackendHostServices = SdkAgentBackendHostServices & {
@@ -311,7 +342,25 @@ export type AgentBackendHostServices = SdkAgentBackendHostServices & {
   readonly cliRuntime?: HostCliRuntimeLike;
   readonly secretsPack?: HostSecretsPackLike;
   readonly objectStorageConfig?: HostObjectStorageConfigLike;
+  /** v1.66 — system-browser URL opener (optional; feature-detected). */
+  readonly externalLinks?: HostExternalLinksLike;
 };
+
+/**
+ * Host system-browser URL opener (host-API v1.66). The plugin renderer frame
+ * is sandboxed (`allow-scripts`, opaque origin): `window.open` inside it is a
+ * silent no-op, so OAuth/device-flow verification pages MUST ride this port.
+ * Local structural mirror — this plugin pins an older SDK (Kimi-flow
+ * precedent).
+ */
+export interface HostExternalLinksLike {
+  /**
+   * Open an http(s) URL in the user's system browser. Resolves
+   * `{ ok: false, error: 'url-not-allowed' }` for non-http(s) URLs. Absent on
+   * older hosts — UI falls back to rendering the URL as selectable text.
+   */
+  openExternal(url: string): Promise<{ ok: boolean; error?: string }>;
+}
 
 export type AgentBackendHostApi = Omit<SdkAgentBackendHostApi, 'services'> & {
   readonly services: AgentBackendHostServices;

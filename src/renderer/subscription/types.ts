@@ -6,7 +6,10 @@ import type {
   ClaudeAuthMethod,
   ClaudeTokenSanitized,
   CodexTokenSanitized,
+  CopilotTokenSanitized,
+  DeviceFlowView,
   GeminiTokenSanitized,
+  GrokTokenSanitized,
   KimiDeviceFlowView,
   KimiTokenSanitized,
   OAuthParams,
@@ -189,6 +192,38 @@ export interface KimiConfigCardProps extends BaseConfigCardProps {
   onRefresh: () => Promise<boolean>;
 }
 
+/** Props for GrokConfigCard (RFC 8628 device flow; host holds the deviceCode) */
+export interface GrokConfigCardProps extends BaseConfigCardProps {
+  config?: GrokTokenSanitized;
+  accounts?: SubscriptionAccountSanitized[];
+  onStartLogin: () => Promise<DeviceFlowView>;
+  onPollFlow: (sessionId: string) => Promise<DeviceFlowView>;
+  onCancelFlow: (sessionId: string) => Promise<void>;
+  onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onClear: () => Promise<void>;
+  onRefresh: () => Promise<boolean>;
+}
+
+/**
+ * Props for CopilotConfigCard (RFC 8628 device flow; host holds the deviceCode
+ * AND the optional enterprise domain — only the normalized domain crosses back
+ * in the flow view for display).
+ */
+export interface CopilotConfigCardProps extends BaseConfigCardProps {
+  config?: CopilotTokenSanitized;
+  accounts?: SubscriptionAccountSanitized[];
+  onStartLogin: (enterpriseUrl?: string) => Promise<DeviceFlowView>;
+  onPollFlow: (sessionId: string) => Promise<DeviceFlowView>;
+  onCancelFlow: (sessionId: string) => Promise<void>;
+  onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onClear: () => Promise<void>;
+  onRefresh: () => Promise<boolean>;
+}
+
 /** Props for main AccountTokensTab component */
 export interface AccountTokensTabProps {
   t: TranslationFn;
@@ -199,7 +234,10 @@ export type {
   ClaudeAuthMethod,
   ClaudeTokenSanitized,
   CodexTokenSanitized,
+  CopilotTokenSanitized,
+  DeviceFlowView,
   GeminiTokenSanitized,
+  GrokTokenSanitized,
   KimiDeviceFlowView,
   KimiTokenSanitized,
   OAuthParams,

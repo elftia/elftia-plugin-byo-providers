@@ -398,6 +398,62 @@ const RELAY_CASES: RelayCase[] = [
     args: [],
   },
   {
+    ipc: 'subAuth.startGrokDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'startGrokDeviceFlow',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.pollGrokDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'pollGrokDeviceFlow',
+    payload: { sessionId: 'gdf-x' },
+    args: ['gdf-x'],
+  },
+  {
+    ipc: 'subAuth.cancelGrokDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'cancelGrokDeviceFlow',
+    payload: { sessionId: 'gdf-x' },
+    args: ['gdf-x'],
+  },
+  {
+    ipc: 'subAuth.refreshGrokToken',
+    service: 'subscriptionAuth',
+    method: 'refreshGrokToken',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.startCopilotDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'startCopilotDeviceFlow',
+    payload: { enterpriseUrl: 'company.ghe.com' },
+    args: ['company.ghe.com'],
+  },
+  {
+    ipc: 'subAuth.pollCopilotDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'pollCopilotDeviceFlow',
+    payload: { sessionId: 'cdf-x' },
+    args: ['cdf-x'],
+  },
+  {
+    ipc: 'subAuth.cancelCopilotDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'cancelCopilotDeviceFlow',
+    payload: { sessionId: 'cdf-x' },
+    args: ['cdf-x'],
+  },
+  {
+    ipc: 'subAuth.refreshCopilotToken',
+    service: 'subscriptionAuth',
+    method: 'refreshCopilotToken',
+    payload: undefined,
+    args: [],
+  },
+  {
     ipc: 'subAuth.getSanitized',
     service: 'subscriptionAuth',
     method: 'getSanitized',
@@ -619,6 +675,13 @@ const RELAY_CASES: RelayCase[] = [
     payload: { passphrase: 602 },
     args: [{ passphrase: '602' }],
   },
+  {
+    ipc: 'nativeOps.openExternal',
+    service: 'externalLinks',
+    method: 'openExternal',
+    payload: { url: 'https://x.ai/device' },
+    args: ['https://x.ai/device'],
+  },
 ];
 
 const SERVICE_NAMES = [
@@ -630,6 +693,7 @@ const SERVICE_NAMES = [
   'cliRuntime',
   'objectStorageConfig',
   'secretsPack',
+  'externalLinks',
 ] as const;
 
 function captureMethods(services: Record<string, unknown>): Record<string, IpcHandler> {
@@ -684,7 +748,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(87);
+    expect(expectedMethods).toHaveLength(96);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

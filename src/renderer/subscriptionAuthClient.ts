@@ -17,6 +17,7 @@
  */
 import type {
   HostAccountTokensSanitized,
+  HostDeviceFlowView,
   HostKimiDeviceFlowView,
   HostOAuthExchangeRequest,
   HostOAuthInitParams,
@@ -73,6 +74,25 @@ export const subscriptionAuthClient = {
   },
   cancelKimiDeviceFlow(sessionId: string): Promise<void> {
     return invoke('subAuth.cancelKimiDeviceFlow', { sessionId });
+  },
+  // ── Grok / Copilot device flows (v1.65; same token-free boundary) ───────────
+  startGrokDeviceFlow(): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.startGrokDeviceFlow');
+  },
+  pollGrokDeviceFlow(sessionId: string): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.pollGrokDeviceFlow', { sessionId });
+  },
+  cancelGrokDeviceFlow(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelGrokDeviceFlow', { sessionId });
+  },
+  startCopilotDeviceFlow(enterpriseUrl?: string): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.startCopilotDeviceFlow', { enterpriseUrl });
+  },
+  pollCopilotDeviceFlow(sessionId: string): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.pollCopilotDeviceFlow', { sessionId });
+  },
+  cancelCopilotDeviceFlow(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelCopilotDeviceFlow', { sessionId });
   },
   // ── Account management (descriptors only) ────────────────────────────────────
   getSanitized(): Promise<HostAccountTokensSanitized> {

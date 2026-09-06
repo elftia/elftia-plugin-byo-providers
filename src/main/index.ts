@@ -111,6 +111,17 @@ export function activate(host: AgentBackendHostApi): void {
   const llm = () => host.services.llmConfig ?? missing();
   const media = () => host.services.mediaConfig ?? mediaMissing();
   const search = () => host.services.searchConfig ?? searchMissing();
+  // v1.66 — the system-browser URL opener. The plugin renderer frame is
+  // sandboxed (opaque origin, no allow-popups): its `window.open` is a silent
+  // no-op, so every "open in browser" affordance relays here instead. Absent
+  // port throws (the renderer client catches and the URL text fallback saves
+  // the flow on older hosts).
+  const externalLinksMissing = () => {
+    throw new Error('[byo-providers] host.services.externalLinks is unavailable');
+  };
+  const externalLinks = () =>
+    host.services.externalLinks?.openExternal?.bind(host.services.externalLinks) ??
+    externalLinksMissing;
   // P2e (`byo-p2-subscription`) — the subscription/OAuth/CLI-account, cli
   // sub-settings, and CLI-runtime ports (host-API 1.26).
   const subAuth = () => host.services.subscriptionAuth ?? subAuthMissing();
@@ -371,6 +382,34 @@ export function activate(host: AgentBackendHostApi): void {
     },
     'subAuth.refreshKimiToken': async () =>
       (await subAuth()?.refreshKimiToken?.()) ?? false,
+    // v1.65 — Grok / Copilot RFC 8628 device flows. Feature-detected like the
+    // Kimi verbs; the deviceCode and tokens stay HOST-side — only display
+    // views cross. Copilot's optional enterpriseUrl rides the start payload.
+    'subAuth.startGrokDeviceFlow': async () =>
+      (await subAuth()?.startGrokDeviceFlow?.()) ?? subAuthMissing(),
+    'subAuth.pollGrokDeviceFlow': async (p) =>
+      (
+        await subAuth()?.pollGrokDeviceFlow?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelGrokDeviceFlow': async (p) => {
+      await subAuth()?.cancelGrokDeviceFlow?.(String(asRecord(p).sessionId));
+    },
+    'subAuth.refreshGrokToken': async () =>
+      (await subAuth()?.refreshGrokToken?.()) ?? false,
+    'subAuth.startCopilotDeviceFlow': async (p) => {
+      const raw = asRecord(p).enterpriseUrl;
+      const enterpriseUrl = typeof raw === 'string' && raw.trim() ? raw : undefined;
+      return (await subAuth()?.startCopilotDeviceFlow?.(enterpriseUrl)) ?? subAuthMissing();
+    },
+    'subAuth.pollCopilotDeviceFlow': async (p) =>
+      (
+        await subAuth()?.pollCopilotDeviceFlow?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelCopilotDeviceFlow': async (p) => {
+      await subAuth()?.cancelCopilotDeviceFlow?.(String(asRecord(p).sessionId));
+    },
+    'subAuth.refreshCopilotToken': async () =>
+      (await subAuth()?.refreshCopilotToken?.()) ?? false,
     'subAuth.getSanitized': async () => (await subAuth()?.getSanitized()) ?? {},
     'subAuth.listAccounts': async (p) =>
       (await subAuth()?.listAccounts(String(asRecord(p).provider))) ?? [],
@@ -520,6 +559,18 @@ export function activate(host: AgentBackendHostApi): void {
     'secretsPack.import': async (p) => {
       const { passphrase } = asRecord(p);
       return (await secretsPack()?.import({ passphrase: String(passphrase ?? '') })) ?? secretsPackMissing();
+    },
+
+    // ══ EXTERNAL LINKS (v1.66) — system-browser URL opener over host.services.externalLinks ══
+    // The plugin renderer frame is sandboxed (opaque origin, no allow-popups):
+    // its `window.open` is a silent no-op, so every "open in browser"
+    // affordance (OAuth authorization pages, device-flow verification pages,
+    // provider website links) relays here. The host validates http(s) only;
+    // older hosts without the port resolve `{ ok: false }` (the renderer
+    // surfaces the raw URL as selectable text instead).
+    'nativeOps.openExternal': async (p) => {
+      const raw = asRecord(p).url;
+      return externalLinks()(typeof raw === 'string' ? raw : '');
     },
   });
 }

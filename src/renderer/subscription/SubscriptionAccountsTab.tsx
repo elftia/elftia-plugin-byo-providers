@@ -11,7 +11,9 @@ import type { TranslateFn } from '../host/vendored/useTranslation';
 
 import { ClaudeConfigCard } from './ClaudeConfigCard';
 import { CodexConfigCard } from './CodexConfigCard';
+import { CopilotConfigCard } from './CopilotConfigCard';
 import { GeminiConfigCard } from './GeminiConfigCard';
+import { GrokConfigCard } from './GrokConfigCard';
 import { KimiConfigCard } from './KimiConfigCard';
 import { OpenCodeGoConfigCard } from './OpenCodeGoConfigCard';
 import { useSubscriptionAccounts } from './useSubscriptionAccounts';
@@ -54,6 +56,18 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     setActiveKimiAccount,
     removeKimiAccount,
     updateKimiAccountLabel,
+    startGrokLogin,
+    pollGrokFlow,
+    cancelGrokFlow,
+    setActiveGrokAccount,
+    removeGrokAccount,
+    updateGrokAccountLabel,
+    startCopilotLogin,
+    pollCopilotFlow,
+    cancelCopilotFlow,
+    setActiveCopilotAccount,
+    removeCopilotAccount,
+    updateCopilotAccountLabel,
     refreshToken,
   } = useSubscriptionAccounts();
 
@@ -165,6 +179,34 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onRemoveAccount={(id) => removeKimiAccount(id)}
           onClear={() => clearConfig('kimi')}
           onRefresh={() => refreshToken('kimi')}
+        />
+
+        <GrokConfigCard
+          t={t}
+          config={config?.grok}
+          accounts={config?.grokAccounts}
+          onStartLogin={startGrokLogin}
+          onPollFlow={pollGrokFlow}
+          onCancelFlow={cancelGrokFlow}
+          onSetActiveAccount={(id) => setActiveGrokAccount(id)}
+          onUpdateAccountLabel={(id, label) => updateGrokAccountLabel(id, label)}
+          onRemoveAccount={(id) => removeGrokAccount(id)}
+          onClear={() => clearConfig('grok')}
+          onRefresh={() => refreshToken('grok')}
+        />
+
+        <CopilotConfigCard
+          t={t}
+          config={config?.copilot}
+          accounts={config?.copilotAccounts}
+          onStartLogin={startCopilotLogin}
+          onPollFlow={pollCopilotFlow}
+          onCancelFlow={cancelCopilotFlow}
+          onSetActiveAccount={(id) => setActiveCopilotAccount(id)}
+          onUpdateAccountLabel={(id, label) => updateCopilotAccountLabel(id, label)}
+          onRemoveAccount={(id) => removeCopilotAccount(id)}
+          onClear={() => clearConfig('copilot')}
+          onRefresh={() => refreshToken('copilot')}
         />
 
         <OpenCodeGoConfigCard

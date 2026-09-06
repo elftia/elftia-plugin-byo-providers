@@ -44,6 +44,34 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
             "expired": "The device code expired or was denied. Please start again."
           }
         },
+        "grok": {
+          "title": "Grok (xAI SuperGrok)",
+          "description": "Sign in with your SuperGrok account using a device code; managed entirely inside Elftia.",
+          "addAccount": "Sign in with Grok",
+          "flowInstructions": "Open the verification page and enter this code to sign in with your xAI account.",
+          "openVerification": "Open verification page",
+          "waitingForApproval": "Waiting for approval…",
+          "cancel": "Cancel",
+          "flowDone": "Grok account added.",
+          "flowErrors": {
+            "expired": "The device code expired or was denied. Please start again."
+          }
+        },
+        "copilot": {
+          "title": "GitHub Copilot",
+          "description": "Sign in with GitHub using a device code; the long-lived token is managed entirely inside Elftia.",
+          "addAccount": "Sign in with GitHub",
+          "flowInstructions": "Open the verification page and enter this code to authorize the Copilot CLI app.",
+          "openVerification": "Open verification page",
+          "waitingForApproval": "Waiting for approval…",
+          "cancel": "Cancel",
+          "flowDone": "Copilot account added.",
+          "enterpriseLabel": "GitHub Enterprise domain (optional)",
+          "enterprisePlaceholder": "company.ghe.com — leave empty for personal GitHub",
+          "flowErrors": {
+            "expired": "The device code expired or was denied. Please start again."
+          }
+        },
         "authMethod": {
           "label": "Authorization Method",
           "oauth": {
@@ -209,6 +237,34 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
             "expired": "设备码已过期或被拒绝，请重新开始。"
           }
         },
+        "grok": {
+          "title": "Grok（xAI SuperGrok）",
+          "description": "使用设备码登录 SuperGrok 账号，凭证完全由 Elftia 内部管理。",
+          "addAccount": "登录 Grok",
+          "flowInstructions": "打开验证页面并输入此代码，使用你的 xAI 账号登录。",
+          "openVerification": "打开验证页面",
+          "waitingForApproval": "等待授权确认…",
+          "cancel": "取消",
+          "flowDone": "已添加 Grok 账号。",
+          "flowErrors": {
+            "expired": "设备码已过期或被拒绝，请重新开始。"
+          }
+        },
+        "copilot": {
+          "title": "GitHub Copilot",
+          "description": "使用设备码通过 GitHub 登录，长期令牌完全由 Elftia 内部管理。",
+          "addAccount": "通过 GitHub 登录",
+          "flowInstructions": "打开验证页面并输入此代码，授权 Copilot CLI 应用。",
+          "openVerification": "打开验证页面",
+          "waitingForApproval": "等待授权确认…",
+          "cancel": "取消",
+          "flowDone": "已添加 Copilot 账号。",
+          "enterpriseLabel": "GitHub Enterprise 域名（可选）",
+          "enterprisePlaceholder": "company.ghe.com——个人 GitHub 请留空",
+          "flowErrors": {
+            "expired": "设备码已过期或被拒绝，请重新开始。"
+          }
+        },
         "authMethod": {
           "label": "授权方式",
           "oauth": {
@@ -370,6 +426,34 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "waitingForApproval": "承認を待っています…",
           "cancel": "キャンセル",
           "flowDone": "Kimiアカウントを追加しました。",
+          "flowErrors": {
+            "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
+          }
+        },
+        "grok": {
+          "title": "Grok（xAI SuperGrok）",
+          "description": "デバイスコードでSuperGrokアカウントにログインします。認証情報はElftia内でのみ管理されます。",
+          "addAccount": "Grokでログイン",
+          "flowInstructions": "確認ページを開き、このコードを入力してxAIアカウントでログインしてください。",
+          "openVerification": "確認ページを開く",
+          "waitingForApproval": "承認を待っています…",
+          "cancel": "キャンセル",
+          "flowDone": "Grokアカウントを追加しました。",
+          "flowErrors": {
+            "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
+          }
+        },
+        "copilot": {
+          "title": "GitHub Copilot",
+          "description": "デバイスコードでGitHubにログインします。長期トークンはElftia内でのみ管理されます。",
+          "addAccount": "GitHubでログイン",
+          "flowInstructions": "確認ページを開き、このコードを入力してCopilot CLIアプリを承認してください。",
+          "openVerification": "確認ページを開く",
+          "waitingForApproval": "承認を待っています…",
+          "cancel": "キャンセル",
+          "flowDone": "Copilotアカウントを追加しました。",
+          "enterpriseLabel": "GitHub Enterpriseドメイン（任意）",
+          "enterprisePlaceholder": "company.ghe.com — 個人GitHubの場合は空欄のまま",
           "flowErrors": {
             "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
           }

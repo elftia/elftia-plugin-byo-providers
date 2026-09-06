@@ -1,6 +1,6 @@
 {
   "name": "byo-providers",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
@@ -10,7 +10,8 @@
     "host:subscription-auth",
     "host:agent-config",
     "host:cli-runtime",
-    "host:secrets-pack"
+    "host:secrets-pack",
+    "host:external-links"
   ],
   "displayName": "BYO Providers",
   "description": "First-party BYO credential-entry plugin. Credentials travel inward through dedicated masked host services; provider/account/CLI reads expose status and masked metadata only.",

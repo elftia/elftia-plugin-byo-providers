@@ -34,6 +34,8 @@ import { Label } from '../host/vendored/label';
 import { RevealableInput } from '../host/vendored/revealable-input';
 import { useTranslation } from '../host/vendored/useTranslation';
 
+import { openExternal } from '../externalLinksClient';
+
 import type { WebSearchProvider, WebSearchProviderId } from './meta';
 import { WEB_SEARCH_PROVIDER_META } from './meta';
 
@@ -120,7 +122,7 @@ export function ProviderPanel({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => window.open(providerMeta.website, '_blank')}
+              onClick={() => void openExternal(providerMeta.website ?? '')}
             >
               <ExternalLink className="h-4 w-4" />
             </Button>

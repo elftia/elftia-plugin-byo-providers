@@ -4,12 +4,13 @@
  * Provides step-by-step guidance for OAuth and Setup Token authorization flows.
  */
 
-import { Check, CheckCircle, Copy, ExternalLink,RefreshCw } from 'lucide-react';
-import { useCallback,useState } from 'react';
+import { Check, CheckCircle, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 import { Button } from '../host/ui';
 import { Input } from '../host/ui';
 
+import { openExternal } from '../externalLinksClient';
 import type { OAuthFlowProps } from './types';
 
 export const OAuthFlow = ({
@@ -38,8 +39,11 @@ export const OAuthFlow = ({
     }
   }, [oauthParams.authUrl]);
 
+  // The renderer frame is sandboxed (opaque origin, no allow-popups) —
+  // `window.open` is a silent no-op here. The host's shell handoff opens the
+  // page; the URL text below stays selectable as the manual fallback.
   const handleOpenUrl = useCallback(() => {
-    window.open(oauthParams.authUrl, '_blank');
+    void openExternal(oauthParams.authUrl);
   }, [oauthParams.authUrl]);
 
   return (
@@ -81,6 +85,14 @@ export const OAuthFlow = ({
             {t('settings.accountTokens.oauth.openAuthPage')}
           </Button>
         </div>
+        {/* Selectable fallback: the sandboxed frame cannot window.open (and the
+            clipboard API is unavailable too) — the raw URL stays copyable by hand. */}
+        <code
+          className="block select-text break-all rounded bg-surface-1 px-2 py-1.5 pl-8 text-xs text-text-muted"
+          data-testid="settings-oauth-auth-url"
+        >
+          {oauthParams.authUrl}
+        </code>
       </div>
 
       {/* Step 2: Auth URL Info */}

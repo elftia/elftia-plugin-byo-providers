@@ -18,6 +18,7 @@ const requiredPermissions = [
   'host:agent-config',
   'host:cli-runtime',
   'host:secrets-pack',
+  'host:external-links',
 ];
 
 function assert(condition, message) {
