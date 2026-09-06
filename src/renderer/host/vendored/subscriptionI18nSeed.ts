@@ -31,6 +31,19 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "title": "Gemini (Google)",
           "description": "OAuth token for Google's Gemini CLI"
         },
+        "kimi": {
+          "title": "Kimi Code (Moonshot)",
+          "description": "Sign in with your Kimi account using a device code; managed entirely inside Elftia.",
+          "addAccount": "Sign in with Kimi",
+          "flowInstructions": "Open the verification page and enter this code to sign in with your Kimi account.",
+          "openVerification": "Open verification page",
+          "waitingForApproval": "Waiting for approval…",
+          "cancel": "Cancel",
+          "flowDone": "Kimi account added.",
+          "flowErrors": {
+            "expired": "The device code expired or was denied. Please start again."
+          }
+        },
         "authMethod": {
           "label": "Authorization Method",
           "oauth": {
@@ -140,6 +153,15 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "zenBaseUrlLabel": "Zen Base URL (optional)",
           "zenBaseUrlPlaceholder": "Override the default opencode-Zen host"
         },
+        "allowance": {
+          "title": "Usage quota",
+          "refresh": "Refresh usage quota",
+          "stateFresh": "Up to date",
+          "stateStale": "Stale — last known usage",
+          "stateUnavailable": "Usage unavailable",
+          "stateUnsupported": "No usage endpoint for this account type",
+          "resetsAt": "Resets at {{time}}"
+        },
         "errors": {
           "refreshFailed": "Failed to refresh token"
         },
@@ -173,6 +195,19 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "gemini": {
           "title": "Gemini (Google)",
           "description": "Google Gemini CLI的OAuth令牌"
+        },
+        "kimi": {
+          "title": "Kimi Code（月之暗面）",
+          "description": "使用设备码登录 Kimi 账号，凭证完全由 Elftia 内部管理。",
+          "addAccount": "登录 Kimi",
+          "flowInstructions": "打开验证页面并输入此代码，使用你的 Kimi 账号登录。",
+          "openVerification": "打开验证页面",
+          "waitingForApproval": "等待授权确认…",
+          "cancel": "取消",
+          "flowDone": "已添加 Kimi 账号。",
+          "flowErrors": {
+            "expired": "设备码已过期或被拒绝，请重新开始。"
+          }
         },
         "authMethod": {
           "label": "授权方式",
@@ -283,6 +318,15 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "zenBaseUrlLabel": "Zen Base URL（可选）",
           "zenBaseUrlPlaceholder": "覆盖默认的 opencode-Zen 主机地址"
         },
+        "allowance": {
+          "title": "用量额度",
+          "refresh": "刷新用量额度",
+          "stateFresh": "已更新",
+          "stateStale": "已过期——显示上次用量",
+          "stateUnavailable": "暂无法获取用量",
+          "stateUnsupported": "此账号类型没有用量接口",
+          "resetsAt": "{{time}} 重置"
+        },
         "errors": {
           "refreshFailed": "刷新令牌失败"
         },
@@ -316,6 +360,19 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "gemini": {
           "title": "Gemini (Google)",
           "description": "Google Gemini CLIのOAuthトークン"
+        },
+        "kimi": {
+          "title": "Kimi Code（Moonshot）",
+          "description": "デバイスコードでKimiアカウントにログインします。認証情報はElftia内でのみ管理されます。",
+          "addAccount": "Kimiでログイン",
+          "flowInstructions": "確認ページを開き、このコードを入力してKimiアカウントでログインしてください。",
+          "openVerification": "確認ページを開く",
+          "waitingForApproval": "承認を待っています…",
+          "cancel": "キャンセル",
+          "flowDone": "Kimiアカウントを追加しました。",
+          "flowErrors": {
+            "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
+          }
         },
         "authMethod": {
           "label": "認証方式",
@@ -425,6 +482,15 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "baseUrlPlaceholder": "デフォルトの OpenCodeGo ホストを上書きします",
           "zenBaseUrlLabel": "Zen Base URL（任意）",
           "zenBaseUrlPlaceholder": "デフォルトの opencode-Zen ホストを上書きします"
+        },
+        "allowance": {
+          "title": "使用量クォータ",
+          "refresh": "使用量クォータを更新",
+          "stateFresh": "最新",
+          "stateStale": "古いデータ — 前回の使用量",
+          "stateUnavailable": "使用量を取得できません",
+          "stateUnsupported": "このアカウント種別には使用量APIがありません",
+          "resetsAt": "{{time}} にリセット"
         },
         "errors": {
           "refreshFailed": "トークンの更新に失敗しました"

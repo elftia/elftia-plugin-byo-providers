@@ -24,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type {
   AccountTokensSanitized,
+  KimiDeviceFlowView,
   OAuthParams,
   SubscriptionAccountSanitized,
   SubscriptionLevel,
@@ -279,6 +280,40 @@ export function useSubscriptionAccounts() {
     [refresh],
   );
 
+  // ── Kimi device flow (v1.63; display-only views, host holds deviceCode) ────
+  const startKimiLogin = useCallback(async (): Promise<KimiDeviceFlowView> => {
+    return subscriptionAuthClient.startKimiDeviceFlow();
+  }, []);
+  const pollKimiFlow = useCallback(
+    async (sessionId: string): Promise<KimiDeviceFlowView> => {
+      const view = await subscriptionAuthClient.pollKimiDeviceFlow(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelKimiFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelKimiDeviceFlow(sessionId);
+    },
+    [],
+  );
+
+  // ── Kimi multi-account (same generic wrappers as the other providers) ──────
+  const setActiveKimiAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('kimi', id)),
+    [mutate],
+  );
+  const removeKimiAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.removeAccount('kimi', id)),
+    [mutate],
+  );
+  const updateKimiAccountLabel = useCallback(
+    (id: string, label: string) =>
+      mutate(() => subscriptionAuthClient.updateAccountLabel('kimi', id, label)),
+    [mutate],
+  );
+
   // ── Token refresh ──────────────────────────────────────────────────────────
   const refreshToken = useCallback(
     async (platform: TokenPlatform): Promise<boolean> => {
@@ -322,6 +357,12 @@ export function useSubscriptionAccounts() {
     startGeminiOAuth,
     exchangeGeminiToken,
     setGeminiManualToken,
+    startKimiLogin,
+    pollKimiFlow,
+    cancelKimiFlow,
+    setActiveKimiAccount,
+    removeKimiAccount,
+    updateKimiAccountLabel,
     refreshToken,
   };
 }

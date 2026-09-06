@@ -17,11 +17,13 @@
  */
 import type {
   HostAccountTokensSanitized,
+  HostKimiDeviceFlowView,
   HostOAuthExchangeRequest,
   HostOAuthInitParams,
   HostSubscriptionAccountSanitized,
   HostSubscriptionEntry,
   HostSubscriptionOpResult,
+  HostAccountAllowanceSnapshot,
   HostSubscriptionRefreshResult,
 } from '@byo/domain/plugin-types';
 
@@ -62,6 +64,16 @@ export const subscriptionAuthClient = {
   exchangeGeminiToken(request: HostOAuthExchangeRequest): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.exchangeGeminiToken', request);
   },
+  // ── Kimi device flow (v1.63; display-only views, never deviceCode/tokens) ────
+  startKimiDeviceFlow(): Promise<HostKimiDeviceFlowView> {
+    return invoke('subAuth.startKimiDeviceFlow');
+  },
+  pollKimiDeviceFlow(sessionId: string): Promise<HostKimiDeviceFlowView> {
+    return invoke('subAuth.pollKimiDeviceFlow', { sessionId });
+  },
+  cancelKimiDeviceFlow(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelKimiDeviceFlow', { sessionId });
+  },
   // ── Account management (descriptors only) ────────────────────────────────────
   getSanitized(): Promise<HostAccountTokensSanitized> {
     return invoke('subAuth.getSanitized');
@@ -80,6 +92,13 @@ export const subscriptionAuthClient = {
   },
   refreshAccount(provider: string, id: string): Promise<boolean> {
     return invoke('subAuth.refreshAccount', { provider, id });
+  },
+  getAccountAllowance(
+    provider: string,
+    id: string,
+    force?: boolean,
+  ): Promise<HostAccountAllowanceSnapshot> {
+    return invoke('subAuth.getAccountAllowance', { provider, id, force });
   },
   clearConfig(platform: string): Promise<{ success: boolean }> {
     return invoke('subAuth.clearConfig', { platform });

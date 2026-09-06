@@ -66,6 +66,12 @@ export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
 export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
   /** v1.50 — reveal the stored provider key (user-initiated display only). */
   revealProviderKey?(providerId: string): Promise<HostKeyRevealResult>;
+  /** v1.64 — provider pool-key plan quota (optional; feature-detected). */
+  getProviderKeyQuota?(
+    providerId: string,
+    keyId: string,
+    force?: boolean,
+  ): Promise<HostProviderKeyQuota>;
 }
 
 export interface HostCliBackendConfig {
@@ -201,6 +207,45 @@ export interface HostObjectStorageConfigLike {
   setDefaultProvider(id: string | null): Promise<HostObjectStorageMutationResult>;
 }
 
+/**
+ * Secret-free account allowance snapshot (host-API v1.64). Local structural
+ * mirror — the plugin pins an older SDK (Kimi-flow precedent). Unknown /
+ * unsupported quota is explicit, never a measured 0%.
+ */
+export interface HostAllowanceWindow {
+  readonly id: string;
+  readonly label: string;
+  readonly scope: string;
+  readonly modelFamily?: string;
+  readonly usedPercent: number | null;
+  readonly windowMinutes?: number;
+  readonly resetsAt?: string;
+  readonly remainingSeconds?: number;
+  readonly state: string;
+}
+
+export interface HostAccountAllowanceSnapshot {
+  readonly providerId: string;
+  readonly accountId: string;
+  readonly source: string;
+  readonly observedAt: string;
+  readonly expiresAt?: string;
+  readonly windows: HostAllowanceWindow[];
+  readonly lastErrorCode?: string;
+  readonly primaryOverSecondaryLimitPercent?: number;
+}
+
+/** Secret-free plan quota for one provider pool key (host-API v1.64). */
+export interface HostProviderKeyQuota {
+  readonly providerId: string;
+  readonly keyId: string;
+  readonly supported: boolean;
+  readonly observedAt: string;
+  readonly expiresAt?: string;
+  readonly windows: HostAllowanceWindow[];
+  readonly lastErrorCode?: string;
+}
+
 export interface HostModelTestResult {
   readonly success: boolean;
   readonly message: string;
@@ -211,6 +256,21 @@ export interface HostModelTestResult {
 
 export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
   testModel(providerId: string, modelId: string): Promise<HostModelTestResult>;
+}
+
+/**
+ * Display-only view of one in-flight Kimi device flow (host-API v1.63). The
+ * `deviceCode` and all tokens stay HOST-side; only display fields cross.
+ * Local structural mirror — this plugin pins an older SDK (same pattern as
+ * the v1.50 reveal results above).
+ */
+export interface HostKimiDeviceFlowView {
+  readonly sessionId: string;
+  readonly state: 'pending' | 'done' | 'error';
+  readonly verificationUri: string;
+  readonly verificationUriComplete?: string;
+  readonly userCode: string;
+  readonly error?: string;
 }
 
 export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
@@ -230,6 +290,17 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   updateClaudeSubscriptionLevel(
     level: string,
   ): Promise<{ success: boolean; error?: string }>;
+  /** v1.64 — account allowance snapshot (optional; feature-detected). */
+  getAccountAllowance?(
+    providerId: string,
+    accountId: string,
+    force?: boolean,
+  ): Promise<HostAccountAllowanceSnapshot>;
+  /** v1.63 — Kimi RFC 8628 device flow (optional; feature-detected). */
+  startKimiDeviceFlow?(): Promise<HostKimiDeviceFlowView>;
+  pollKimiDeviceFlow?(sessionId: string): Promise<HostKimiDeviceFlowView>;
+  cancelKimiDeviceFlow?(sessionId: string): Promise<void>;
+  refreshKimiToken?(): Promise<boolean>;
 }
 
 export type AgentBackendHostServices = SdkAgentBackendHostServices & {

@@ -133,6 +133,13 @@ const RELAY_CASES: RelayCase[] = [
     args: [{ id: 'key-a', enabled: false }],
   },
   {
+    ipc: 'llm.getKeyQuota',
+    service: 'llmConfig',
+    method: 'getProviderKeyQuota',
+    payload: { providerId: 112, keyId: 113, force: false },
+    args: ['112', '113', false],
+  },
+  {
     ipc: 'llm.getKeyHealth',
     service: 'llmConfig',
     method: 'getKeyHealth',
@@ -363,6 +370,34 @@ const RELAY_CASES: RelayCase[] = [
     args: [{ authorizationCode: 'code-g', state: 'state-g' }],
   },
   {
+    ipc: 'subAuth.startKimiDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'startKimiDeviceFlow',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.pollKimiDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'pollKimiDeviceFlow',
+    payload: { sessionId: 'kdf-x' },
+    args: ['kdf-x'],
+  },
+  {
+    ipc: 'subAuth.cancelKimiDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'cancelKimiDeviceFlow',
+    payload: { sessionId: 'kdf-x' },
+    args: ['kdf-x'],
+  },
+  {
+    ipc: 'subAuth.refreshKimiToken',
+    service: 'subscriptionAuth',
+    method: 'refreshKimiToken',
+    payload: undefined,
+    args: [],
+  },
+  {
     ipc: 'subAuth.getSanitized',
     service: 'subscriptionAuth',
     method: 'getSanitized',
@@ -402,6 +437,13 @@ const RELAY_CASES: RelayCase[] = [
     method: 'refreshAccount',
     payload: { provider: 414, id: 415 },
     args: ['414', '415'],
+  },
+  {
+    ipc: 'subAuth.getAccountAllowance',
+    service: 'subscriptionAuth',
+    method: 'getAccountAllowance',
+    payload: { provider: 416, id: 417, force: true },
+    args: ['416', '417', true],
   },
   {
     ipc: 'subAuth.clearConfig',
@@ -642,7 +684,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(81);
+    expect(expectedMethods).toHaveLength(87);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

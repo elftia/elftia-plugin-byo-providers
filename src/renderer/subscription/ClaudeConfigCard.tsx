@@ -224,6 +224,7 @@ export const ClaudeConfigCard = ({
       {/* Multi-account list (set active / remove) */}
       {accounts && accounts.length > 0 && onSetActiveAccount && onRemoveAccount ? (
         <AccountList
+          providerId="claude"
           t={t}
           accounts={accounts}
           onSetActive={onSetActiveAccount}

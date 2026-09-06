@@ -17,7 +17,7 @@ import type {
 } from '@omnicross/contracts/account-tokens-types';
 import type { OpenCodeGoTokenSanitized } from '@omnicross/contracts/subscription-types';
 
-export type TokenPlatform = 'claude' | 'codex' | 'gemini' | 'opencodego';
+export type TokenPlatform = 'claude' | 'codex' | 'gemini' | 'opencodego' | 'kimi';
 
 export interface ClaudeTokenSanitized {
   authMethod: ClaudeAuthMethod;
@@ -52,15 +52,39 @@ export interface GeminiTokenSanitized {
   errorMessage?: string;
 }
 
+/** Sanitized Kimi block — `hasDeviceId` presence flag only, never the id. */
+export interface KimiTokenSanitized {
+  authMethod: AuthMethod;
+  status: TokenStatus;
+  expiresAt?: string;
+  hasAccessToken: boolean;
+  hasRefreshToken: boolean;
+  hasDeviceId: boolean;
+  lastRefreshedAt?: string;
+  errorMessage?: string;
+}
+
+/** Display-only view of an in-flight Kimi device flow (no deviceCode/token). */
+export interface KimiDeviceFlowView {
+  sessionId: string;
+  state: 'pending' | 'done' | 'error';
+  verificationUri: string;
+  verificationUriComplete?: string;
+  userCode: string;
+  error?: string;
+}
+
 export interface AccountTokensSanitized {
   claude?: ClaudeTokenSanitized;
   codex?: CodexTokenSanitized;
   gemini?: GeminiTokenSanitized;
   opencodego?: OpenCodeGoTokenSanitized;
+  kimi?: KimiTokenSanitized;
   claudeAccounts?: SubscriptionAccountSanitized[];
   codexAccounts?: SubscriptionAccountSanitized[];
   geminiAccounts?: SubscriptionAccountSanitized[];
   opencodegoAccounts?: SubscriptionAccountSanitized[];
+  kimiAccounts?: SubscriptionAccountSanitized[];
   updatedAt: string;
 }
 

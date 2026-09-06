@@ -170,6 +170,7 @@ export const CodexConfigCard = ({
       {/* Multi-account list (set active / refresh-expired / remove) */}
       {accounts && accounts.length > 0 && onSetActiveAccount && onRemoveAccount ? (
         <AccountList
+          providerId="codex"
           t={t}
           accounts={accounts}
           onSetActive={onSetActiveAccount}

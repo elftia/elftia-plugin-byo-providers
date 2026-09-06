@@ -7,6 +7,8 @@ import type {
   ClaudeTokenSanitized,
   CodexTokenSanitized,
   GeminiTokenSanitized,
+  KimiDeviceFlowView,
+  KimiTokenSanitized,
   OAuthParams,
   OpenCodeGoTokenSanitized,
   SubscriptionAccountSanitized,
@@ -172,6 +174,21 @@ export interface GeminiConfigCardProps extends BaseConfigCardProps {
   onRefresh: () => Promise<boolean>;
 }
 
+/** Props for KimiConfigCard (RFC 8628 device flow; host holds the deviceCode) */
+export interface KimiConfigCardProps extends BaseConfigCardProps {
+  config?: KimiTokenSanitized;
+  accounts?: SubscriptionAccountSanitized[];
+  /** Start a device flow; the view carries ONLY display fields. */
+  onStartLogin: () => Promise<KimiDeviceFlowView>;
+  onPollFlow: (sessionId: string) => Promise<KimiDeviceFlowView>;
+  onCancelFlow: (sessionId: string) => Promise<void>;
+  onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onClear: () => Promise<void>;
+  onRefresh: () => Promise<boolean>;
+}
+
 /** Props for main AccountTokensTab component */
 export interface AccountTokensTabProps {
   t: TranslationFn;
@@ -183,6 +200,8 @@ export type {
   ClaudeTokenSanitized,
   CodexTokenSanitized,
   GeminiTokenSanitized,
+  KimiDeviceFlowView,
+  KimiTokenSanitized,
   OAuthParams,
   OpenCodeGoTokenSanitized,
   SubscriptionAccountSanitized,

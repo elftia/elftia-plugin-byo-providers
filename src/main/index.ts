@@ -170,6 +170,23 @@ export function activate(host: AgentBackendHostApi): void {
     'llm.updateApiKey': async (p) => (await llm()?.updateApiKey(asRecord(p))) ?? missing(),
     'llm.deleteApiKey': async (p) => (await llm()?.deleteApiKey(String(asRecord(p).id))) ?? missing(),
     'llm.toggleApiKey': async (p) => (await llm()?.toggleApiKey(asRecord(p))) ?? missing(),
+    // v1.64 — provider pool-key plan quota (feature-detected; unsupported
+    // providers degrade to supported:false — never fabricated numbers).
+    'llm.getKeyQuota': async (p) => {
+      const { providerId, keyId, force } = asRecord(p);
+      const handle = llm();
+      if (!handle?.getProviderKeyQuota) {
+        return {
+          providerId: String(providerId),
+          keyId: String(keyId),
+          supported: false,
+          observedAt: new Date().toISOString(),
+          windows: [],
+          lastErrorCode: 'quota-unavailable',
+        };
+      }
+      return handle.getProviderKeyQuota(String(providerId), String(keyId), Boolean(force));
+    },
     'llm.getKeyHealth': async (p) => (await llm()?.getKeyHealth(String(asRecord(p).providerId))) ?? {},
 
     // ── Default model (router config) ─────────────────────────────────────────
@@ -341,6 +358,19 @@ export function activate(host: AgentBackendHostApi): void {
       (await subAuth()?.exchangeCodexToken(asRecord(p) as never)) ?? subAuthMissing(),
     'subAuth.exchangeGeminiToken': async (p) =>
       (await subAuth()?.exchangeGeminiToken(asRecord(p) as never)) ?? subAuthMissing(),
+    // v1.63 — Kimi RFC 8628 device flow. All verbs are feature-detected; the
+    // deviceCode and tokens stay HOST-side — only display views cross.
+    'subAuth.startKimiDeviceFlow': async () =>
+      (await subAuth()?.startKimiDeviceFlow?.()) ?? subAuthMissing(),
+    'subAuth.pollKimiDeviceFlow': async (p) =>
+      (
+        await subAuth()?.pollKimiDeviceFlow?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelKimiDeviceFlow': async (p) => {
+      await subAuth()?.cancelKimiDeviceFlow?.(String(asRecord(p).sessionId));
+    },
+    'subAuth.refreshKimiToken': async () =>
+      (await subAuth()?.refreshKimiToken?.()) ?? false,
     'subAuth.getSanitized': async () => (await subAuth()?.getSanitized()) ?? {},
     'subAuth.listAccounts': async (p) =>
       (await subAuth()?.listAccounts(String(asRecord(p).provider))) ?? [],
@@ -362,6 +392,25 @@ export function activate(host: AgentBackendHostApi): void {
     'subAuth.refreshAccount': async (p) => {
       const { provider, id } = asRecord(p);
       return (await subAuth()?.refreshAccount(String(provider), String(id))) ?? false;
+    },
+    // v1.64 — secret-free account allowance snapshot (feature-detected; older
+    // hosts degrade to an explicit unavailable snapshot, never numbers).
+    'subAuth.getAccountAllowance': async (p) => {
+      const { provider, id, force } = asRecord(p);
+      // Resolve synchronously — awaiting the host handle directly would also
+      // await any thenable-shaped shim (the unit-test proxy hangs on it).
+      const handle = subAuth();
+      if (!handle?.getAccountAllowance) {
+        return {
+          providerId: String(provider),
+          accountId: String(id),
+          source: 'oauth-usage-api',
+          observedAt: new Date().toISOString(),
+          windows: [],
+          lastErrorCode: 'quota-unavailable',
+        };
+      }
+      return handle.getAccountAllowance(String(provider), String(id), Boolean(force));
     },
     'subAuth.clearConfig': async (p) => {
       await subAuth()?.clearConfig(String(asRecord(p).platform));

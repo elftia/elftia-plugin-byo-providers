@@ -143,6 +143,7 @@ export const OpenCodeGoConfigCard = ({
       {/* Multi-account list (set active / remove) */}
       {hasAccounts && accounts ? (
         <AccountList
+          providerId="opencodego"
           t={t}
           accounts={accounts}
           onSetActive={handleSetActive}

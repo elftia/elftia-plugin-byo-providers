@@ -14,6 +14,7 @@ import { RevealableInput } from '../host/vendored/revealable-input';
 import { useTranslation } from '../host/vendored/useTranslation';
 import { llmConfigClient } from '../llmConfigClient';
 
+import { KeyQuotaBars } from './KeyQuotaBars';
 import { KeyStatusBadge } from './KeyStatusBadge';
 
 /** Health re-fetch cadence (cheap in-memory read on the backend). */
@@ -196,6 +197,7 @@ export function ApiKeyPoolSection({ providerId }: ApiKeyPoolSectionProps) {
                             {renderKeyDisplay(entry)}
                           </code>
                         </div>
+                        <KeyQuotaBars t={t} providerId={providerId} keyId={entry.id} />
                       </div>
 
                       {/* Weight control */}

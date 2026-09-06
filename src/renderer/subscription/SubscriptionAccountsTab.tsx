@@ -12,6 +12,7 @@ import type { TranslateFn } from '../host/vendored/useTranslation';
 import { ClaudeConfigCard } from './ClaudeConfigCard';
 import { CodexConfigCard } from './CodexConfigCard';
 import { GeminiConfigCard } from './GeminiConfigCard';
+import { KimiConfigCard } from './KimiConfigCard';
 import { OpenCodeGoConfigCard } from './OpenCodeGoConfigCard';
 import { useSubscriptionAccounts } from './useSubscriptionAccounts';
 
@@ -47,6 +48,12 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     startGeminiOAuth,
     exchangeGeminiToken,
     setGeminiManualToken,
+    startKimiLogin,
+    pollKimiFlow,
+    cancelKimiFlow,
+    setActiveKimiAccount,
+    removeKimiAccount,
+    updateKimiAccountLabel,
     refreshToken,
   } = useSubscriptionAccounts();
 
@@ -144,6 +151,20 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('gemini')}
           onRefresh={() => refreshToken('gemini')}
+        />
+
+        <KimiConfigCard
+          t={t}
+          config={config?.kimi}
+          accounts={config?.kimiAccounts}
+          onStartLogin={startKimiLogin}
+          onPollFlow={pollKimiFlow}
+          onCancelFlow={cancelKimiFlow}
+          onSetActiveAccount={(id) => setActiveKimiAccount(id)}
+          onUpdateAccountLabel={(id, label) => updateKimiAccountLabel(id, label)}
+          onRemoveAccount={(id) => removeKimiAccount(id)}
+          onClear={() => clearConfig('kimi')}
+          onRefresh={() => refreshToken('kimi')}
         />
 
         <OpenCodeGoConfigCard

@@ -13,11 +13,14 @@ import { Button } from '../host/ui';
 import { Input } from '../host/ui';
 import { cn } from '../host/vendored/cn';
 
+import { AllowanceBars } from './AllowanceBars';
 import { StatusBadge } from './StatusBadge';
 import type { SubscriptionAccountSanitized, TranslationFn } from './types';
 
 export interface AccountListProps {
   t: TranslationFn;
+  /** When set, the expanded row shows the account allowance bars. */
+  providerId?: string;
   accounts: SubscriptionAccountSanitized[];
   onSetActive: (id: string) => Promise<{ success: boolean; error?: string }>;
   onUpdateLabel?: (id: string, label: string) => Promise<{ success: boolean; error?: string }>;
@@ -37,6 +40,7 @@ export interface AccountListProps {
 export const AccountList = ({
   t,
   accounts,
+  providerId,
   onSetActive,
   onUpdateLabel,
   onRemove,
@@ -320,6 +324,12 @@ export const AccountList = ({
                     </div>
                   ) : null}
                   </div>
+                  <AllowanceBars
+                    t={t}
+                    providerId={providerId}
+                    accountId={account.id}
+                    testidScope="account"
+                  />
                 </div>
               ) : null}
             </li>
