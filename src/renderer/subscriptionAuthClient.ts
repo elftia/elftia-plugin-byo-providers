@@ -17,7 +17,6 @@
  */
 import type {
   HostAccountTokensSanitized,
-  HostCliImportResult,
   HostOAuthExchangeRequest,
   HostOAuthInitParams,
   HostSubscriptionAccountSanitized,
@@ -63,16 +62,6 @@ export const subscriptionAuthClient = {
   exchangeGeminiToken(request: HostOAuthExchangeRequest): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.exchangeGeminiToken', request);
   },
-  // ── CLI import (credential never returned) ───────────────────────────────────
-  importFromExternalCli(platform: string): Promise<HostCliImportResult> {
-    return invoke('subAuth.importFromExternalCli', { platform });
-  },
-  getCliAutoImport(provider: string): Promise<boolean> {
-    return invoke('subAuth.getCliAutoImport', { provider });
-  },
-  setCliAutoImport(provider: string, enabled: boolean): Promise<{ success: boolean }> {
-    return invoke('subAuth.setCliAutoImport', { provider, enabled });
-  },
   // ── Account management (descriptors only) ────────────────────────────────────
   getSanitized(): Promise<HostAccountTokensSanitized> {
     return invoke('subAuth.getSanitized');
@@ -88,9 +77,6 @@ export const subscriptionAuthClient = {
   },
   updateAccountLabel(provider: string, id: string, label: string): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.updateAccountLabel', { provider, id, label });
-  },
-  applyAccountToCli(provider: string, id: string): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.applyAccountToCli', { provider, id });
   },
   refreshAccount(provider: string, id: string): Promise<boolean> {
     return invoke('subAuth.refreshAccount', { provider, id });

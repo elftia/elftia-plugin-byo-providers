@@ -341,15 +341,6 @@ export function activate(host: AgentBackendHostApi): void {
       (await subAuth()?.exchangeCodexToken(asRecord(p) as never)) ?? subAuthMissing(),
     'subAuth.exchangeGeminiToken': async (p) =>
       (await subAuth()?.exchangeGeminiToken(asRecord(p) as never)) ?? subAuthMissing(),
-    'subAuth.importFromExternalCli': async (p) =>
-      (await subAuth()?.importFromExternalCli(String(asRecord(p).platform))) ?? subAuthMissing(),
-    'subAuth.getCliAutoImport': async (p) =>
-      (await subAuth()?.getCliAutoImport(String(asRecord(p).provider))) ?? false,
-    'subAuth.setCliAutoImport': async (p) => {
-      const { provider, enabled } = asRecord(p);
-      await subAuth()?.setCliAutoImport(String(provider), Boolean(enabled));
-      return { success: true };
-    },
     'subAuth.getSanitized': async () => (await subAuth()?.getSanitized()) ?? {},
     'subAuth.listAccounts': async (p) =>
       (await subAuth()?.listAccounts(String(asRecord(p).provider))) ?? [],
@@ -367,10 +358,6 @@ export function activate(host: AgentBackendHostApi): void {
         (await subAuth()?.updateAccountLabel(String(provider), String(id), String(label))) ??
         subAuthMissing()
       );
-    },
-    'subAuth.applyAccountToCli': async (p) => {
-      const { provider, id } = asRecord(p);
-      return (await subAuth()?.applyAccountToCli(String(provider), String(id))) ?? subAuthMissing();
     },
     'subAuth.refreshAccount': async (p) => {
       const { provider, id } = asRecord(p);

@@ -363,27 +363,6 @@ const RELAY_CASES: RelayCase[] = [
     args: [{ authorizationCode: 'code-g', state: 'state-g' }],
   },
   {
-    ipc: 'subAuth.importFromExternalCli',
-    service: 'subscriptionAuth',
-    method: 'importFromExternalCli',
-    payload: { platform: 401 },
-    args: ['401'],
-  },
-  {
-    ipc: 'subAuth.getCliAutoImport',
-    service: 'subscriptionAuth',
-    method: 'getCliAutoImport',
-    payload: { provider: 402 },
-    args: ['402'],
-  },
-  {
-    ipc: 'subAuth.setCliAutoImport',
-    service: 'subscriptionAuth',
-    method: 'setCliAutoImport',
-    payload: { provider: 403, enabled: 1 },
-    args: ['403', true],
-  },
-  {
     ipc: 'subAuth.getSanitized',
     service: 'subscriptionAuth',
     method: 'getSanitized',
@@ -416,13 +395,6 @@ const RELAY_CASES: RelayCase[] = [
     method: 'updateAccountLabel',
     payload: { provider: 409, id: 410, label: 411 },
     args: ['409', '410', '411'],
-  },
-  {
-    ipc: 'subAuth.applyAccountToCli',
-    service: 'subscriptionAuth',
-    method: 'applyAccountToCli',
-    payload: { provider: 412, id: 413 },
-    args: ['412', '413'],
   },
   {
     ipc: 'subAuth.refreshAccount',
@@ -670,7 +642,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(85);
+    expect(expectedMethods).toHaveLength(81);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });
@@ -711,13 +683,6 @@ describe('main activation', () => {
         service: 'searchConfig',
         method: 'configureProviders',
         args: [[]],
-      },
-      {
-        ipc: 'subAuth.setCliAutoImport',
-        service: 'subscriptionAuth',
-        method: 'setCliAutoImport',
-        payload: { provider: 703, enabled: 0 },
-        args: ['703', false],
       },
       {
         ipc: 'subAuth.setClaudeManualToken',

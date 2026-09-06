@@ -91,7 +91,7 @@ export interface BaseConfigCardProps {
 }
 
 /** Props for ClaudeConfigCard */
-export interface ClaudeConfigCardProps extends BaseConfigCardProps, CliImportCardProps {
+export interface ClaudeConfigCardProps extends BaseConfigCardProps {
   config?: ClaudeTokenSanitized;
   onStartOAuth: () => Promise<OAuthParams>;
   // NOTE (byo-p2-subscription): the PKCE `verifier` is NOT a parameter — the
@@ -111,51 +111,18 @@ export interface ClaudeConfigCardProps extends BaseConfigCardProps, CliImportCar
   // Multi-account (subscription-multi-account)
   accounts?: SubscriptionAccountSanitized[];
   onSetActiveAccount?: (id: string) => Promise<{ success: boolean; error?: string }>;
-  onApplyAccountToCli?: (id: string) => Promise<AccountMutationResult>;
   onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
   onRemoveAccount?: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
 
-/**
- * Result of an account mutation (set-active / remove). May carry a non-fatal
- * `externalSync` status when the external CLI native store could not be updated
- * (code-cli-account-switching D5). The renderer surfaces it as an inline warning.
- */
+/** Result of an internal account mutation. */
 export interface AccountMutationResult {
   success: boolean;
   error?: string;
-  externalSync?: { ok: boolean; reason?: string; error?: string };
-}
-
-/** Result of a user-driven CLI-credential re-import (cli-token-import). */
-export interface CliImportResult {
-  success: boolean;
-  error?: string;
-  refreshed?: boolean;
-}
-
-/**
- * Shared props for the CLI credential re-import affordance (cli-token-import),
- * mixed into the Claude / Codex config card props. All optional so the cards
- * still render without the feature wired.
- */
-export interface CliImportCardProps {
-  /** Re-import the active account's credential from the external CLI store. */
-  onImportFromCli?: () => Promise<CliImportResult>;
-  /** Current auto-import-on-refresh-failure toggle state. */
-  autoImportEnabled?: boolean;
-  /** Set the auto-import-on-refresh-failure toggle. */
-  onSetAutoImport?: (enabled: boolean) => Promise<void>;
-  /**
-   * Initial-import detection (cli-token-import bootstrap): the provider has
-   * ZERO accounts but a usable native CLI login exists on this machine —
-   * renders the "import existing CLI login" first-run block.
-   */
-  externalCliDetected?: boolean;
 }
 
 /** Props for CodexConfigCard (multi-account: code-cli-account-switching) */
-export interface CodexConfigCardProps extends BaseConfigCardProps, CliImportCardProps {
+export interface CodexConfigCardProps extends BaseConfigCardProps {
   config?: CodexTokenSanitized;
   onStartOAuth: () => Promise<OAuthParams>;
   /**
@@ -172,7 +139,6 @@ export interface CodexConfigCardProps extends BaseConfigCardProps, CliImportCard
   // Multi-account (code-cli-account-switching)
   accounts?: SubscriptionAccountSanitized[];
   onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
-  onApplyAccountToCli?: (id: string) => Promise<AccountMutationResult>;
   onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
   onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
 }

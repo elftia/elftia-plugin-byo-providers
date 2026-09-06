@@ -10,7 +10,6 @@ import type {
 export type {
   AgentUiHostApi,
   HostAccountTokensSanitized,
-  HostCliImportResult,
   HostMaskedMediaProvider,
   HostMaskedSearchProviderConfig,
   HostMediaType,

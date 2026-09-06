@@ -1,9 +1,8 @@
 /**
  * SubscriptionAccountsTab - subscription account management for Code CLI providers.
  *
- * Keeps OAuth/API-key account management separate from Code CLI installation and
- * detection. Claude/Codex accounts can still be applied to their native CLI
- * credential files per account row.
+ * Keeps app-owned OAuth/API-key accounts separate from native Code CLI logins,
+ * installation, and detection.
  */
 
 import { RefreshCw, UserCircle } from 'lucide-react';
@@ -33,14 +32,12 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     setClaudeManualToken,
     updateClaudeSubscriptionLevel,
     setActiveClaudeAccount,
-    applyClaudeAccountToCli,
     updateClaudeAccountLabel,
     removeClaudeAccount,
     startCodexOAuth,
     exchangeCodexToken,
     setCodexManualToken,
     setActiveCodexAccount,
-    applyCodexAccountToCli,
     updateCodexAccountLabel,
     removeCodexAccount,
     addOpenCodeGoAccount,
@@ -51,8 +48,6 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     exchangeGeminiToken,
     setGeminiManualToken,
     refreshToken,
-    importFromCli,
-    setCliAutoImport,
   } = useSubscriptionAccounts();
 
   if (loading) {
@@ -93,7 +88,6 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           config={config?.claude}
           accounts={config?.claudeAccounts}
           onSetActiveAccount={(id) => setActiveClaudeAccount(id)}
-          onApplyAccountToCli={(id) => applyClaudeAccountToCli(id)}
           onUpdateAccountLabel={(id, label) => updateClaudeAccountLabel(id, label)}
           onRemoveAccount={(id) => removeClaudeAccount(id)}
           onStartOAuth={startClaudeOAuth}
@@ -114,10 +108,6 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('claude')}
           onRefresh={() => refreshToken('claude')}
-          onImportFromCli={() => importFromCli('claude')}
-          autoImportEnabled={config?.cliAutoImport?.claude}
-          onSetAutoImport={(enabled) => setCliAutoImport('claude', enabled)}
-          externalCliDetected={config?.externalCliDetected?.claude}
         />
 
         <CodexConfigCard
@@ -125,7 +115,6 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           config={config?.codex}
           accounts={config?.codexAccounts}
           onSetActiveAccount={(id) => setActiveCodexAccount(id)}
-          onApplyAccountToCli={(id) => applyCodexAccountToCli(id)}
           onUpdateAccountLabel={(id, label) => updateCodexAccountLabel(id, label)}
           onRemoveAccount={(id) => removeCodexAccount(id)}
           onStartOAuth={startCodexOAuth}
@@ -139,10 +128,6 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('codex')}
           onRefresh={() => refreshToken('codex')}
-          onImportFromCli={() => importFromCli('codex')}
-          autoImportEnabled={config?.cliAutoImport?.codex}
-          onSetAutoImport={(enabled) => setCliAutoImport('codex', enabled)}
-          externalCliDetected={config?.externalCliDetected?.codex}
         />
 
         <GeminiConfigCard

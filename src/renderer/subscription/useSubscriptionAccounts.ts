@@ -40,7 +40,6 @@ void React;
 type AccountMutationResult = {
   success: boolean;
   error?: string;
-  externalSync?: { ok: boolean; reason?: string; error?: string };
 };
 
 interface AddOpenCodeGoAccountInput {
@@ -49,8 +48,6 @@ interface AddOpenCodeGoAccountInput {
   baseUrl?: string;
   zenBaseUrl?: string;
 }
-
-type CliImportResult = { success: boolean; error?: string; refreshed?: boolean };
 
 /**
  * Surface a host op result as an `OAuthParams`-shaped value WITHOUT a real
@@ -181,10 +178,6 @@ export function useSubscriptionAccounts() {
     (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('claude', id)),
     [mutate],
   );
-  const applyClaudeAccountToCli = useCallback(
-    (id: string) => mutate(() => subscriptionAuthClient.applyAccountToCli('claude', id)),
-    [mutate],
-  );
   const removeClaudeAccount = useCallback(
     (id: string) => mutate(() => subscriptionAuthClient.removeAccount('claude', id)),
     [mutate],
@@ -226,10 +219,6 @@ export function useSubscriptionAccounts() {
   );
   const setActiveCodexAccount = useCallback(
     (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('codex', id)),
-    [mutate],
-  );
-  const applyCodexAccountToCli = useCallback(
-    (id: string) => mutate(() => subscriptionAuthClient.applyAccountToCli('codex', id)),
     [mutate],
   );
   const updateCodexAccountLabel = useCallback(
@@ -300,23 +289,6 @@ export function useSubscriptionAccounts() {
     [refresh],
   );
 
-  // ── CLI credential re-import ───────────────────────────────────────────────
-  const importFromCli = useCallback(
-    async (platform: TokenPlatform): Promise<CliImportResult> => {
-      const result = await subscriptionAuthClient.importFromExternalCli(platform);
-      if (result.success) await refresh();
-      return result;
-    },
-    [refresh],
-  );
-  const setCliAutoImport = useCallback(
-    async (platform: TokenPlatform, enabled: boolean): Promise<void> => {
-      await subscriptionAuthClient.setCliAutoImport(platform, enabled);
-      await refresh();
-    },
-    [refresh],
-  );
-
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -335,14 +307,12 @@ export function useSubscriptionAccounts() {
     updateClaudeSubscriptionLevel,
     listClaudeAccounts,
     setActiveClaudeAccount,
-    applyClaudeAccountToCli,
     removeClaudeAccount,
     updateClaudeAccountLabel,
     startCodexOAuth,
     exchangeCodexToken,
     setCodexManualToken,
     setActiveCodexAccount,
-    applyCodexAccountToCli,
     updateCodexAccountLabel,
     removeCodexAccount,
     addOpenCodeGoAccount,
@@ -353,7 +323,5 @@ export function useSubscriptionAccounts() {
     exchangeGeminiToken,
     setGeminiManualToken,
     refreshToken,
-    importFromCli,
-    setCliAutoImport,
   };
 }

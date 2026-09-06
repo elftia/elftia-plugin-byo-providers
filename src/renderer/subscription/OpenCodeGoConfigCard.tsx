@@ -78,8 +78,6 @@ export const OpenCodeGoConfigCard = ({
     setIsAddFormOpen(false);
   }, [resetAddForm]);
 
-  // OpenCodeGo set-active writes NO external store, so no externalSync warning
-  // is expected — but pass the results through unchanged for symmetry.
   const handleSetActive = useCallback(
     (id: string): Promise<AccountMutationResult> => onSetActiveAccount(id),
     [onSetActiveAccount],

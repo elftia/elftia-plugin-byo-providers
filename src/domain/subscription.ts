@@ -30,8 +30,6 @@ export interface ClaudeTokenSanitized {
   setupTokenExpiresAt?: string;
   lastRefreshedAt?: string;
   errorMessage?: string;
-  cliImportAvailable?: boolean;
-  cliFileForeignAccount?: { label: string };
 }
 
 export interface CodexTokenSanitized {
@@ -42,8 +40,6 @@ export interface CodexTokenSanitized {
   hasRefreshToken: boolean;
   lastRefreshedAt?: string;
   errorMessage?: string;
-  cliImportAvailable?: boolean;
-  cliFileForeignAccount?: { label: string };
 }
 
 export interface GeminiTokenSanitized {
@@ -65,19 +61,11 @@ export interface AccountTokensSanitized {
   codexAccounts?: SubscriptionAccountSanitized[];
   geminiAccounts?: SubscriptionAccountSanitized[];
   opencodegoAccounts?: SubscriptionAccountSanitized[];
-  cliAutoImport?: { claude?: boolean; codex?: boolean };
-  externalCliDetected?: { claude?: boolean; codex?: boolean };
   updatedAt: string;
 }
 
 export interface TokenExchangeResponse {
   success: boolean;
   expiresAt?: string;
-  error?: string;
-}
-
-export interface CliImportResult {
-  success: boolean;
-  imported?: boolean;
   error?: string;
 }
