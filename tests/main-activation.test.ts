@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { activate } from '../src/main';
 
@@ -536,6 +536,13 @@ const RELAY_CASES: RelayCase[] = [
     args: ['423', [{ id: 'custom-model', kind: 'chat' }]],
   },
   {
+    ipc: 'subAuth.setSubscriptionModelEnabled',
+    service: 'subscriptionAuth',
+    method: 'setSubscriptionModelEnabled',
+    payload: { providerId: 423, modelId: 'built-in-model', enabled: false },
+    args: ['423', 'built-in-model', false],
+  },
+  {
     ipc: 'subAuth.clearConfig',
     service: 'subscriptionAuth',
     method: 'clearConfig',
@@ -782,7 +789,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(101);
+    expect(expectedMethods).toHaveLength(102);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });
@@ -866,5 +873,17 @@ describe('main activation', () => {
         models: [],
       }),
     ).resolves.toEqual({ error: 'unsupported' });
+    await expect(methods['subAuth.setSubscriptionModelEnabled']({
+      providerId: 'claude', modelId: 'claude-opus-5', enabled: false,
+    })).resolves.toEqual({ error: 'unsupported' });
+  });
+
+  it('rejects a non-boolean model enable value without mutating the host', async () => {
+    const setEnabled = vi.fn();
+    const methods = captureMethods({ subscriptionAuth: { setSubscriptionModelEnabled: setEnabled } });
+    await expect(methods['subAuth.setSubscriptionModelEnabled']({
+      providerId: 'claude', modelId: 'claude-opus-5', enabled: 'false',
+    })).rejects.toThrow('enabled must be a boolean');
+    expect(setEnabled).not.toHaveBeenCalled();
   });
 });

@@ -1,19 +1,4 @@
-/**
- * useSubscriptionModels — the per-tab subscription model view (host-API v1.70).
- *
- * Fetches `getSubscriptionModels()` ONCE when the tab mounts and keeps the
- * whole provider-keyed view as tab state (each card reads its own slice).
- * `setExtras(providerId, models)` replaces the view only after the host
- * confirms persistence, so failed writes leave the displayed list unchanged.
- *
- * Feature-detect (the `getAccountAllowance` precedent): on an older host the
- * relay resolves the explicit `{ error: 'unsupported' }` marker — `supported`
- * stays `false` and the tab renders NO model sections at all. An older host
- * must never be drawn as "provider has zero models".
- *
- * @module byo-providers/renderer/subscription/useSubscriptionModels
- */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
   HostSubscriptionModelInfo,
@@ -21,6 +6,7 @@ import type {
 } from '@byo/domain/plugin-types';
 
 import {
+  type HostSubscriptionModelsResult,
   isSubscriptionModelsUnsupported,
   subscriptionAuthClient,
 } from '../subscriptionAuthClient';
@@ -28,9 +14,13 @@ import {
 export function useSubscriptionModels() {
   const [view, setView] = useState<HostSubscriptionModelsView | null>(null);
   const [supported, setSupported] = useState(false);
+  const [toggleSupported, setToggleSupported] = useState(true);
+  const mounted = useRef(true);
+  const mutations = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     let cancelled = false;
+    mounted.current = true;
     void (async () => {
       try {
         const result = await subscriptionAuthClient.getSubscriptionModels();
@@ -43,19 +33,39 @@ export function useSubscriptionModels() {
     })();
     return () => {
       cancelled = true;
+      mounted.current = false;
     };
   }, []);
 
-  const setExtras = useCallback(
-    async (providerId: string, extras: HostSubscriptionModelInfo[]): Promise<void> => {
-      const result = await subscriptionAuthClient.setSubscriptionExtraModels(providerId, extras);
+  // Responses contain the whole catalog, so serialize writes across cards to
+  // prevent an older response from undoing a newer provider's confirmed state.
+  const mutate = useCallback((write: () => Promise<HostSubscriptionModelsResult>) => {
+    const next = mutations.current.then(async () => {
+      const result = await write();
       if (isSubscriptionModelsUnsupported(result)) {
         throw new Error('subscription-models-unsupported');
       }
-      setView(result);
-    },
-    [],
+      if (mounted.current) setView(result);
+    });
+    mutations.current = next.catch(() => {});
+    return next;
+  }, []);
+
+  const setExtras = useCallback(
+    (providerId: string, extras: HostSubscriptionModelInfo[]): Promise<void> =>
+      mutate(() => subscriptionAuthClient.setSubscriptionExtraModels(providerId, extras)),
+    [mutate],
   );
 
-  return { supported, view, setExtras };
+  const setEnabled = useCallback(
+    (providerId: string, modelId: string, enabled: boolean): Promise<void> =>
+      mutate(async () => {
+        const result = await subscriptionAuthClient.setSubscriptionModelEnabled(providerId, modelId, enabled);
+        if (isSubscriptionModelsUnsupported(result) && mounted.current) setToggleSupported(false);
+        return result;
+      }),
+    [mutate],
+  );
+
+  return { supported, toggleSupported, view, setExtras, setEnabled };
 }

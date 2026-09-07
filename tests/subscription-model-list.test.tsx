@@ -1,11 +1,4 @@
-/**
- * SubscriptionModelList + useSubscriptionModels contract (host-API v1.70) —
- * default models render the 默认 badge and are NOT removable, extras carry a
- * remove (×) that REPLACES the whole extras list; the inline add form rejects
- * empty/duplicate ids with a gentle message; and on an older host (relay
- * resolves `{ error: 'unsupported' }`) the hook stays `supported: false` so the
- * tab hides every model section — never a fabricated empty view.
- */
+/** Subscription model settings must reflect confirmed host persistence, including switches. */
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,16 +10,24 @@ vi.mock('../src/renderer/host/ui', async () => {
       ReactModule.createElement('button', props, children),
     Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
       ReactModule.createElement('input', props),
+    Switch: ({ checked, onCheckedChange, ...props }: {
+      checked?: boolean; onCheckedChange?: (enabled: boolean) => void;
+    }) => ReactModule.createElement('button', {
+      ...props, role: 'switch', 'aria-checked': checked,
+      onClick: () => onCheckedChange?.(!checked),
+    }),
   };
 });
 
 const getModels = vi.fn();
 const setModels = vi.fn();
+const setEnabled = vi.fn();
 
 vi.mock('../src/renderer/subscriptionAuthClient', () => ({
   subscriptionAuthClient: {
     getSubscriptionModels: (...args: unknown[]) => getModels(...args),
     setSubscriptionExtraModels: (...args: unknown[]) => setModels(...args),
+    setSubscriptionModelEnabled: (...args: unknown[]) => setEnabled(...args),
   },
   isSubscriptionModelsUnsupported: (result: unknown) =>
     typeof result === 'object' &&
@@ -59,12 +60,13 @@ function listProps(overrides: Partial<Parameters<typeof SubscriptionModelList>[0
     providerId: 'claude',
     models,
     onSetExtras: vi.fn(async () => undefined),
+    onSetEnabled: vi.fn(async () => undefined),
     ...overrides,
   };
 }
 
 describe('SubscriptionModelList', () => {
-  it('labels defaults (默认, not removable) and image models (画图), extras removable', async () => {
+  it('shows switches for all models without default badges and keeps image labels', async () => {
     const props = listProps();
     let renderer!: ReactTestRenderer;
     await act(async () => {
@@ -73,13 +75,76 @@ describe('SubscriptionModelList', () => {
     const json = JSON.stringify(renderer.toJSON());
     expect(json).toContain('claude-opus-4-6');
     expect(json).toContain('gpt-image-1');
-    expect(json).toContain('settings.accountTokens.models.defaultBadge');
+    expect(json).not.toContain('settings.accountTokens.models.defaultBadge');
+    const toggles = renderer.root.findAll((node) => node.type === 'button' && node.props.role === 'switch');
+    expect(toggles).toHaveLength(3);
+    expect(toggles.every((toggle) => toggle.props['aria-checked'] === true)).toBe(true);
     expect(json).toContain('settings.accountTokens.models.kindImage');
     const removes = renderer.root.findAllByProps({
       'data-testid': 'settings-subscription-models-remove-btn',
     });
     expect(removes).toHaveLength(1);
     expect(removes[0].props['data-model-id']).toBe('custom-chat');
+    act(() => renderer.unmount());
+  });
+
+  it.each([chatDefault.id, extraModel.id])('can disable built-in or extra model %s', async (id) => {
+    const props = listProps();
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<SubscriptionModelList {...props} />); });
+    const toggle = renderer.root.find((node) =>
+      node.type === 'button' && node.props.role === 'switch' && node.props['data-model-id'] === id);
+    await act(async () => { toggle.props.onClick(); await flush(); });
+    expect(props.onSetEnabled).toHaveBeenCalledWith('claude', id, false);
+    expect(toggle.props['aria-checked']).toBe(true);
+    act(() => renderer.unmount());
+  });
+
+  it('renders a disabled model switch and can re-enable it', async () => {
+    const disabled = { ...chatDefault, enabled: false };
+    const props = listProps({ models: { defaults: [disabled], extras: [], effective: [disabled] } });
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<SubscriptionModelList {...props} />); });
+    const toggle = renderer.root.find((node) => node.type === 'button' && node.props.role === 'switch');
+    expect(toggle.props['aria-checked']).toBe(false);
+    await act(async () => { toggle.props.onClick(); await flush(); });
+    expect(props.onSetEnabled).toHaveBeenCalledWith('claude', chatDefault.id, true);
+    act(() => renderer.unmount());
+  });
+
+  it('keeps the switch unchanged and reports failed persistence', async () => {
+    const props = listProps({ onSetEnabled: vi.fn(async () => { throw new Error('toggle-failed'); }) });
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<SubscriptionModelList {...props} />); });
+    const toggle = renderer.root.find((node) => node.type === 'button' && node.props.role === 'switch' && node.props['data-model-id'] === chatDefault.id);
+    await act(async () => { toggle.props.onClick(); await flush(); });
+    expect(toggle.props['aria-checked']).toBe(true);
+    expect(JSON.stringify(renderer.toJSON())).toContain('toggle-failed');
+    act(() => renderer.unmount());
+  });
+
+  it('disables all actions during an in-flight model mutation', async () => {
+    let finish!: () => void;
+    const props = listProps({ onSetEnabled: vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })) });
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<SubscriptionModelList {...props} />); });
+    const toggles = () => renderer.root.findAll((node) => node.type === 'button' && node.props.role === 'switch');
+    act(() => { toggles()[0].props.onClick(); toggles()[1].props.onClick(); });
+    expect(props.onSetEnabled).toHaveBeenCalledOnce();
+    expect(toggles().every((node) => node.props.disabled)).toBe(true);
+    await act(async () => { finish(); await flush(); });
+    expect(toggles().every((node) => !node.props.disabled)).toBe(true);
+    act(() => renderer.unmount());
+  });
+
+  it('disables switches on hosts without the optional toggle verb', async () => {
+    const props = listProps({ toggleSupported: false });
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<SubscriptionModelList {...props} />); });
+    const toggles = renderer.root.findAll((node) => node.type === 'button' && node.props.role === 'switch');
+    expect(toggles.every((node) => node.props.disabled)).toBe(true);
+    await act(async () => { toggles[0].props.onClick(); await flush(); });
+    expect(props.onSetEnabled).not.toHaveBeenCalled();
     act(() => renderer.unmount());
   });
 
@@ -219,6 +284,7 @@ describe('useSubscriptionModels', () => {
     hook = null;
     getModels.mockReset();
     setModels.mockReset();
+    setEnabled.mockReset();
   });
 
   it('stays unsupported on an older host (explicit marker, never an empty view)', async () => {
@@ -308,6 +374,70 @@ describe('useSubscriptionModels', () => {
       await pending;
     });
     expect(hook?.view).toEqual(second);
+    act(() => renderer.unmount());
+  });
+
+  it('persists disable and enable transitions using the returned host view', async () => {
+    const initial = { claude: { defaults: [chatDefault], extras: [], effective: [chatDefault] } };
+    const disabled = { ...chatDefault, enabled: false };
+    const afterDisable = { claude: { defaults: [disabled], extras: [], effective: [disabled] } };
+    getModels.mockResolvedValue(initial);
+    setEnabled.mockResolvedValueOnce(afterDisable).mockResolvedValueOnce(initial);
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<HookProbe />); await flush(); });
+    await act(async () => { await hook!.setEnabled('claude', chatDefault.id, false); });
+    expect(hook?.view).toEqual(afterDisable);
+    expect(setEnabled).toHaveBeenNthCalledWith(1, 'claude', chatDefault.id, false);
+    await act(async () => { await hook!.setEnabled('claude', chatDefault.id, true); });
+    expect(hook?.view).toEqual(initial);
+    expect(setEnabled).toHaveBeenNthCalledWith(2, 'claude', chatDefault.id, true);
+    act(() => renderer.unmount());
+  });
+
+  it('keeps the original state on a failed toggle and can retry', async () => {
+    const initial = { claude: { defaults: [chatDefault], extras: [], effective: [chatDefault] } };
+    getModels.mockResolvedValue(initial);
+    setEnabled.mockRejectedValueOnce(new Error('toggle-failed')).mockResolvedValueOnce(initial);
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<HookProbe />); await flush(); });
+    await act(async () => { await expect(hook!.setEnabled('claude', chatDefault.id, false)).rejects.toThrow('toggle-failed'); });
+    expect(hook?.view).toEqual(initial);
+    await act(async () => { await hook!.setEnabled('claude', chatDefault.id, true); });
+    expect(setEnabled).toHaveBeenCalledTimes(2);
+    act(() => renderer.unmount());
+  });
+
+  it('remembers unsupported toggles without hiding the existing catalog', async () => {
+    const initial = { claude: { defaults: [chatDefault], extras: [], effective: [chatDefault] } };
+    getModels.mockResolvedValue(initial);
+    setEnabled.mockResolvedValue({ error: 'unsupported' });
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<HookProbe />); await flush(); });
+    await act(async () => { await expect(hook!.setEnabled('claude', chatDefault.id, false)).rejects.toThrow('subscription-models-unsupported'); });
+    expect(hook?.toggleSupported).toBe(false);
+    expect(hook?.supported).toBe(true);
+    expect(hook?.view).toEqual(initial);
+    act(() => renderer.unmount());
+  });
+
+  it('serializes writes across cards so full-view responses cannot overwrite a later mutation', async () => {
+    const initial = { claude: { defaults: [chatDefault], extras: [], effective: [chatDefault] } };
+    const last = { ...initial, codex: { defaults: [], extras: [extraModel], effective: [extraModel] } };
+    getModels.mockResolvedValue(initial);
+    let release!: (value: typeof initial) => void;
+    setEnabled.mockReturnValue(new Promise((resolve) => { release = resolve; }));
+    setModels.mockResolvedValue(last);
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<HookProbe />); await flush(); });
+    let one!: Promise<void>; let two!: Promise<void>;
+    await act(async () => {
+      one = hook!.setEnabled('claude', chatDefault.id, true);
+      two = hook!.setExtras('codex', [extraModel]);
+      await flush();
+    });
+    expect(setModels).not.toHaveBeenCalled();
+    await act(async () => { release(initial); await Promise.all([one, two]); });
+    expect(hook?.view).toEqual(last);
     act(() => renderer.unmount());
   });
 

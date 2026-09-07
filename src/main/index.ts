@@ -491,6 +491,13 @@ export function activate(host: AgentBackendHostApi): void {
         (models as HostSubscriptionModelInfo[]) ?? [],
       );
     },
+    'subAuth.setSubscriptionModelEnabled': async (p) => {
+      const { providerId, modelId, enabled } = asRecord(p);
+      const handle = subAuth();
+      if (!handle?.setSubscriptionModelEnabled) return { error: 'unsupported' };
+      if (typeof enabled !== 'boolean') throw new TypeError('enabled must be a boolean');
+      return handle.setSubscriptionModelEnabled(String(providerId), String(modelId), enabled);
+    },
     'subAuth.clearConfig': async (p) => {
       await subAuth()?.clearConfig(String(asRecord(p).platform));
       return { success: true };

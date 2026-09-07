@@ -289,23 +289,17 @@ export interface HostDeviceFlowView {
   readonly enterpriseUrl?: string;
 }
 
-/**
- * One model a subscription account can use (host-API v1.70). Display-only —
- * no secret crosses; `kind` only routes the chip in the UI (chat vs image).
- * Local structural mirror — this plugin pins an older SDK (allowance
- * precedent).
- */
+/** Secret-free model metadata (v1.70), with persisted enable state (v1.71). */
 export interface HostSubscriptionModelInfo {
   readonly id: string;
   readonly kind: 'chat' | 'image';
+  /** Absent on pre-v1.71 hosts means enabled. */
+  readonly enabled?: boolean;
 }
 
-/**
- * Per-provider subscription model lists (host-API v1.70): `defaults` are
- * built-in (immutable), `extras` are user-added, `effective` = defaults +
- * extras (host-computed order).
- */
+/** Defaults and extras retain disabled entries so settings can re-enable them. */
 export interface HostSubscriptionProviderModels {
+  readonly configured?: boolean;
   readonly defaults: HostSubscriptionModelInfo[];
   readonly extras: HostSubscriptionModelInfo[];
   readonly effective: HostSubscriptionModelInfo[];
@@ -381,6 +375,12 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   setSubscriptionExtraModels?(
     providerId: string,
     models: HostSubscriptionModelInfo[],
+  ): Promise<HostSubscriptionModelsView>;
+  /** v1.71 — applies to built-in and user-added models; feature-detected. */
+  setSubscriptionModelEnabled?(
+    providerId: string,
+    modelId: string,
+    enabled: boolean,
   ): Promise<HostSubscriptionModelsView>;
 }
 

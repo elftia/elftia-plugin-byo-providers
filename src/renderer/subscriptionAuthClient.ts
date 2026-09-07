@@ -174,6 +174,13 @@ export const subscriptionAuthClient = {
   ): Promise<HostSubscriptionModelsResult> {
     return invoke('subAuth.setSubscriptionExtraModels', { providerId, models });
   },
+  setSubscriptionModelEnabled(
+    providerId: string,
+    modelId: string,
+    enabled: boolean,
+  ): Promise<HostSubscriptionModelsResult> {
+    return invoke('subAuth.setSubscriptionModelEnabled', { providerId, modelId, enabled });
+  },
   clearConfig(platform: string): Promise<{ success: boolean }> {
     return invoke('subAuth.clearConfig', { platform });
   },

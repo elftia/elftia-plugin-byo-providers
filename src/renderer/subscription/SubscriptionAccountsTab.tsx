@@ -82,6 +82,8 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     supported: modelsSupported,
     view: modelsView,
     setExtras: setModelExtras,
+    setEnabled: setModelEnabled,
+    toggleSupported,
   } = useSubscriptionModels();
 
   /** The per-card model section (mounted through each card's children slot). */
@@ -92,6 +94,8 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
         providerId={providerId}
         models={modelsView?.[providerId]}
         onSetExtras={setModelExtras}
+        onSetEnabled={setModelEnabled}
+        toggleSupported={toggleSupported}
       />
     ) : undefined;
 

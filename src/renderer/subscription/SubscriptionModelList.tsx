@@ -1,29 +1,12 @@
-/**
- * SubscriptionModelList — the per-provider model chip section (host-API v1.70).
- *
- * Rendered at the BOTTOM of each subscription config card (through the cards'
- * `children` slot): chips for the provider's `effective` models — built-in
- * defaults carry a subtle "默认" badge (NOT removable), image models a "画图"
- * badge, user extras each get a remove (×). "+ 添加模型" opens an inline add
- * form (model id + 对话/画图 kind, default 对话); empty/duplicate ids are
- * rejected with a gentle inline message, never alert(). The tab owns the data
- * (`useSubscriptionModels`); mutations ride `onSetExtras`, which REPLACES the
- * provider's whole extras list host-side and reconciles with the returned view.
- *
- * @module byo-providers/renderer/subscription/SubscriptionModelList
- */
-
 import { Check, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import type {
   HostSubscriptionModelInfo,
   HostSubscriptionProviderModels,
 } from '@byo/domain/plugin-types';
 
-import { Button } from '../host/ui';
-import { Input } from '../host/ui';
-import { cn } from '../host/vendored/cn';
+import { Button, Input, Switch } from '../host/ui';
 import type { TranslateFn } from '../host/vendored/useTranslation';
 
 type ModelKind = HostSubscriptionModelInfo['kind'];
@@ -35,6 +18,8 @@ export interface SubscriptionModelListProps {
   models?: HostSubscriptionProviderModels;
   /** REPLACE the provider's whole extras list (the v1.70 host verb). */
   onSetExtras: (providerId: string, extras: HostSubscriptionModelInfo[]) => Promise<void>;
+  onSetEnabled: (providerId: string, modelId: string, enabled: boolean) => Promise<void>;
+  toggleSupported?: boolean;
 }
 
 export const SubscriptionModelList = ({
@@ -42,8 +27,9 @@ export const SubscriptionModelList = ({
   providerId,
   models,
   onSetExtras,
+  onSetEnabled,
+  toggleSupported = true,
 }: SubscriptionModelListProps) => {
-  const defaults = models?.defaults ?? [];
   const extras = models?.extras ?? [];
   const effective = models?.effective ?? [];
 
@@ -52,8 +38,8 @@ export const SubscriptionModelList = ({
   const [draftKind, setDraftKind] = useState<ModelKind>('chat');
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
 
-  const defaultIds = new Set(defaults.map((model) => model.id));
   const extraIds = new Set(extras.map((model) => model.id));
 
   const openAddForm = useCallback(() => {
@@ -73,6 +59,7 @@ export const SubscriptionModelList = ({
   // Append to the CURRENT extras (the verb REPLACES the whole extras list, so
   // the full next list is threaded — never a delta).
   const handleAdd = useCallback(async () => {
+    if (pendingRef.current) return;
     const id = draftId.trim();
     if (!id) {
       setNotice(t('settings.accountTokens.models.errorEmpty'));
@@ -83,6 +70,7 @@ export const SubscriptionModelList = ({
       return;
     }
     setNotice(null);
+    pendingRef.current = true;
     setPending(true);
     try {
       await onSetExtras(providerId, [...extras, { id, kind: draftKind }]);
@@ -94,13 +82,16 @@ export const SubscriptionModelList = ({
           : t('settings.accountTokens.models.errorSave'),
       );
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   }, [closeAddForm, draftId, draftKind, effective, extras, onSetExtras, providerId, t]);
 
   const handleRemove = useCallback(
     async (modelId: string) => {
+      if (pendingRef.current) return;
       setNotice(null);
+      pendingRef.current = true;
       setPending(true);
       try {
         await onSetExtras(
@@ -114,11 +105,29 @@ export const SubscriptionModelList = ({
             : t('settings.accountTokens.models.errorSave'),
         );
       } finally {
+        pendingRef.current = false;
         setPending(false);
       }
     },
     [extras, onSetExtras, providerId, t],
   );
+
+  const handleToggle = useCallback(async (modelId: string, enabled: boolean) => {
+    if (pendingRef.current || !toggleSupported) return;
+    pendingRef.current = true;
+    setPending(true);
+    setNotice(null);
+    try {
+      await onSetEnabled(providerId, modelId, enabled);
+    } catch (err) {
+      setNotice(err instanceof Error && err.message === 'subscription-models-unsupported'
+        ? t('settings.accountTokens.models.toggleUnsupported')
+        : err instanceof Error && err.message ? err.message : t('settings.accountTokens.models.errorSave'));
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  }, [onSetEnabled, providerId, t, toggleSupported]);
 
   return (
     <div
@@ -131,21 +140,15 @@ export const SubscriptionModelList = ({
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {effective.map((model) => {
-          const isDefault = defaultIds.has(model.id);
           const isExtra = extraIds.has(model.id);
           return (
             <span
               key={model.id}
-              className={cn(
-                'inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-xs',
-                isDefault
-                  ? 'border-border/40 bg-surface-1/60 text-text-muted'
-                  : 'border-border/60 bg-surface-2/60 text-foreground',
-              )}
+              className="inline-flex max-w-full items-center gap-2 rounded-md border border-border/60 bg-surface-2/60 px-2 py-1 text-xs text-foreground"
               data-testid="settings-subscription-models-chip"
               data-model-id={model.id}
               data-model-kind={model.kind}
-              data-model-default={isDefault ? 'true' : 'false'}
+              data-model-enabled={model.enabled !== false ? 'true' : 'false'}
             >
               <span className="truncate">{model.id}</span>
               {model.kind === 'image' ? (
@@ -153,11 +156,15 @@ export const SubscriptionModelList = ({
                   {t('settings.accountTokens.models.kindImage')}
                 </span>
               ) : null}
-              {isDefault ? (
-                <span className="shrink-0 rounded bg-surface-2 px-1 py-px text-[10px] leading-4 text-text-subtle">
-                  {t('settings.accountTokens.models.defaultBadge')}
-                </span>
-              ) : null}
+              <Switch
+                checked={model.enabled !== false}
+                onCheckedChange={(enabled) => void handleToggle(model.id, enabled)}
+                disabled={pending || !toggleSupported}
+                aria-label={`${t('settings.accountTokens.models.enabled')}: ${model.id}`}
+                title={!toggleSupported ? t('settings.accountTokens.models.toggleUnsupported') : undefined}
+                data-testid="settings-subscription-models-toggle"
+                data-model-id={model.id}
+              />
               {isExtra ? (
                 <button
                   type="button"
