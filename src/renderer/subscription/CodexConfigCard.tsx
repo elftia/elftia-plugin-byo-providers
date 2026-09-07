@@ -10,12 +10,14 @@
  * mirroring `ClaudeConfigCard`.
  */
 
-import { Edit2, ExternalLink, Key, Trash2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { Edit2, ExternalLink, Key, Loader2, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '../host/ui';
 import { Select } from '../host/ui';
+import { cn } from '../host/vendored/cn';
 
+import { openExternal } from '../externalLinksClient';
 import { AccountList } from './AccountList';
 import { ManualInputModal } from './ManualInputModal';
 import { OAuthFlow } from './OAuthFlow';
@@ -24,11 +26,19 @@ import type { CodexConfigCardProps, OAuthParams } from './types';
 
 type CodexAuthMethod = 'oauth' | 'manual';
 
+/** Poll cadence while a codex loopback sign-in is pending. */
+const LOOPBACK_POLL_INTERVAL_MS = 3_000;
+/** Stop polling after this long regardless of the host-side listener TTL. */
+const LOOPBACK_POLL_DEADLINE_MS = 10 * 60_000;
+
 export const CodexConfigCard = ({
   t,
   config,
   onStartOAuth,
   onExchangeToken,
+  onStartLoopbackLogin,
+  onPollLoopbackFlow,
+  onCancelLoopbackFlow,
   onSetManualToken,
   onClear,
   onRefresh,
@@ -41,7 +51,7 @@ export const CodexConfigCard = ({
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<CodexAuthMethod>('oauth');
   const [accountLabel, setAccountLabel] = useState('');
 
-  // OAuth flow state
+  // OAuth flow state (manual-paste fallback)
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
   const [oAuthParams, setOAuthParams] = useState<OAuthParams | null>(null);
   const [authCode, setAuthCode] = useState('');
@@ -58,9 +68,79 @@ export const CodexConfigCard = ({
   const [error, setError] = useState<string | null>(null);
   const isMulti = Boolean(accounts && onSetActiveAccount && onRemoveAccount);
 
-  // Start OAuth flow
+  // Codex loopback sign-in state (v1.67 auto-complete; the PRIMARY path when
+  // the host exposes the verbs — older hosts fall back to the paste flow).
+  const loopbackSupported = Boolean(onStartLoopbackLogin && onPollLoopbackFlow);
+  const [loopback, setLoopback] = useState<{ sessionId: string; authUrl: string } | null>(null);
+  const [loopbackError, setLoopbackError] = useState<string | null>(null);
+  const [isLoopbackStarting, setIsLoopbackStarting] = useState(false);
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loopbackStartedAt = useRef(0);
+
+  const stopPollTimer = useCallback(() => {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }, []);
+
+  // Loopback poll loop: schedule the next poll while the sign-in is pending.
+  useEffect(() => {
+    if (!loopback) {
+      stopPollTimer();
+      return;
+    }
+    if (Date.now() - loopbackStartedAt.current > LOOPBACK_POLL_DEADLINE_MS) {
+      setLoopbackError(t('settings.accountTokens.codex.loopbackErrors.timeout'));
+      setLoopback(null);
+      return;
+    }
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const view = await onPollLoopbackFlow?.(loopback.sessionId);
+        if (!view) return;
+        if (view.state === 'done') {
+          setLoopback(null);
+        } else if (view.state === 'error') {
+          setLoopbackError(view.error ?? t('settings.accountTokens.codex.loopbackErrors.failed'));
+          setLoopback(null);
+        }
+      } catch {
+        // A transient poll failure keeps the flow alive — the next tick
+        // retries; the host-side TTL is the real deadline.
+      }
+    }, LOOPBACK_POLL_INTERVAL_MS);
+    return stopPollTimer;
+  }, [loopback, onPollLoopbackFlow, stopPollTimer, t]);
+
+  useEffect(() => stopPollTimer, [stopPollTimer]);
+
+  // Start the codex sign-in: the loopback flow when the host supports it
+  // (the browser auto-completes via 127.0.0.1:1455 — no code to paste), else
+  // the classic paste flow.
   const handleStartOAuth = useCallback(async () => {
     setOAuthError(null);
+    if (loopbackSupported) {
+      setLoopbackError(null);
+      setIsLoopbackStarting(true);
+      try {
+        const started = await onStartLoopbackLogin?.();
+        if (!started) return;
+        if (!started.ok) {
+          setOAuthError(started.error);
+          return;
+        }
+        loopbackStartedAt.current = Date.now();
+        setLoopback({ sessionId: started.sessionId, authUrl: started.authUrl });
+        // The sandboxed frame cannot window.open — the host opens the page.
+        void openExternal(started.authUrl);
+      } catch (err) {
+        setOAuthError(err instanceof Error ? err.message : 'Failed to start OAuth');
+      } finally {
+        setIsLoopbackStarting(false);
+      }
+      return;
+    }
     setIsOAuthInProgress(true);
     try {
       const params = await onStartOAuth();
@@ -69,7 +149,30 @@ export const CodexConfigCard = ({
       setOAuthError(err instanceof Error ? err.message : 'Failed to start OAuth');
       setIsOAuthInProgress(false);
     }
-  }, [onStartOAuth]);
+  }, [loopbackSupported, onStartLoopbackLogin, onStartOAuth]);
+
+  // Abandon the loopback sign-in and fall back to the classic paste flow
+  // (a FRESH manual flow — the loopback's state/verifier never crossed out).
+  const handleFallbackToPaste = useCallback(async () => {
+    const session = loopback;
+    setLoopback(null);
+    setLoopbackError(null);
+    if (session) await onCancelLoopbackFlow?.(session.sessionId);
+    setIsOAuthInProgress(true);
+    try {
+      const params = await onStartOAuth();
+      setOAuthParams(params);
+    } catch (err) {
+      setOAuthError(err instanceof Error ? err.message : 'Failed to start OAuth');
+      setIsOAuthInProgress(false);
+    }
+  }, [loopback, onCancelLoopbackFlow, onStartOAuth]);
+
+  const handleCancelLoopback = useCallback(async () => {
+    const session = loopback;
+    setLoopback(null);
+    if (session) await onCancelLoopbackFlow?.(session.sessionId);
+  }, [loopback, onCancelLoopbackFlow]);
 
   // Exchange OAuth code (appends a new account with the optional label).
   const handleExchangeToken = useCallback(async () => {
@@ -181,6 +284,65 @@ export const CodexConfigCard = ({
         />
       ) : null}
 
+      {/* Codex loopback sign-in panel (auto-complete; no code to paste). */}
+      {loopback ? (
+        <div
+          className="space-y-3 rounded-md border border-border/40 bg-surface-2/40 p-3"
+          data-testid="settings-codex-loopback-panel"
+        >
+          <p className="text-sm text-foreground">
+            {t('settings.accountTokens.codex.loopbackWaiting')}
+          </p>
+          <code
+            className="block select-text break-all rounded bg-surface-1 px-2 py-1.5 text-xs text-text-muted"
+            data-testid="settings-codex-loopback-url"
+          >
+            {loopback.authUrl}
+          </code>
+          <p className="flex items-center gap-2 text-xs text-text-muted">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {t('settings.accountTokens.codex.loopbackHint')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void openExternal(loopback.authUrl)}
+              data-testid="settings-codex-loopback-reopen-btn"
+            >
+              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+              {t('settings.accountTokens.codex.reopenAuthPage')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleFallbackToPaste()}
+              data-testid="settings-codex-loopback-fallback-btn"
+            >
+              {t('settings.accountTokens.codex.fallbackToPaste')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleCancelLoopback()}
+              data-testid="settings-codex-loopback-cancel-btn"
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              {t('settings.accountTokens.codex.loopbackCancel')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {loopbackError ? (
+        <div
+          className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          data-testid="settings-codex-loopback-error"
+        >
+          {loopbackError}
+        </div>
+      ) : null}
+
       {/* OAuth Flow UI */}
       {isOAuthInProgress && oAuthParams ? (
         <OAuthFlow
@@ -235,10 +397,15 @@ export const CodexConfigCard = ({
               ) : (
                 <Button
                   onClick={handleStartOAuth}
+                  disabled={isLoopbackStarting || loopback !== null}
                   className="flex-1"
                   data-testid="settings-codex-account-add-btn"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  {isLoopbackStarting ? (
+                    <Loader2 className={cn('h-4 w-4 mr-2 animate-spin')} />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                  )}
                   {isMulti
                     ? t('settings.accountTokens.accounts.addAccount')
                     : t('settings.accountTokens.actions.authorize')}

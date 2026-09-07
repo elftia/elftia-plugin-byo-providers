@@ -94,6 +94,23 @@ export const subscriptionAuthClient = {
   cancelCopilotDeviceFlow(sessionId: string): Promise<void> {
     return invoke('subAuth.cancelCopilotDeviceFlow', { sessionId });
   },
+  // ── Codex loopback sign-in (v1.67; auto-complete, never a token) ────────────
+  startCodexLoopbackLogin(): Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  > {
+    return invoke('subAuth.startCodexLoopbackLogin');
+  },
+  pollCodexLoopbackLogin(sessionId: string): Promise<{
+    sessionId: string;
+    state: 'pending' | 'done' | 'error';
+    error?: string;
+  }> {
+    return invoke('subAuth.pollCodexLoopbackLogin', { sessionId });
+  },
+  cancelCodexLoopbackLogin(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelCodexLoopbackLogin', { sessionId });
+  },
   // ── Account management (descriptors only) ────────────────────────────────────
   getSanitized(): Promise<HostAccountTokensSanitized> {
     return invoke('subAuth.getSanitized');

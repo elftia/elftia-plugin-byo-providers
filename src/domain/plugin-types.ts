@@ -332,6 +332,20 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   cancelCopilotDeviceFlow?(sessionId: string): Promise<void>;
   /** v1.65 — local no-op restamp (ghu_ tokens have no exchange endpoint). */
   refreshCopilotToken?(): Promise<boolean>;
+  /**
+   * v1.67 — codex loopback sign-in (auto-complete via 127.0.0.1:1455; no code
+   * paste). Local structural mirror — this plugin pins an older SDK.
+   */
+  startCodexLoopbackLogin?(): Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  >;
+  pollCodexLoopbackLogin?(sessionId: string): Promise<{
+    sessionId: string;
+    state: 'pending' | 'done' | 'error';
+    error?: string;
+  }>;
+  cancelCodexLoopbackLogin?(sessionId: string): Promise<void>;
 }
 
 export type AgentBackendHostServices = SdkAgentBackendHostServices & {

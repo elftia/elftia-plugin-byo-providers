@@ -137,6 +137,20 @@ export interface CodexConfigCardProps extends BaseConfigCardProps {
    * plugin never holds it).
    */
   onExchangeToken: (code: string, state: string, label?: string) => Promise<void>;
+  /**
+   * Codex loopback sign-in (v1.67, optional — feature-detected): start the
+   * AUTO-COMPLETE flow (the host binds 127.0.0.1:1455 so the browser callback
+   * is captured host-side; no code to paste) + poll its token-free status.
+   * Absent on older hosts — the card falls back to the paste flow.
+   */
+  onStartLoopbackLogin?: () => Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  >;
+  onPollLoopbackFlow?: (
+    sessionId: string,
+  ) => Promise<{ sessionId: string; state: 'pending' | 'done' | 'error'; error?: string }>;
+  onCancelLoopbackFlow?: (sessionId: string) => Promise<void>;
   /** Set a manual token, appending a new account with an optional label. */
   onSetManualToken: (accessToken: string, label?: string) => Promise<void>;
   onClear: () => Promise<void>;

@@ -384,6 +384,28 @@ export function useSubscriptionAccounts() {
     [mutate],
   );
 
+  // ── Codex loopback sign-in (v1.67; auto-complete, no code paste) ──────────
+  const startCodexLoopbackLogin = useCallback(async (): Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  > => {
+    return subscriptionAuthClient.startCodexLoopbackLogin();
+  }, []);
+  const pollCodexLoopbackFlow = useCallback(
+    async (sessionId: string): Promise<{ sessionId: string; state: 'pending' | 'done' | 'error'; error?: string }> => {
+      const view = await subscriptionAuthClient.pollCodexLoopbackLogin(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelCodexLoopbackFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelCodexLoopbackLogin(sessionId);
+    },
+    [],
+  );
+
   // ── Token refresh ──────────────────────────────────────────────────────────
   const refreshToken = useCallback(
     async (platform: TokenPlatform): Promise<boolean> => {
@@ -445,6 +467,9 @@ export function useSubscriptionAccounts() {
     setActiveCopilotAccount,
     removeCopilotAccount,
     updateCopilotAccountLabel,
+    startCodexLoopbackLogin,
+    pollCodexLoopbackFlow,
+    cancelCodexLoopbackFlow,
     refreshToken,
   };
 }

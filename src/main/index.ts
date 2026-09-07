@@ -410,6 +410,19 @@ export function activate(host: AgentBackendHostApi): void {
     },
     'subAuth.refreshCopilotToken': async () =>
       (await subAuth()?.refreshCopilotToken?.()) ?? false,
+    // v1.67 — codex loopback sign-in (auto-complete; no code paste). The host
+    // binds 127.0.0.1:1455, captures the browser callback, exchanges, and
+    // appends the account — the renderer opens authUrl and POLLS the
+    // token-free status.
+    'subAuth.startCodexLoopbackLogin': async () =>
+      (await subAuth()?.startCodexLoopbackLogin?.()) ?? subAuthMissing(),
+    'subAuth.pollCodexLoopbackLogin': async (p) =>
+      (
+        await subAuth()?.pollCodexLoopbackLogin?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelCodexLoopbackLogin': async (p) => {
+      await subAuth()?.cancelCodexLoopbackLogin?.(String(asRecord(p).sessionId));
+    },
     'subAuth.getSanitized': async () => (await subAuth()?.getSanitized()) ?? {},
     'subAuth.listAccounts': async (p) =>
       (await subAuth()?.listAccounts(String(asRecord(p).provider))) ?? [],

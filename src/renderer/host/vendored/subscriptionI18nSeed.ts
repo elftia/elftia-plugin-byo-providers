@@ -25,7 +25,16 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "codex": {
           "title": "Codex (OpenAI)",
-          "description": "OAuth token for OpenAI's Codex CLI"
+          "description": "OAuth token for OpenAI's Codex CLI",
+          "loopbackWaiting": "Complete the sign-in in your browser — Elftia picks it up automatically.",
+          "loopbackHint": "Waiting for the browser callback (127.0.0.1:1455)… the account is added automatically when done — no code to paste.",
+          "reopenAuthPage": "Reopen authorization page",
+          "fallbackToPaste": "Paste code manually instead",
+          "loopbackCancel": "Cancel",
+          "loopbackErrors": {
+            "timeout": "The sign-in timed out. Please start again.",
+            "failed": "The sign-in failed. Please start again."
+          }
         },
         "gemini": {
           "title": "Gemini (Google)",
@@ -218,7 +227,16 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "codex": {
           "title": "Codex (OpenAI)",
-          "description": "OpenAI Codex CLI的OAuth令牌"
+          "description": "OpenAI Codex CLI的OAuth令牌",
+          "loopbackWaiting": "在浏览器中完成登录即可，Elftia 会自动完成授权。",
+          "loopbackHint": "等待浏览器回调（127.0.0.1:1455）…完成后自动添加账号，无需粘贴授权码。",
+          "reopenAuthPage": "重新打开授权页面",
+          "fallbackToPaste": "改为手动粘贴授权码",
+          "loopbackCancel": "取消",
+          "loopbackErrors": {
+            "timeout": "登录超时，请重新开始。",
+            "failed": "登录失败，请重新开始。"
+          }
         },
         "gemini": {
           "title": "Gemini (Google)",
@@ -411,7 +429,16 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "codex": {
           "title": "Codex (OpenAI)",
-          "description": "OpenAI Codex CLIのOAuthトークン"
+          "description": "OpenAI Codex CLIのOAuthトークン",
+          "loopbackWaiting": "ブラウザーでログインを完了すれば、Elftia が自動で授権を完了します。",
+          "loopbackHint": "ブラウザーコールバック（127.0.0.1:1455）を待機中…完了後アカウントが自動追加されます（コードの貼り付け不要）。",
+          "reopenAuthPage": "認可ページを再開する",
+          "fallbackToPaste": "代わりにコードを手動貼り付け",
+          "loopbackCancel": "キャンセル",
+          "loopbackErrors": {
+            "timeout": "ログインがタイムアウトしました。もう一度実行してください。",
+            "failed": "ログインに失敗しました。もう一度実行してください。"
+          }
         },
         "gemini": {
           "title": "Gemini (Google)",

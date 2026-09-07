@@ -454,6 +454,27 @@ const RELAY_CASES: RelayCase[] = [
     args: [],
   },
   {
+    ipc: 'subAuth.startCodexLoopbackLogin',
+    service: 'subscriptionAuth',
+    method: 'startCodexLoopbackLogin',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.pollCodexLoopbackLogin',
+    service: 'subscriptionAuth',
+    method: 'pollCodexLoopbackLogin',
+    payload: { sessionId: 'cxlb-x' },
+    args: ['cxlb-x'],
+  },
+  {
+    ipc: 'subAuth.cancelCodexLoopbackLogin',
+    service: 'subscriptionAuth',
+    method: 'cancelCodexLoopbackLogin',
+    payload: { sessionId: 'cxlb-x' },
+    args: ['cxlb-x'],
+  },
+  {
     ipc: 'subAuth.getSanitized',
     service: 'subscriptionAuth',
     method: 'getSanitized',
@@ -748,7 +769,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(96);
+    expect(expectedMethods).toHaveLength(99);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

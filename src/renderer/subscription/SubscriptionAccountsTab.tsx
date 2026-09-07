@@ -68,6 +68,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     setActiveCopilotAccount,
     removeCopilotAccount,
     updateCopilotAccountLabel,
+    startCodexLoopbackLogin,
+    pollCodexLoopbackFlow,
+    cancelCodexLoopbackFlow,
     refreshToken,
   } = useSubscriptionAccounts();
 
@@ -144,6 +147,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
             // retained verifier up by `state` — the verifier never crosses here.
             await exchangeCodexToken(code, state, label);
           }}
+          onStartLoopbackLogin={startCodexLoopbackLogin}
+          onPollLoopbackFlow={pollCodexLoopbackFlow}
+          onCancelLoopbackFlow={cancelCodexLoopbackFlow}
           onSetManualToken={async (accessToken, label) => {
             await setCodexManualToken(accessToken, label);
           }}
