@@ -39,6 +39,7 @@ export const ClaudeConfigCard = ({
   onSetActiveAccount,
   onUpdateAccountLabel,
   onRemoveAccount,
+  children,
 }: ClaudeConfigCardProps) => {
   // Auth method state
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<ClaudeAuthMethod>(
@@ -407,6 +408,9 @@ export const ClaudeConfigCard = ({
         accountLabel={accountLabel}
         onAccountLabelChange={setAccountLabel}
       />
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

@@ -1,0 +1,73 @@
+/**
+ * useSubscriptionModels — the per-tab subscription model view (host-API v1.70).
+ *
+ * Fetches `getSubscriptionModels()` ONCE when the tab mounts and keeps the
+ * whole provider-keyed view as tab state (each card reads its own slice).
+ * `setExtras(providerId, models)` swaps the provider slice OPTIMISTICALLY,
+ * then REPLACES the whole view with the host-returned one (the verb replaces
+ * the provider's entire extras list and returns the refreshed view).
+ *
+ * Feature-detect (the `getAccountAllowance` precedent): on an older host the
+ * relay resolves the explicit `{ error: 'unsupported' }` marker — `supported`
+ * stays `false` and the tab renders NO model sections at all. An older host
+ * must never be drawn as "provider has zero models".
+ *
+ * @module byo-providers/renderer/subscription/useSubscriptionModels
+ */
+import { useCallback, useEffect, useState } from 'react';
+
+import type {
+  HostSubscriptionModelInfo,
+  HostSubscriptionModelsView,
+} from '@byo/domain/plugin-types';
+
+import {
+  isSubscriptionModelsUnsupported,
+  subscriptionAuthClient,
+} from '../subscriptionAuthClient';
+
+export function useSubscriptionModels() {
+  const [view, setView] = useState<HostSubscriptionModelsView | null>(null);
+  const [supported, setSupported] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await subscriptionAuthClient.getSubscriptionModels();
+        if (cancelled || isSubscriptionModelsUnsupported(result)) return;
+        setView(result);
+        setSupported(true);
+      } catch (err) {
+        console.error('[byo-providers] Failed to load subscription models:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setExtras = useCallback(
+    async (providerId: string, extras: HostSubscriptionModelInfo[]): Promise<void> => {
+      // Optimistic swap of the provider slice (effective = defaults + extras),
+      // then reconcile with the host-returned view.
+      setView((previous) => {
+        if (!previous) return previous;
+        const slice = previous[providerId];
+        if (!slice) return previous;
+        return {
+          ...previous,
+          [providerId]: { ...slice, extras, effective: [...slice.defaults, ...extras] },
+        };
+      });
+      const result = await subscriptionAuthClient.setSubscriptionExtraModels(providerId, extras);
+      if (isSubscriptionModelsUnsupported(result)) {
+        throw new Error('subscription-models-unsupported');
+      }
+      setView(result);
+    },
+    [],
+  );
+
+  return { supported, view, setExtras };
+}

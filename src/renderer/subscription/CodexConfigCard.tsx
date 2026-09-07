@@ -46,6 +46,7 @@ export const CodexConfigCard = ({
   onSetActiveAccount,
   onUpdateAccountLabel,
   onRemoveAccount,
+  children,
 }: CodexConfigCardProps) => {
   // Auth method state
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<CodexAuthMethod>('oauth');
@@ -453,6 +454,9 @@ export const CodexConfigCard = ({
         accountLabel={accountLabel}
         onAccountLabelChange={setAccountLabel}
       />
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

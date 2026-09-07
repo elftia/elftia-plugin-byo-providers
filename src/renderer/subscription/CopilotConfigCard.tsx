@@ -36,6 +36,7 @@ export const CopilotConfigCard = ({
   onRemoveAccount,
   onClear,
   onRefresh,
+  children,
 }: CopilotConfigCardProps) => {
   const [flow, setFlow] = useState<DeviceFlowView | null>(null);
   const [enterpriseUrl, setEnterpriseUrl] = useState('');
@@ -299,6 +300,9 @@ export const CopilotConfigCard = ({
           />
         </div>
       </div>
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

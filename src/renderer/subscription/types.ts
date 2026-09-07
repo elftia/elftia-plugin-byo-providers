@@ -93,6 +93,11 @@ export interface ManualInputModalProps {
 export interface BaseConfigCardProps {
   t: TranslationFn;
   isLoading?: boolean;
+  /**
+   * Bottom-of-card slot: the tab mounts the v1.70 `SubscriptionModelList`
+   * section here so it renders INSIDE the card container (native placement).
+   */
+  children?: React.ReactNode;
 }
 
 /** Props for ClaudeConfigCard */

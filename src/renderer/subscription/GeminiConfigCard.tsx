@@ -28,6 +28,7 @@ export const GeminiConfigCard = ({
   onSetManualToken,
   onClear,
   onRefresh,
+  children,
 }: GeminiConfigCardProps) => {
   // Auth method state
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<GeminiAuthMethod>('oauth');
@@ -281,6 +282,9 @@ export const GeminiConfigCard = ({
         isSubmitting={isManualSubmitting}
         error={manualError}
       />
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

@@ -289,6 +289,31 @@ export interface HostDeviceFlowView {
   readonly enterpriseUrl?: string;
 }
 
+/**
+ * One model a subscription account can use (host-API v1.70). Display-only —
+ * no secret crosses; `kind` only routes the chip in the UI (chat vs image).
+ * Local structural mirror — this plugin pins an older SDK (allowance
+ * precedent).
+ */
+export interface HostSubscriptionModelInfo {
+  readonly id: string;
+  readonly kind: 'chat' | 'image';
+}
+
+/**
+ * Per-provider subscription model lists (host-API v1.70): `defaults` are
+ * built-in (immutable), `extras` are user-added, `effective` = defaults +
+ * extras (host-computed order).
+ */
+export interface HostSubscriptionProviderModels {
+  readonly defaults: HostSubscriptionModelInfo[];
+  readonly extras: HostSubscriptionModelInfo[];
+  readonly effective: HostSubscriptionModelInfo[];
+}
+
+/** The whole subscription-model view (host-API v1.70), keyed by providerId. */
+export type HostSubscriptionModelsView = Record<string, HostSubscriptionProviderModels>;
+
 export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   setClaudeManualToken(
     accessToken: string,
@@ -346,6 +371,17 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
     error?: string;
   }>;
   cancelCodexLoopbackLogin?(sessionId: string): Promise<void>;
+  /**
+   * v1.70 — subscription model lists (defaults + user extras; optional;
+   * feature-detected). `setSubscriptionExtraModels` REPLACES the provider's
+   * whole extras list and returns the refreshed view. Older hosts lack BOTH
+   * verbs — the UI hides the model sections entirely (allowance precedent).
+   */
+  getSubscriptionModels?(): Promise<HostSubscriptionModelsView>;
+  setSubscriptionExtraModels?(
+    providerId: string,
+    models: HostSubscriptionModelInfo[],
+  ): Promise<HostSubscriptionModelsView>;
 }
 
 export type AgentBackendHostServices = SdkAgentBackendHostServices & {

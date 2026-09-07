@@ -69,6 +69,7 @@ import type {
   AgentBackendHostApi,
   HostMediaProviderSecretField,
   HostMediaType,
+  HostSubscriptionModelInfo,
 } from '@byo/domain/plugin-types';
 
 /** Local alias for the media discriminator union. */
@@ -463,6 +464,32 @@ export function activate(host: AgentBackendHostApi): void {
         };
       }
       return handle.getAccountAllowance(String(provider), String(id), Boolean(force));
+    },
+    // v1.70 — subscription model lists (defaults + user extras; feature-detected
+    // like the allowance relay). Older hosts resolve the explicit
+    // `{ error: 'unsupported' }` marker and the renderer hides the model
+    // sections — never a fabricated empty view.
+    'subAuth.getSubscriptionModels': async () => {
+      // Resolve synchronously — awaiting the host handle directly would also
+      // await any thenable-shaped shim (the unit-test proxy hangs on it).
+      const handle = subAuth();
+      if (!handle?.getSubscriptionModels) {
+        return { error: 'unsupported' };
+      }
+      return handle.getSubscriptionModels();
+    },
+    'subAuth.setSubscriptionExtraModels': async (p) => {
+      const { providerId, models } = asRecord(p);
+      // Resolve synchronously — awaiting the host handle directly would also
+      // await any thenable-shaped shim (the unit-test proxy hangs on it).
+      const handle = subAuth();
+      if (!handle?.setSubscriptionExtraModels) {
+        return { error: 'unsupported' };
+      }
+      return handle.setSubscriptionExtraModels(
+        String(providerId),
+        (models as HostSubscriptionModelInfo[]) ?? [],
+      );
     },
     'subAuth.clearConfig': async (p) => {
       await subAuth()?.clearConfig(String(asRecord(p).platform));

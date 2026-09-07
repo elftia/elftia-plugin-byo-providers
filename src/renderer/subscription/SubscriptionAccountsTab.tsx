@@ -16,7 +16,9 @@ import { GeminiConfigCard } from './GeminiConfigCard';
 import { GrokConfigCard } from './GrokConfigCard';
 import { KimiConfigCard } from './KimiConfigCard';
 import { OpenCodeGoConfigCard } from './OpenCodeGoConfigCard';
+import { SubscriptionModelList } from './SubscriptionModelList';
 import { useSubscriptionAccounts } from './useSubscriptionAccounts';
+import { useSubscriptionModels } from './useSubscriptionModels';
 
 interface SubscriptionAccountsTabProps {
   t: TranslateFn;
@@ -73,6 +75,25 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     cancelCodexLoopbackFlow,
     refreshToken,
   } = useSubscriptionAccounts();
+
+  // v1.70 subscription model view — fetched ONCE per tab mount; on an older
+  // host `supported` stays false and every card's model section stays hidden.
+  const {
+    supported: modelsSupported,
+    view: modelsView,
+    setExtras: setModelExtras,
+  } = useSubscriptionModels();
+
+  /** The per-card model section (mounted through each card's children slot). */
+  const modelSection = (providerId: string) =>
+    modelsSupported ? (
+      <SubscriptionModelList
+        t={t}
+        providerId={providerId}
+        models={modelsView?.[providerId]}
+        onSetExtras={setModelExtras}
+      />
+    ) : undefined;
 
   if (loading) {
     return (
@@ -132,7 +153,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('claude')}
           onRefresh={() => refreshToken('claude')}
-        />
+        >
+          {modelSection('claude')}
+        </ClaudeConfigCard>
 
         <CodexConfigCard
           t={t}
@@ -155,7 +178,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('codex')}
           onRefresh={() => refreshToken('codex')}
-        />
+        >
+          {modelSection('codex')}
+        </CodexConfigCard>
 
         <GeminiConfigCard
           t={t}
@@ -171,7 +196,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('gemini')}
           onRefresh={() => refreshToken('gemini')}
-        />
+        >
+          {modelSection('gemini')}
+        </GeminiConfigCard>
 
         <KimiConfigCard
           t={t}
@@ -185,7 +212,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onRemoveAccount={(id) => removeKimiAccount(id)}
           onClear={() => clearConfig('kimi')}
           onRefresh={() => refreshToken('kimi')}
-        />
+        >
+          {modelSection('kimi')}
+        </KimiConfigCard>
 
         <GrokConfigCard
           t={t}
@@ -199,7 +228,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onRemoveAccount={(id) => removeGrokAccount(id)}
           onClear={() => clearConfig('grok')}
           onRefresh={() => refreshToken('grok')}
-        />
+        >
+          {modelSection('grok')}
+        </GrokConfigCard>
 
         <CopilotConfigCard
           t={t}
@@ -213,7 +244,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onRemoveAccount={(id) => removeCopilotAccount(id)}
           onClear={() => clearConfig('copilot')}
           onRefresh={() => refreshToken('copilot')}
-        />
+        >
+          {modelSection('copilot')}
+        </CopilotConfigCard>
 
         <OpenCodeGoConfigCard
           t={t}
@@ -223,7 +256,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onSetActiveAccount={(id) => setActiveOpenCodeGoAccount(id)}
           onUpdateAccountLabel={(id, label) => updateOpenCodeGoAccountLabel(id, label)}
           onRemoveAccount={(id) => removeOpenCodeGoAccount(id)}
-        />
+        >
+          {modelSection('opencodego')}
+        </OpenCodeGoConfigCard>
       </div>
 
       <section className="rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4 md:p-5">

@@ -34,6 +34,7 @@ export const KimiConfigCard = ({
   onRemoveAccount,
   onClear,
   onRefresh,
+  children,
 }: KimiConfigCardProps) => {
   const [flow, setFlow] = useState<KimiDeviceFlowView | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -282,6 +283,9 @@ export const KimiConfigCard = ({
           </>
         ) : null}
       </div>
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

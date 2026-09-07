@@ -35,6 +35,7 @@ export const GrokConfigCard = ({
   onRemoveAccount,
   onClear,
   onRefresh,
+  children,
 }: GrokConfigCardProps) => {
   const [flow, setFlow] = useState<DeviceFlowView | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -283,6 +284,9 @@ export const GrokConfigCard = ({
           </>
         ) : null}
       </div>
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

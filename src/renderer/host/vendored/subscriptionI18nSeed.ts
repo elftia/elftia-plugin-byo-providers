@@ -199,6 +199,19 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "stateUnsupported": "No usage endpoint for this account type",
           "resetsAt": "Resets at {{time}}"
         },
+        "models": {
+          "title": "Models",
+          "add": "+ Add model",
+          "kindChat": "Chat",
+          "kindImage": "Image",
+          "defaultBadge": "Default",
+          "removeModel": "Remove model",
+          "placeholder": "Model id",
+          "save": "Save",
+          "errorEmpty": "Enter a model id.",
+          "errorDuplicate": "This model already exists.",
+          "errorSave": "Failed to save models."
+        },
         "errors": {
           "refreshFailed": "Failed to refresh token"
         },
@@ -401,6 +414,19 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "stateUnsupported": "此账号类型没有用量接口",
           "resetsAt": "{{time}} 重置"
         },
+        "models": {
+          "title": "模型",
+          "add": "+ 添加模型",
+          "kindChat": "对话",
+          "kindImage": "画图",
+          "defaultBadge": "默认",
+          "removeModel": "移除模型",
+          "placeholder": "模型 ID",
+          "save": "保存",
+          "errorEmpty": "请输入模型 ID。",
+          "errorDuplicate": "该模型已存在。",
+          "errorSave": "保存模型失败。"
+        },
         "errors": {
           "refreshFailed": "刷新令牌失败"
         },
@@ -602,6 +628,19 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "stateUnavailable": "使用量を取得できません",
           "stateUnsupported": "このアカウント種別には使用量APIがありません",
           "resetsAt": "{{time}} にリセット"
+        },
+        "models": {
+          "title": "モデル",
+          "add": "+ モデルを追加",
+          "kindChat": "チャット",
+          "kindImage": "画像",
+          "defaultBadge": "デフォルト",
+          "removeModel": "モデルを削除",
+          "placeholder": "モデル ID",
+          "save": "保存",
+          "errorEmpty": "モデル ID を入力してください。",
+          "errorDuplicate": "このモデルは既に存在します。",
+          "errorSave": "モデルの保存に失敗しました。"
         },
         "errors": {
           "refreshFailed": "トークンの更新に失敗しました"

@@ -26,12 +26,39 @@ import type {
   HostSubscriptionOpResult,
   HostAccountAllowanceSnapshot,
   HostSubscriptionRefreshResult,
+  HostSubscriptionModelInfo,
+  HostSubscriptionModelsView,
 } from '@byo/domain/plugin-types';
 
 import { getHost } from './host/hostBridge';
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
+}
+
+/**
+ * The main relay's older-host degradation for the v1.70 model verbs (the host
+ * port lacks both verbs): an EXPLICIT marker, never a fabricated empty view —
+ * the renderer hides the model sections on it.
+ */
+export interface HostSubscriptionModelsUnsupported {
+  readonly error: 'unsupported';
+}
+
+/** A v1.70 model-verb result: the real view, or the older-host marker. */
+export type HostSubscriptionModelsResult =
+  | HostSubscriptionModelsView
+  | HostSubscriptionModelsUnsupported;
+
+/** Narrow a v1.70 relay result: `true` = older host, the section must hide. */
+export function isSubscriptionModelsUnsupported(
+  result: HostSubscriptionModelsResult,
+): result is HostSubscriptionModelsUnsupported {
+  return (
+    typeof result === 'object' &&
+    result !== null &&
+    (result as HostSubscriptionModelsUnsupported).error === 'unsupported'
+  );
 }
 
 /**
@@ -136,6 +163,16 @@ export const subscriptionAuthClient = {
     force?: boolean,
   ): Promise<HostAccountAllowanceSnapshot> {
     return invoke('subAuth.getAccountAllowance', { provider, id, force });
+  },
+  // ── Subscription models (v1.70; defaults + user extras; feature-detected) ───
+  getSubscriptionModels(): Promise<HostSubscriptionModelsResult> {
+    return invoke('subAuth.getSubscriptionModels');
+  },
+  setSubscriptionExtraModels(
+    providerId: string,
+    models: HostSubscriptionModelInfo[],
+  ): Promise<HostSubscriptionModelsResult> {
+    return invoke('subAuth.setSubscriptionExtraModels', { providerId, models });
   },
   clearConfig(platform: string): Promise<{ success: boolean }> {
     return invoke('subAuth.clearConfig', { platform });

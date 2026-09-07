@@ -523,6 +523,19 @@ const RELAY_CASES: RelayCase[] = [
     args: ['416', '417', true],
   },
   {
+    ipc: 'subAuth.getSubscriptionModels',
+    service: 'subscriptionAuth',
+    method: 'getSubscriptionModels',
+    args: [],
+  },
+  {
+    ipc: 'subAuth.setSubscriptionExtraModels',
+    service: 'subscriptionAuth',
+    method: 'setSubscriptionExtraModels',
+    payload: { providerId: 423, models: [{ id: 'custom-model', kind: 'chat' }] },
+    args: ['423', [{ id: 'custom-model', kind: 'chat' }]],
+  },
+  {
     ipc: 'subAuth.clearConfig',
     service: 'subscriptionAuth',
     method: 'clearConfig',
@@ -769,7 +782,7 @@ describe('main activation', () => {
     const methods = captureMethods({});
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
 
-    expect(expectedMethods).toHaveLength(99);
+    expect(expectedMethods).toHaveLength(101);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });
@@ -835,5 +848,23 @@ describe('main activation', () => {
     for (const [name, handler] of Object.entries(methods)) {
       await expect(handler({}), name).rejects.toThrow('host.services.');
     }
+  });
+
+  it('degrades the v1.70 model verbs to an explicit unsupported marker on older hosts', async () => {
+    // Host port present but WITHOUT the v1.70 verbs (pre-1.70 host): the relays
+    // resolve the `{ error: 'unsupported' }` marker — never a fabricated empty
+    // view — so the renderer can hide the model sections entirely.
+    const methods = captureMethods({
+      subscriptionAuth: { getSanitized: async () => ({}) },
+    });
+    await expect(methods['subAuth.getSubscriptionModels']()).resolves.toEqual({
+      error: 'unsupported',
+    });
+    await expect(
+      methods['subAuth.setSubscriptionExtraModels']({
+        providerId: 'claude',
+        models: [],
+      }),
+    ).resolves.toEqual({ error: 'unsupported' });
   });
 });

@@ -26,6 +26,7 @@ export const OpenCodeGoConfigCard = ({
   onSetActiveAccount,
   onUpdateAccountLabel,
   onRemoveAccount,
+  children,
 }: OpenCodeGoConfigCardProps) => {
   const [apiKey, setApiKey] = useState('');
   const [label, setLabel] = useState('');
@@ -236,6 +237,9 @@ export const OpenCodeGoConfigCard = ({
           {t('settings.accountTokens.accounts.addAccount')}
         </Button>
       )}
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };
