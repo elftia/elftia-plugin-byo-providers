@@ -139,12 +139,19 @@ export const OAuthFlow = ({
           {t('settings.accountTokens.oauth.step4.desc')}
         </p>
         <div className="pl-8">
-          <input
+          {/* The host `Input` (not a raw <input>): host components forward
+              onChange through the direct callback dispatch, which works on
+              every host. A raw input's replayed change event is swallowed by
+              React's controlled-value dedup on hosts without the native-setter
+              replay fix — the paste field went dead and 完成授权 never enabled. */}
+          <Input
             type="text"
             value={authCode}
             onChange={(e) => onAuthCodeChange(e.target.value)}
             placeholder={t('settings.accountTokens.oauthFlow.codePlaceholder')}
-            className="w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            aria-label={t('settings.accountTokens.oauthFlow.pasteCode')}
+            data-testid="settings-oauth-code-input"
+            className="w-full"
           />
         </div>
       </div>

@@ -85,6 +85,11 @@ export const CodexConfigCard = ({
   }, []);
 
   // Loopback poll loop: schedule the next poll while the sign-in is pending.
+  // EVERY tick updates state (a cloned `loopback` identity while pending) so
+  // the effect re-runs and schedules the next poll — the Kimi/Grok/Copilot
+  // cards' pattern. Without the clone a 'pending' tick leaves state untouched,
+  // the effect never re-runs, and exactly ONE poll ever fires — the panel then
+  // waits forever even after the host settles the flow done/error.
   useEffect(() => {
     if (!loopback) {
       stopPollTimer();
@@ -98,16 +103,19 @@ export const CodexConfigCard = ({
     pollTimer.current = setTimeout(async () => {
       try {
         const view = await onPollLoopbackFlow?.(loopback.sessionId);
-        if (!view) return;
-        if (view.state === 'done') {
+        if (view?.state === 'done') {
           setLoopback(null);
-        } else if (view.state === 'error') {
+        } else if (view?.state === 'error') {
           setLoopbackError(view.error ?? t('settings.accountTokens.codex.loopbackErrors.failed'));
           setLoopback(null);
+        } else {
+          // Still pending (or no view yet): clone to re-arm the next tick.
+          setLoopback((prev) => (prev ? { ...prev } : prev));
         }
       } catch {
         // A transient poll failure keeps the flow alive — the next tick
         // retries; the host-side TTL is the real deadline.
+        setLoopback((prev) => (prev ? { ...prev } : prev));
       }
     }, LOOPBACK_POLL_INTERVAL_MS);
     return stopPollTimer;

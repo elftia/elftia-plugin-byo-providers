@@ -141,7 +141,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "oauthFlow": {
           "instructions": "Click the link below to authorize in your browser. After authorizing, paste the code here.",
           "pasteCode": "Authorization Code",
-          "codePlaceholder": "Paste the authorization code here (format: code#state)...",
+          "codePlaceholder": "Paste the authorization code here...",
           "authorize": "Complete Authorization",
           "emptyCode": "Please paste the authorization code.",
           "stateMismatch": "The pasted state does not match — possible CSRF. Please restart the authorization flow."
@@ -343,7 +343,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "oauthFlow": {
           "instructions": "点击下方链接在浏览器中授权。授权完成后，将代码粘贴到此处。",
           "pasteCode": "授权代码",
-          "codePlaceholder": "在此粘贴授权代码（格式：code#state）...",
+          "codePlaceholder": "在此粘贴授权代码...",
           "authorize": "完成授权",
           "emptyCode": "请粘贴授权代码。",
           "stateMismatch": "粘贴的 state 不匹配——可能存在 CSRF 风险。请重新发起授权流程。"
@@ -545,7 +545,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "oauthFlow": {
           "instructions": "下のリンクをクリックしてブラウザで認証してください。認証後、コードをここに貼り付けてください。",
           "pasteCode": "認証コード",
-          "codePlaceholder": "認証コードをここに貼り付け（形式：code#state）...",
+          "codePlaceholder": "認証コードをここに貼り付け...",
           "authorize": "認証を完了",
           "emptyCode": "認証コードを貼り付けてください。",
           "stateMismatch": "貼り付けた state が一致しません — CSRF の可能性があります。認証フローをやり直してください。"
