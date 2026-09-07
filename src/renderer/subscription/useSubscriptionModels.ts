@@ -3,9 +3,8 @@
  *
  * Fetches `getSubscriptionModels()` ONCE when the tab mounts and keeps the
  * whole provider-keyed view as tab state (each card reads its own slice).
- * `setExtras(providerId, models)` swaps the provider slice OPTIMISTICALLY,
- * then REPLACES the whole view with the host-returned one (the verb replaces
- * the provider's entire extras list and returns the refreshed view).
+ * `setExtras(providerId, models)` replaces the view only after the host
+ * confirms persistence, so failed writes leave the displayed list unchanged.
  *
  * Feature-detect (the `getAccountAllowance` precedent): on an older host the
  * relay resolves the explicit `{ error: 'unsupported' }` marker — `supported`
@@ -49,17 +48,6 @@ export function useSubscriptionModels() {
 
   const setExtras = useCallback(
     async (providerId: string, extras: HostSubscriptionModelInfo[]): Promise<void> => {
-      // Optimistic swap of the provider slice (effective = defaults + extras),
-      // then reconcile with the host-returned view.
-      setView((previous) => {
-        if (!previous) return previous;
-        const slice = previous[providerId];
-        if (!slice) return previous;
-        return {
-          ...previous,
-          [providerId]: { ...slice, extras, effective: [...slice.defaults, ...extras] },
-        };
-      });
       const result = await subscriptionAuthClient.setSubscriptionExtraModels(providerId, extras);
       if (isSubscriptionModelsUnsupported(result)) {
         throw new Error('subscription-models-unsupported');

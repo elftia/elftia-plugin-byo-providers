@@ -111,6 +111,7 @@ describe('SubscriptionModelList', () => {
     });
     const input = () =>
       renderer.root.findByProps({ 'data-testid': 'settings-subscription-models-input' });
+    expect(input().props.onKeyDown).toBeUndefined();
     const save = () =>
       renderer.root.findByProps({ 'data-testid': 'settings-subscription-models-save-btn' });
 
@@ -257,6 +258,55 @@ describe('useSubscriptionModels', () => {
       await hook?.setExtras('claude', [extraModel]);
     });
     expect(setModels).toHaveBeenCalledWith('claude', [extraModel]);
+    expect(hook?.view).toEqual(second);
+    act(() => renderer.unmount());
+  });
+
+  it.each([
+    ['adding', [], [extraModel]],
+    ['removing', [extraModel], []],
+  ] as const)('keeps the original list when %s an extra fails', async (_operation, initialExtras, nextExtras) => {
+    const initial = {
+      claude: {
+        defaults: [chatDefault],
+        extras: [...initialExtras],
+        effective: [chatDefault, ...initialExtras],
+      },
+    };
+    getModels.mockResolvedValue(initial);
+    setModels.mockRejectedValue(new Error('host-write-failed'));
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<HookProbe />);
+      await flush();
+    });
+    await act(async () => {
+      await expect(hook?.setExtras('claude', [...nextExtras])).rejects.toThrow('host-write-failed');
+    });
+    expect(hook?.view).toEqual(initial);
+    act(() => renderer.unmount());
+  });
+
+  it('keeps the committed list until the host confirms the new list', async () => {
+    const first = { claude: { defaults: [chatDefault], extras: [], effective: [chatDefault] } };
+    const second = {
+      claude: { defaults: [chatDefault], extras: [extraModel], effective: [chatDefault, extraModel] },
+    };
+    let resolveWrite!: (value: typeof second) => void;
+    getModels.mockResolvedValue(first);
+    setModels.mockReturnValue(new Promise((resolve) => { resolveWrite = resolve; }));
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<HookProbe />);
+      await flush();
+    });
+    let pending!: Promise<void>;
+    act(() => { pending = hook!.setExtras('claude', [extraModel]); });
+    expect(hook?.view).toEqual(first);
+    await act(async () => {
+      resolveWrite(second);
+      await pending;
+    });
     expect(hook?.view).toEqual(second);
     act(() => renderer.unmount());
   });

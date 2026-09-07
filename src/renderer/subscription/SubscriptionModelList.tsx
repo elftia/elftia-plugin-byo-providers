@@ -193,16 +193,6 @@ export const SubscriptionModelList = ({
           <Input
             value={draftId}
             onChange={(event) => setDraftId(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                void handleAdd();
-              }
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                closeAddForm();
-              }
-            }}
             placeholder={t('settings.accountTokens.models.placeholder')}
             aria-label={t('settings.accountTokens.models.title')}
             disabled={pending}
