@@ -16,7 +16,8 @@ import { cn } from '../host/vendored/cn';
 import { ManualInputModal } from './ManualInputModal';
 import { OAuthFlow } from './OAuthFlow';
 import { StatusBadge } from './StatusBadge';
-import type { GeminiConfigCardProps, OAuthParams } from './types';
+import type { GeminiConfigCardProps, ManualTokenVerifyFailure, OAuthParams } from './types';
+import { describeManualTokenError } from './types';
 
 type GeminiAuthMethod = 'oauth' | 'manual';
 
@@ -94,19 +95,27 @@ export const GeminiConfigCard = ({
   // Manual token input
   const handleManualSubmit = useCallback(async (
     accessToken: string,
-    extra?: { refreshToken?: string }
+    extra?: { refreshToken?: string; verify?: boolean }
   ) => {
     setManualError(null);
     setIsManualSubmitting(true);
     try {
-      await onSetManualToken(accessToken, extra?.refreshToken);
+      await onSetManualToken(
+        accessToken,
+        extra?.refreshToken,
+        extra?.verify !== undefined ? { verify: extra.verify } : undefined,
+      );
       setIsManualModalOpen(false);
     } catch (err) {
-      setManualError(err instanceof Error ? err.message : 'Failed to save token');
+      // v1.72 — a verify refusal renders the localized reason taxonomy, never
+      // a raw probe code.
+      setManualError(
+        describeManualTokenError(t, err as Error & { verifyFailure?: ManualTokenVerifyFailure }),
+      );
     } finally {
       setIsManualSubmitting(false);
     }
-  }, [onSetManualToken]);
+  }, [onSetManualToken, t]);
 
   // Refresh token
   const handleRefresh = useCallback(async () => {

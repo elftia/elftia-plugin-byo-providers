@@ -183,7 +183,9 @@ describe('credential boundaries', () => {
     const cliResult = await methods['cliRt.getAuthStatus']({});
 
     expect(exchange).toHaveBeenCalledWith(expect.objectContaining({ codeVerifier: verifier }));
-    expect(manual).toHaveBeenCalledWith(token, 'Pro', undefined);
+    // v1.72: the trailing `undefined` is the absent verify option (the wire
+    // payload carried no `verify`, so the legacy path is taken byte-identically).
+    expect(manual).toHaveBeenCalledWith(token, 'Pro', undefined, undefined);
     expectNotReturned(exchangeResult, verifier);
     expectNotReturned(manualResult, token);
     expectNotReturned(cliResult, verifier, token);

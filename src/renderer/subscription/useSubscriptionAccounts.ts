@@ -61,9 +61,21 @@ function toOAuthParams(init: { authUrl: string; state: string }): OAuthParams {
 }
 
 /** Throw on a `{ success: false }` op result so the card's try/catch surfaces it. */
-function throwIfFailed(result: { success?: unknown; error?: unknown }): void {
+function throwIfFailed(result: {
+  success?: unknown;
+  error?: unknown;
+  verifyFailure?: unknown;
+}): void {
   if (result?.success === false) {
-    throw new Error(typeof result.error === 'string' && result.error ? result.error : 'Exchange failed');
+    const error = new Error(
+      typeof result.error === 'string' && result.error ? result.error : 'Exchange failed',
+    );
+    // v1.72 — carry the secret-free verify refusal up so the card renders the
+    // reason taxonomy (invalid vs could-not-verify) instead of a raw code.
+    if (result.verifyFailure && typeof result.verifyFailure === 'object') {
+      (error as Error & { verifyFailure?: unknown }).verifyFailure = result.verifyFailure;
+    }
+    throw error;
   }
 }
 
@@ -140,11 +152,13 @@ export function useSubscriptionAccounts() {
       accessToken: string,
       subscriptionLevel?: SubscriptionLevel,
       label?: string,
+      options?: { verify?: boolean },
     ): Promise<TokenExchangeResponse> => {
       const result = await subscriptionAuthClient.setClaudeManualToken(
         accessToken,
         subscriptionLevel as string | undefined,
         label,
+        options,
       );
       throwIfFailed(result);
       await refresh();
@@ -211,8 +225,16 @@ export function useSubscriptionAccounts() {
     [refresh],
   );
   const setCodexManualToken = useCallback(
-    async (accessToken: string, label?: string): Promise<TokenExchangeResponse> => {
-      const result = await subscriptionAuthClient.setCodexManualToken(accessToken, label);
+    async (
+      accessToken: string,
+      label?: string,
+      options?: { verify?: boolean },
+    ): Promise<TokenExchangeResponse> => {
+      const result = await subscriptionAuthClient.setCodexManualToken(
+        accessToken,
+        label,
+        options,
+      );
       throwIfFailed(result);
       await refresh();
       return result as unknown as TokenExchangeResponse;
@@ -273,8 +295,17 @@ export function useSubscriptionAccounts() {
     [refresh],
   );
   const setGeminiManualToken = useCallback(
-    async (accessToken: string, refreshTokenValue?: string): Promise<TokenExchangeResponse> => {
-      const result = await subscriptionAuthClient.setGeminiManualToken(accessToken, refreshTokenValue);
+    async (
+      accessToken: string,
+      refreshTokenValue?: string,
+      options?: { verify?: boolean },
+    ): Promise<TokenExchangeResponse> => {
+      const result = await subscriptionAuthClient.setGeminiManualToken(
+        accessToken,
+        refreshTokenValue,
+        options,
+      );
+      throwIfFailed(result);
       await refresh();
       return result as unknown as TokenExchangeResponse;
     },

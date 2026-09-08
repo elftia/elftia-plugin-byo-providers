@@ -153,6 +153,12 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "refreshToken": "Refresh Token",
           "refreshToken.placeholder": "Used for automatic token refresh",
           "hint": "You can obtain the token from the developer settings page",
+          "verify": {
+            "label": "Verify before saving",
+            "desc": "Runs a free check against the provider first; an invalid token is not saved",
+            "invalid": "The token was rejected as invalid. Nothing was saved.",
+            "couldNotVerify": "Could not verify the token ({{reason}}). Check your connection and retry, or clear the checkbox to save without verification."
+          },
           "claude": {
             "description": "Manually enter Claude Access Token. You can get it from Claude.ai developer settings or other sources."
           },
@@ -369,6 +375,12 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "refreshToken": "Refresh Token",
           "refreshToken.placeholder": "用于自动刷新 Access Token",
           "hint": "您可以从开发者设置页面获取令牌",
+          "verify": {
+            "label": "保存前验证",
+            "desc": "先向服务商发起一次免费校验；无效令牌不会被保存",
+            "invalid": "令牌被判定为无效，未保存。",
+            "couldNotVerify": "无法验证令牌（{{reason}}）。请检查网络后重试，或取消勾选以不验证直接保存。"
+          },
           "claude": {
             "description": "手动输入 Claude Access Token。您可以从 Claude.ai 开发者设置或其他来源获取。"
           },
@@ -585,6 +597,12 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "refreshToken": "リフレッシュトークン",
           "refreshToken.placeholder": "トークンの自動更新に使用",
           "hint": "開発者設定ページからトークンを取得できます",
+          "verify": {
+            "label": "保存前に検証",
+            "desc": "保存前にプロバイダへ無料の検証を一回実行します。無効なトークンは保存されません",
+            "invalid": "トークンが無効と判定されたため保存しませんでした。",
+            "couldNotVerify": "トークンを検証できませんでした（{{reason}}）。接続を確認して再試行するか、チェックを外して検証なしで保存してください。"
+          },
           "claude": {
             "description": "Claude アクセストークンを手動で入力します。Claude.ai の開発者設定などから取得できます。"
           },

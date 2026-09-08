@@ -82,11 +82,32 @@ export interface ManualInputModalProps {
   platform: TokenPlatform;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (accessToken: string, extra?: { subscriptionLevel?: SubscriptionLevel; refreshToken?: string }) => Promise<void>;
+  onSubmit: (
+    accessToken: string,
+    extra?: {
+      subscriptionLevel?: SubscriptionLevel;
+      refreshToken?: string;
+      /** v1.72 — run the host's verify-before-persist probe (when supported). */
+      verify?: boolean;
+    },
+  ) => Promise<void>;
   isSubmitting: boolean;
   error: string | null;
   accountLabel?: string;
   onAccountLabelChange?: (label: string) => void;
+  /** v1.72 — the host honors the verify option (feature-detected). */
+  verifySupported?: boolean;
+}
+
+/**
+ * The secret-free structured refusal a verify-enabled paste can carry (v1.72).
+ * Local structural mirror of the host's `HostManualTokenVerifyFailure`.
+ */
+export interface ManualTokenVerifyFailure {
+  readonly provider: string;
+  readonly tier: 'local' | 'upstream';
+  readonly status?: number;
+  readonly reason?: string;
 }
 
 /** Base config card props */
@@ -114,6 +135,7 @@ export interface ClaudeConfigCardProps extends BaseConfigCardProps {
     accessToken: string,
     subscriptionLevel?: SubscriptionLevel,
     label?: string,
+    options?: { verify?: boolean },
   ) => Promise<void>;
   onUpdateSubscriptionLevel: (level: SubscriptionLevel) => Promise<void>;
   onClear: () => Promise<void>;
@@ -157,7 +179,11 @@ export interface CodexConfigCardProps extends BaseConfigCardProps {
   ) => Promise<{ sessionId: string; state: 'pending' | 'done' | 'error'; error?: string }>;
   onCancelLoopbackFlow?: (sessionId: string) => Promise<void>;
   /** Set a manual token, appending a new account with an optional label. */
-  onSetManualToken: (accessToken: string, label?: string) => Promise<void>;
+  onSetManualToken: (
+    accessToken: string,
+    label?: string,
+    options?: { verify?: boolean },
+  ) => Promise<void>;
   onClear: () => Promise<void>;
   onRefresh: () => Promise<boolean>;
   // Multi-account (code-cli-account-switching)
@@ -191,7 +217,11 @@ export interface GeminiConfigCardProps extends BaseConfigCardProps {
   // `state` (from `onStartOAuth`) MUST be threaded back — the host looks the
   // retained PKCE verifier up by it; the verifier is NOT a parameter.
   onExchangeToken: (code: string, state: string) => Promise<void>;
-  onSetManualToken: (accessToken: string, refreshToken?: string) => Promise<void>;
+  onSetManualToken: (
+    accessToken: string,
+    refreshToken?: string,
+    options?: { verify?: boolean },
+  ) => Promise<void>;
   onClear: () => Promise<void>;
   onRefresh: () => Promise<boolean>;
 }
@@ -266,3 +296,26 @@ export type {
   TokenPlatform,
   TokenStatus,
 };
+
+/**
+ * Render a verify-refusal into the localized message taxonomy (v1.72):
+ * ONLY `unauthorized` (HTTP 401) means the token itself is INVALID — every
+ * other reason (forbidden / rate-limited / timeout / network-error /
+ * server-error / http-error) is a COULD-NOT-VERIFY (retryable) outcome, never
+ * an invalid-token verdict. A non-verify error falls back to its raw message.
+ */
+export function describeManualTokenError(
+  t: TranslationFn,
+  error: { message?: string; verifyFailure?: ManualTokenVerifyFailure },
+): string {
+  const failure = error.verifyFailure;
+  if (failure && typeof failure.reason === 'string') {
+    if (failure.reason === 'unauthorized' || failure.reason === 'no-token') {
+      return t('settings.accountTokens.manual.verify.invalid');
+    }
+    return t('settings.accountTokens.manual.verify.couldNotVerify', {
+      reason: failure.reason,
+    });
+  }
+  return error.message ?? '';
+}

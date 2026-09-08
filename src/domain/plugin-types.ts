@@ -308,20 +308,57 @@ export interface HostSubscriptionProviderModels {
 /** The whole subscription-model view (host-API v1.70), keyed by providerId. */
 export type HostSubscriptionModelsView = Record<string, HostSubscriptionProviderModels>;
 
+/**
+ * v1.72 (`subscription-token-probe`) — OPTIONAL manual-token setter options.
+ * ADDITIVE: on a pre-v1.72 host the extra argument is ignored and the paste
+ * keeps the persist-always semantics.
+ */
+export interface HostManualTokenSetOptions {
+  /**
+   * Verify-before-persist: run the zero-cost token probe FIRST; persist ONLY
+   * on a pass. On a refusal the store stays unchanged and the return carries
+   * `{ success: false, verifyFailure }`.
+   */
+  readonly verify?: boolean;
+}
+
+/**
+ * The secret-free structured reason a verify-enabled paste was refused
+ * (v1.72): which provider, which probe tier answered, and the HTTP status or
+ * a sanitized reason code — a diagnostic to SHOW, never credential material.
+ */
+export interface HostManualTokenVerifyFailure {
+  readonly provider: string;
+  readonly tier: 'local' | 'upstream';
+  readonly status?: number;
+  readonly reason?: string;
+}
+
+/** The manual-token setters' return, widened with the v1.72 refusal reason. */
+export interface HostManualTokenOpResult {
+  readonly success: boolean;
+  readonly error?: string;
+  readonly expiresAt?: string;
+  readonly verifyFailure?: HostManualTokenVerifyFailure;
+}
+
 export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   setClaudeManualToken(
     accessToken: string,
     subscriptionLevel?: string,
     label?: string,
-  ): Promise<{ success: boolean; error?: string }>;
+    options?: HostManualTokenSetOptions,
+  ): Promise<HostManualTokenOpResult>;
   setCodexManualToken(
     accessToken: string,
     label?: string,
-  ): Promise<{ success: boolean; error?: string }>;
+    options?: HostManualTokenSetOptions,
+  ): Promise<HostManualTokenOpResult>;
   setGeminiManualToken(
     accessToken: string,
     refreshToken?: string,
-  ): Promise<{ success: boolean; error?: string }>;
+    options?: HostManualTokenSetOptions,
+  ): Promise<HostManualTokenOpResult>;
   updateClaudeSubscriptionLevel(
     level: string,
   ): Promise<{ success: boolean; error?: string }>;

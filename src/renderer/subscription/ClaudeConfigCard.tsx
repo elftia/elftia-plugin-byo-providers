@@ -19,7 +19,8 @@ import { ManualInputModal } from './ManualInputModal';
 import { OAuthFlow } from './OAuthFlow';
 import { parseOAuthPaste } from './oauthPaste';
 import { StatusBadge } from './StatusBadge';
-import type { ClaudeAuthMethod, ClaudeConfigCardProps, OAuthParams,SubscriptionLevel } from './types';
+import type { ClaudeAuthMethod, ClaudeConfigCardProps, ManualTokenVerifyFailure, OAuthParams,SubscriptionLevel } from './types';
+import { describeManualTokenError } from './types';
 
 const AUTH_METHOD_OPTIONS = ['oauth', 'setup_token', 'manual'] as const;
 const SUBSCRIPTION_LEVELS: SubscriptionLevel[] = ['Free', 'Pro', 'Max'];
@@ -127,20 +128,29 @@ export const ClaudeConfigCard = ({
   // Manual token input
   const handleManualSubmit = useCallback(async (
     accessToken: string,
-    extra?: { subscriptionLevel?: SubscriptionLevel }
+    extra?: { subscriptionLevel?: SubscriptionLevel; verify?: boolean }
   ) => {
     setManualError(null);
     setIsManualSubmitting(true);
     try {
-      await onSetManualToken(accessToken, extra?.subscriptionLevel, accountLabel.trim() || undefined);
+      await onSetManualToken(
+        accessToken,
+        extra?.subscriptionLevel,
+        accountLabel.trim() || undefined,
+        extra?.verify !== undefined ? { verify: extra.verify } : undefined,
+      );
       setIsManualModalOpen(false);
       setAccountLabel('');
     } catch (err) {
-      setManualError(err instanceof Error ? err.message : 'Failed to save token');
+      // v1.72 — a verify refusal renders the localized reason taxonomy, never
+      // a raw probe code.
+      setManualError(
+        describeManualTokenError(t, err as Error & { verifyFailure?: ManualTokenVerifyFailure }),
+      );
     } finally {
       setIsManualSubmitting(false);
     }
-  }, [accountLabel, onSetManualToken]);
+  }, [accountLabel, onSetManualToken, t]);
 
   const handleRefresh = useCallback(async () => {
     setError(null);

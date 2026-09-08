@@ -22,7 +22,8 @@ import { AccountList } from './AccountList';
 import { ManualInputModal } from './ManualInputModal';
 import { OAuthFlow } from './OAuthFlow';
 import { StatusBadge } from './StatusBadge';
-import type { CodexConfigCardProps, OAuthParams } from './types';
+import type { CodexConfigCardProps, ManualTokenVerifyFailure, OAuthParams } from './types';
+import { describeManualTokenError } from './types';
 
 type CodexAuthMethod = 'oauth' | 'manual';
 
@@ -214,22 +215,30 @@ export const CodexConfigCard = ({
     setOAuthError(null);
   }, []);
 
-  // Manual token input (appends a new account with the optional label).
+  // Manual token input (appends a new account with the optional label). The
+  // v1.72 verify option rides the modal's extra payload (feature-detected
+  // host-side; a refusal keeps the modal open with the localized reason).
   const handleManualSubmit = useCallback(
-    async (accessToken: string) => {
+    async (accessToken: string, extra?: { verify?: boolean }) => {
       setManualError(null);
       setIsManualSubmitting(true);
       try {
-        await onSetManualToken(accessToken, accountLabel.trim() || undefined);
+        await onSetManualToken(
+          accessToken,
+          accountLabel.trim() || undefined,
+          extra?.verify !== undefined ? { verify: extra.verify } : undefined,
+        );
         setIsManualModalOpen(false);
         setAccountLabel('');
       } catch (err) {
-        setManualError(err instanceof Error ? err.message : 'Failed to save token');
+        setManualError(
+          describeManualTokenError(t, err as Error & { verifyFailure?: ManualTokenVerifyFailure }),
+        );
       } finally {
         setIsManualSubmitting(false);
       }
     },
-    [accountLabel, onSetManualToken],
+    [accountLabel, onSetManualToken, t],
   );
 
   // Clear config (single-account mode only — multi-account removes per-row).

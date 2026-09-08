@@ -594,21 +594,22 @@ const RELAY_CASES: RelayCase[] = [
     service: 'subscriptionAuth',
     method: 'setClaudeManualToken',
     payload: { accessToken: 419, subscriptionLevel: 'max', label: 'Claude manual' },
-    args: ['419', 'max', 'Claude manual'],
+    // v1.72: the trailing `undefined` is the absent verify option (legacy path).
+    args: ['419', 'max', 'Claude manual', undefined],
   },
   {
     ipc: 'subAuth.setCodexManualToken',
     service: 'subscriptionAuth',
     method: 'setCodexManualToken',
     payload: { accessToken: 420, label: 'Codex manual' },
-    args: ['420', 'Codex manual'],
+    args: ['420', 'Codex manual', undefined],
   },
   {
     ipc: 'subAuth.setGeminiManualToken',
     service: 'subscriptionAuth',
     method: 'setGeminiManualToken',
     payload: { accessToken: 421, refreshToken: 'refresh-inward' },
-    args: ['421', 'refresh-inward'],
+    args: ['421', 'refresh-inward', undefined],
   },
   {
     ipc: 'subAuth.updateClaudeSubscriptionLevel',
@@ -787,9 +788,18 @@ async function expectRelay(
 describe('main activation', () => {
   it('registers the complete current IPC method set in canonical order', () => {
     const methods = captureMethods({});
+    // v1.72 (`subscription-token-probe`): the verify-support probe registers
+    // right before the manual-token setters. It relays NO service method (a
+    // version read), so it is not a RelayCase — splice it into the canonical
+    // order instead (pinned here in registration position).
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
+    expectedMethods.splice(
+      expectedMethods.indexOf('subAuth.setClaudeManualToken'),
+      0,
+      'subAuth.manualTokenVerifySupported',
+    );
 
-    expect(expectedMethods).toHaveLength(102);
+    expect(expectedMethods).toHaveLength(103);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });
@@ -835,7 +845,16 @@ describe('main activation', () => {
         ipc: 'subAuth.setClaudeManualToken',
         service: 'subscriptionAuth',
         method: 'setClaudeManualToken',
-        args: ['', undefined, undefined],
+        args: ['', undefined, undefined, undefined],
+      },
+      {
+        // v1.72 — verify:true maps onto the port option; anything else (or
+        // absent) is the legacy `undefined` (pinned by the case above).
+        ipc: 'subAuth.setCodexManualToken',
+        service: 'subscriptionAuth',
+        method: 'setCodexManualToken',
+        payload: { accessToken: 'tok', verify: true },
+        args: ['tok', undefined, { verify: true }],
       },
       {
         ipc: 'secretsPack.export',
@@ -855,6 +874,24 @@ describe('main activation', () => {
     for (const [name, handler] of Object.entries(methods)) {
       await expect(handler({}), name).rejects.toThrow('host.services.');
     }
+  });
+
+  it('reports manual-token verify support from the host API version (v1.72)', async () => {
+    const probeFor = (version: string | undefined): IpcHandler => {
+      let methods: Record<string, IpcHandler> = {};
+      activate({
+        version,
+        services: { subscriptionAuth: {} },
+        registerIpcMethods(value: Record<string, IpcHandler>) {
+          methods = value;
+        },
+      } as never);
+      return methods['subAuth.manualTokenVerifySupported'] as IpcHandler;
+    };
+    await expect(probeFor('1.72.0')({})).resolves.toEqual({ supported: true });
+    await expect(probeFor('1.73.1')({})).resolves.toEqual({ supported: true });
+    await expect(probeFor('1.71.0')({})).resolves.toEqual({ supported: false });
+    await expect(probeFor(undefined)({})).resolves.toEqual({ supported: false });
   });
 
   it('degrades the v1.70 model verbs to an explicit unsupported marker on older hosts', async () => {

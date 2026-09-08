@@ -203,19 +203,49 @@ export const subscriptionAuthClient = {
   refreshCredential(providerId: string): Promise<HostSubscriptionRefreshResult> {
     return invoke('subAuth.refreshCredential', { providerId });
   },
-  // ── Manual-token paste (INWARD-only; status-only return) ─────────────────────
+  // ── Manual-token paste (INWARD-only; status-only return). v1.72 adds the
+  // OPTIONAL verify option (probe-before-persist; a refusal returns the
+  // secret-free `verifyFailure` and persists nothing) + the support probe so
+  // the renderer only offers verification on hosts that honor it.
+  manualTokenVerifySupported(): Promise<boolean> {
+    return invoke('subAuth.manualTokenVerifySupported').then(
+      (result) => (result as { supported?: boolean } | null)?.supported === true,
+    );
+  },
   setClaudeManualToken(
     accessToken: string,
     subscriptionLevel?: string,
     label?: string,
+    options?: { verify?: boolean },
   ): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.setClaudeManualToken', { accessToken, subscriptionLevel, label });
+    return invoke('subAuth.setClaudeManualToken', {
+      accessToken,
+      subscriptionLevel,
+      label,
+      verify: options?.verify,
+    });
   },
-  setCodexManualToken(accessToken: string, label?: string): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.setCodexManualToken', { accessToken, label });
+  setCodexManualToken(
+    accessToken: string,
+    label?: string,
+    options?: { verify?: boolean },
+  ): Promise<HostSubscriptionOpResult> {
+    return invoke('subAuth.setCodexManualToken', {
+      accessToken,
+      label,
+      verify: options?.verify,
+    });
   },
-  setGeminiManualToken(accessToken: string, refreshToken?: string): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.setGeminiManualToken', { accessToken, refreshToken });
+  setGeminiManualToken(
+    accessToken: string,
+    refreshToken?: string,
+    options?: { verify?: boolean },
+  ): Promise<HostSubscriptionOpResult> {
+    return invoke('subAuth.setGeminiManualToken', {
+      accessToken,
+      refreshToken,
+      verify: options?.verify,
+    });
   },
   updateClaudeSubscriptionLevel(level: string): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.updateClaudeSubscriptionLevel', { level });

@@ -81,6 +81,20 @@ function asRecord(payload: unknown): Record<string, unknown> {
 }
 
 /**
+ * The manual-token verify option arrived in host-API 1.72.0 — parse the host's
+ * reported API version and compare minor-aware (an unparseable version is an
+ * honest `false`, never a guessed `true`).
+ */
+function hostSupportsManualTokenVerify(version: string | undefined): boolean {
+  if (typeof version !== 'string') return false;
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 1 || (major === 1 && minor >= 72);
+}
+
+/**
  * The plugin's MAIN `activate` entry. The loader calls it once with a freshly
  * constructed {@link AgentBackendHostApi}.
  */
@@ -134,6 +148,16 @@ export function activate(host: AgentBackendHostApi): void {
   const storage = () => host.services.objectStorageConfig ?? storageMissing();
   /** Narrow an IPC payload's `mediaType` to the port's discriminator union. */
   const asMediaType = (v: unknown): MediaType => String(v) as MediaType;
+  /**
+   * v1.72 (`subscription-token-probe`) — does THIS host accept the manual-token
+   * setters' verify option? Feature-detection for the renderer's verify
+   * checkbox: on an older host the option is silently ignored, so the checkbox
+   * must not appear (a checked-but-ignored verify would mislead).
+   */
+  const manualTokenVerifySupported = hostSupportsManualTokenVerify(host.version);
+  /** Map the wire `verify` flag onto the port's options (absent = legacy). */
+  const toVerifyOptions = (verify: unknown): { verify: true } | undefined =>
+    verify === true ? { verify: true } : undefined;
 
   host.registerIpcMethods({
     // ── Providers ────────────────────────────────────────────────────────────
@@ -515,32 +539,47 @@ export function activate(host: AgentBackendHostApi): void {
       (await subAuth()?.clearOpenCodeGo()) ?? subAuthMissing(),
     'subAuth.refreshCredential': async (p) =>
       (await subAuth()?.refreshCredential(String(asRecord(p).providerId))) ?? subAuthMissing(),
-    // Manual-token paste (INWARD-only; status-only return, no token echoed back).
+    // Manual-token paste (INWARD-only; status-only return, no token echoed
+    // back). v1.72 (`subscription-token-probe`): `verify: true` runs the
+    // zero-cost host probe FIRST — a refusal carries the secret-free
+    // `verifyFailure` reason and persists NOTHING. On a pre-v1.72 host the
+    // extra options argument is ignored (legacy persist-always semantics).
+    'subAuth.manualTokenVerifySupported': async () => {
+      // Liveness through the SAME missing-service contract as every relay
+      // (throws `host.services.subscriptionAuth is unavailable` on older hosts
+      // whose main half still resolves this method... it won't — the renderer
+      // probe only reaches newer mains — but the contract stays uniform).
+      subAuth();
+      return { supported: manualTokenVerifySupported };
+    },
     'subAuth.setClaudeManualToken': async (p) => {
-      const { accessToken, subscriptionLevel, label } = asRecord(p);
+      const { accessToken, subscriptionLevel, label, verify } = asRecord(p);
       return (
         (await subAuth()?.setClaudeManualToken(
           String(accessToken ?? ''),
           subscriptionLevel as string | undefined,
           label as string | undefined,
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
     'subAuth.setCodexManualToken': async (p) => {
-      const { accessToken, label } = asRecord(p);
+      const { accessToken, label, verify } = asRecord(p);
       return (
         (await subAuth()?.setCodexManualToken(
           String(accessToken ?? ''),
           label as string | undefined,
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
     'subAuth.setGeminiManualToken': async (p) => {
-      const { accessToken, refreshToken } = asRecord(p);
+      const { accessToken, refreshToken, verify } = asRecord(p);
       return (
         (await subAuth()?.setGeminiManualToken(
           String(accessToken ?? ''),
           refreshToken as string | undefined,
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
