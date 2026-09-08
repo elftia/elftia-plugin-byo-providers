@@ -6,48 +6,54 @@
  * - OAuth: Standard authorization flow
  * - Manual: Direct token input
  *
- * In multi-account mode renders an `AccountList` (set-active / apply-to-CLI /
- * remove per row) mirroring `ClaudeConfigCard`.
+ * In multi-account mode renders an `AccountList` (set-active / remove per row)
+ * mirroring `ClaudeConfigCard`.
  */
 
-import { AlertTriangle, Edit2, ExternalLink, HardDriveDownload, Key, Trash2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { Edit2, ExternalLink, Key, Loader2, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '../host/ui';
 import { Select } from '../host/ui';
+import { cn } from '../host/vendored/cn';
 
+import { openExternal } from '../externalLinksClient';
 import { AccountList } from './AccountList';
-import { CliImportControls } from './CliImportControls';
 import { ManualInputModal } from './ManualInputModal';
 import { OAuthFlow } from './OAuthFlow';
 import { StatusBadge } from './StatusBadge';
-import type { AccountMutationResult, CodexConfigCardProps, OAuthParams } from './types';
+import type { CodexConfigCardProps, ManualTokenVerifyFailure, OAuthParams } from './types';
+import { describeManualTokenError } from './types';
 
 type CodexAuthMethod = 'oauth' | 'manual';
+
+/** Poll cadence while a codex loopback sign-in is pending. */
+const LOOPBACK_POLL_INTERVAL_MS = 3_000;
+/** Stop polling after this long regardless of the host-side listener TTL. */
+const LOOPBACK_POLL_DEADLINE_MS = 10 * 60_000;
 
 export const CodexConfigCard = ({
   t,
   config,
   onStartOAuth,
   onExchangeToken,
+  onStartLoopbackLogin,
+  onPollLoopbackFlow,
+  onCancelLoopbackFlow,
   onSetManualToken,
   onClear,
   onRefresh,
   accounts,
   onSetActiveAccount,
-  onApplyAccountToCli,
   onUpdateAccountLabel,
   onRemoveAccount,
-  onImportFromCli,
-  autoImportEnabled,
-  onSetAutoImport,
-  externalCliDetected,
+  children,
 }: CodexConfigCardProps) => {
   // Auth method state
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<CodexAuthMethod>('oauth');
   const [accountLabel, setAccountLabel] = useState('');
 
-  // OAuth flow state
+  // OAuth flow state (manual-paste fallback)
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
   const [oAuthParams, setOAuthParams] = useState<OAuthParams | null>(null);
   const [authCode, setAuthCode] = useState('');
@@ -62,80 +68,89 @@ export const CodexConfigCard = ({
   // Action state
   const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Non-fatal warning: "switched, but couldn't update the terminal CLI store".
-  const [externalSyncWarning, setExternalSyncWarning] = useState<string | null>(null);
-
-  // CLI credential re-import (cli-token-import)
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const cliImportAvailable = Boolean(config?.cliImportAvailable);
-  const cliImportWired = Boolean(onImportFromCli && onSetAutoImport);
-
   const isMulti = Boolean(accounts && onSetActiveAccount && onRemoveAccount);
 
-  // Initial import (cli-token-import bootstrap): zero accounts + native CLI
-  // login detected → first-run "import existing CLI login" block.
-  const [isInitialImporting, setIsInitialImporting] = useState(false);
-  const showInitialImport = Boolean(
-    externalCliDetected && onImportFromCli && (!accounts || accounts.length === 0),
-  );
-  const handleInitialImport = useCallback(async () => {
-    if (!onImportFromCli) return;
-    setIsInitialImporting(true);
-    setError(null);
-    try {
-      const result = await onImportFromCli();
-      if (!result.success) {
-        setError(result.error ?? t('settings.accountTokens.importExternal.failed'));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setIsInitialImporting(false);
+  // Codex loopback sign-in state (v1.67 auto-complete; the PRIMARY path when
+  // the host exposes the verbs — older hosts fall back to the paste flow).
+  const loopbackSupported = Boolean(onStartLoopbackLogin && onPollLoopbackFlow);
+  const [loopback, setLoopback] = useState<{ sessionId: string; authUrl: string } | null>(null);
+  const [loopbackError, setLoopbackError] = useState<string | null>(null);
+  const [isLoopbackStarting, setIsLoopbackStarting] = useState(false);
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loopbackStartedAt = useRef(0);
+
+  const stopPollTimer = useCallback(() => {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
     }
-  }, [onImportFromCli, t]);
+  }, []);
 
-  // Active-account refresh inside AccountList; on failure offer CLI re-import.
-  const handleRefreshActive = useCallback(async (): Promise<boolean> => {
-    const ok = await onRefresh();
-    if (!ok && cliImportAvailable && cliImportWired) setImportDialogOpen(true);
-    return ok;
-  }, [onRefresh, cliImportAvailable, cliImportWired]);
-
-  // Surface a non-fatal external-sync failure as an inline warning.
-  const noteExternalSync = useCallback(
-    (result: AccountMutationResult) => {
-      if (result.externalSync && result.externalSync.ok === false) {
-        setExternalSyncWarning(t('settings.accountTokens.externalSync.warning'));
-      } else {
-        setExternalSyncWarning(null);
+  // Loopback poll loop: schedule the next poll while the sign-in is pending.
+  // EVERY tick updates state (a cloned `loopback` identity while pending) so
+  // the effect re-runs and schedules the next poll — the Kimi/Grok/Copilot
+  // cards' pattern. Without the clone a 'pending' tick leaves state untouched,
+  // the effect never re-runs, and exactly ONE poll ever fires — the panel then
+  // waits forever even after the host settles the flow done/error.
+  useEffect(() => {
+    if (!loopback) {
+      stopPollTimer();
+      return;
+    }
+    if (Date.now() - loopbackStartedAt.current > LOOPBACK_POLL_DEADLINE_MS) {
+      setLoopbackError(t('settings.accountTokens.codex.loopbackErrors.timeout'));
+      setLoopback(null);
+      return;
+    }
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const view = await onPollLoopbackFlow?.(loopback.sessionId);
+        if (view?.state === 'done') {
+          setLoopback(null);
+        } else if (view?.state === 'error') {
+          setLoopbackError(view.error ?? t('settings.accountTokens.codex.loopbackErrors.failed'));
+          setLoopback(null);
+        } else {
+          // Still pending (or no view yet): clone to re-arm the next tick.
+          setLoopback((prev) => (prev ? { ...prev } : prev));
+        }
+      } catch {
+        // A transient poll failure keeps the flow alive — the next tick
+        // retries; the host-side TTL is the real deadline.
+        setLoopback((prev) => (prev ? { ...prev } : prev));
       }
-    },
-    [t],
-  );
+    }, LOOPBACK_POLL_INTERVAL_MS);
+    return stopPollTimer;
+  }, [loopback, onPollLoopbackFlow, stopPollTimer, t]);
 
-  const handleSetActive = useCallback(
-    async (id: string): Promise<AccountMutationResult> => {
-      const result = onSetActiveAccount
-        ? await onSetActiveAccount(id)
-        : { success: false };
-      noteExternalSync(result);
-      return result;
-    },
-    [onSetActiveAccount, noteExternalSync],
-  );
+  useEffect(() => stopPollTimer, [stopPollTimer]);
 
-  const handleRemove = useCallback(
-    async (id: string): Promise<AccountMutationResult> => {
-      const result = onRemoveAccount ? await onRemoveAccount(id) : { success: false };
-      noteExternalSync(result);
-      return result;
-    },
-    [onRemoveAccount, noteExternalSync],
-  );
-
-  // Start OAuth flow
+  // Start the codex sign-in: the loopback flow when the host supports it
+  // (the browser auto-completes via 127.0.0.1:1455 — no code to paste), else
+  // the classic paste flow.
   const handleStartOAuth = useCallback(async () => {
     setOAuthError(null);
+    if (loopbackSupported) {
+      setLoopbackError(null);
+      setIsLoopbackStarting(true);
+      try {
+        const started = await onStartLoopbackLogin?.();
+        if (!started) return;
+        if (!started.ok) {
+          setOAuthError(started.error);
+          return;
+        }
+        loopbackStartedAt.current = Date.now();
+        setLoopback({ sessionId: started.sessionId, authUrl: started.authUrl });
+        // The sandboxed frame cannot window.open — the host opens the page.
+        void openExternal(started.authUrl);
+      } catch (err) {
+        setOAuthError(err instanceof Error ? err.message : 'Failed to start OAuth');
+      } finally {
+        setIsLoopbackStarting(false);
+      }
+      return;
+    }
     setIsOAuthInProgress(true);
     try {
       const params = await onStartOAuth();
@@ -144,7 +159,30 @@ export const CodexConfigCard = ({
       setOAuthError(err instanceof Error ? err.message : 'Failed to start OAuth');
       setIsOAuthInProgress(false);
     }
-  }, [onStartOAuth]);
+  }, [loopbackSupported, onStartLoopbackLogin, onStartOAuth]);
+
+  // Abandon the loopback sign-in and fall back to the classic paste flow
+  // (a FRESH manual flow — the loopback's state/verifier never crossed out).
+  const handleFallbackToPaste = useCallback(async () => {
+    const session = loopback;
+    setLoopback(null);
+    setLoopbackError(null);
+    if (session) await onCancelLoopbackFlow?.(session.sessionId);
+    setIsOAuthInProgress(true);
+    try {
+      const params = await onStartOAuth();
+      setOAuthParams(params);
+    } catch (err) {
+      setOAuthError(err instanceof Error ? err.message : 'Failed to start OAuth');
+      setIsOAuthInProgress(false);
+    }
+  }, [loopback, onCancelLoopbackFlow, onStartOAuth]);
+
+  const handleCancelLoopback = useCallback(async () => {
+    const session = loopback;
+    setLoopback(null);
+    if (session) await onCancelLoopbackFlow?.(session.sessionId);
+  }, [loopback, onCancelLoopbackFlow]);
 
   // Exchange OAuth code (appends a new account with the optional label).
   const handleExchangeToken = useCallback(async () => {
@@ -177,22 +215,30 @@ export const CodexConfigCard = ({
     setOAuthError(null);
   }, []);
 
-  // Manual token input (appends a new account with the optional label).
+  // Manual token input (appends a new account with the optional label). The
+  // v1.72 verify option rides the modal's extra payload (feature-detected
+  // host-side; a refusal keeps the modal open with the localized reason).
   const handleManualSubmit = useCallback(
-    async (accessToken: string) => {
+    async (accessToken: string, extra?: { verify?: boolean }) => {
       setManualError(null);
       setIsManualSubmitting(true);
       try {
-        await onSetManualToken(accessToken, accountLabel.trim() || undefined);
+        await onSetManualToken(
+          accessToken,
+          accountLabel.trim() || undefined,
+          extra?.verify !== undefined ? { verify: extra.verify } : undefined,
+        );
         setIsManualModalOpen(false);
         setAccountLabel('');
       } catch (err) {
-        setManualError(err instanceof Error ? err.message : 'Failed to save token');
+        setManualError(
+          describeManualTokenError(t, err as Error & { verifyFailure?: ManualTokenVerifyFailure }),
+        );
       } finally {
         setIsManualSubmitting(false);
       }
     },
-    [accountLabel, onSetManualToken],
+    [accountLabel, onSetManualToken, t],
   );
 
   // Clear config (single-account mode only — multi-account removes per-row).
@@ -242,48 +288,77 @@ export const CodexConfigCard = ({
         </div>
       ) : null}
 
-      {/* Non-fatal external-sync warning */}
-      {externalSyncWarning ? (
-        <div
-          className="flex items-start gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning"
-          data-testid="settings-codex-external-sync-warning"
-        >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{externalSyncWarning}</span>
-        </div>
-      ) : null}
-
-      {/* Cross-account hint: the native CLI file belongs to a DIFFERENT account,
-          so a failed refresh can't be recovered from it (cli-token-import). */}
-      {config?.cliFileForeignAccount &&
-      (config?.status === 'expired' || config?.status === 'error') ? (
-        <div
-          className="flex items-start gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning"
-          data-testid="settings-cli-foreign-file-hint"
-        >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
-            {config.cliFileForeignAccount.label
-              ? t('settings.accountTokens.cliImport.foreignFileNamed', {
-                  label: config.cliFileForeignAccount.label,
-                })
-              : t('settings.accountTokens.cliImport.foreignFile')}
-          </span>
-        </div>
-      ) : null}
-
       {/* Multi-account list (set active / refresh-expired / remove) */}
-      {isMulti && accounts && accounts.length > 0 ? (
+      {accounts && accounts.length > 0 && onSetActiveAccount && onRemoveAccount ? (
         <AccountList
+          providerId="codex"
           t={t}
           accounts={accounts}
-          onSetActive={handleSetActive}
-          onApplyToCli={onApplyAccountToCli}
+          onSetActive={onSetActiveAccount}
           onUpdateLabel={onUpdateAccountLabel}
-          onRemove={handleRemove}
-          onRefreshActive={handleRefreshActive}
+          onRemove={onRemoveAccount}
+          onRefreshActive={onRefresh}
           activeCanRefresh={config?.hasRefreshToken}
         />
+      ) : null}
+
+      {/* Codex loopback sign-in panel (auto-complete; no code to paste). */}
+      {loopback ? (
+        <div
+          className="space-y-3 rounded-md border border-border/40 bg-surface-2/40 p-3"
+          data-testid="settings-codex-loopback-panel"
+        >
+          <p className="text-sm text-foreground">
+            {t('settings.accountTokens.codex.loopbackWaiting')}
+          </p>
+          <code
+            className="block select-text break-all rounded bg-surface-1 px-2 py-1.5 text-xs text-text-muted"
+            data-testid="settings-codex-loopback-url"
+          >
+            {loopback.authUrl}
+          </code>
+          <p className="flex items-center gap-2 text-xs text-text-muted">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {t('settings.accountTokens.codex.loopbackHint')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void openExternal(loopback.authUrl)}
+              data-testid="settings-codex-loopback-reopen-btn"
+            >
+              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+              {t('settings.accountTokens.codex.reopenAuthPage')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleFallbackToPaste()}
+              data-testid="settings-codex-loopback-fallback-btn"
+            >
+              {t('settings.accountTokens.codex.fallbackToPaste')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleCancelLoopback()}
+              data-testid="settings-codex-loopback-cancel-btn"
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              {t('settings.accountTokens.codex.loopbackCancel')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {loopbackError ? (
+        <div
+          className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          data-testid="settings-codex-loopback-error"
+        >
+          {loopbackError}
+        </div>
       ) : null}
 
       {/* OAuth Flow UI */}
@@ -303,32 +378,6 @@ export const CodexConfigCard = ({
         />
       ) : (
         <>
-          {/* Initial import: zero accounts + native CLI login detected. */}
-          {showInitialImport ? (
-            <div
-              className="space-y-2 rounded-md border border-border/40 bg-surface-2/40 p-3 dark:border-border/60"
-              data-testid="settings-cli-initial-import"
-              data-provider="codex"
-            >
-              <p className="text-sm text-foreground">
-                {t('settings.accountTokens.importExternal.detected', { name: 'Codex' })}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t('settings.accountTokens.importExternal.hint')}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={isInitialImporting}
-                onClick={() => void handleInitialImport()}
-                data-testid="settings-cli-initial-import-btn"
-              >
-                <HardDriveDownload className="h-4 w-4 mr-2" />
-                {t('settings.accountTokens.importExternal.button')}
-              </Button>
-            </div>
-          ) : null}
-
           {/* Auth Method Selector — always shown in multi-account mode (each
               login appends a new account), else only when not configured. */}
           {isMulti || !isConfigured ? (
@@ -366,10 +415,15 @@ export const CodexConfigCard = ({
               ) : (
                 <Button
                   onClick={handleStartOAuth}
+                  disabled={isLoopbackStarting || loopback !== null}
                   className="flex-1"
                   data-testid="settings-codex-account-add-btn"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  {isLoopbackStarting ? (
+                    <Loader2 className={cn('h-4 w-4 mr-2 animate-spin')} />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                  )}
                   {isMulti
                     ? t('settings.accountTokens.accounts.addAccount')
                     : t('settings.accountTokens.actions.authorize')}
@@ -393,20 +447,6 @@ export const CodexConfigCard = ({
         </>
       )}
 
-      {/* CLI credential re-import (cli-token-import) */}
-      {cliImportWired && onImportFromCli && onSetAutoImport ? (
-        <CliImportControls
-          t={t}
-          switchId="codex-cli-auto-import"
-          importAvailable={cliImportAvailable}
-          autoImportEnabled={Boolean(autoImportEnabled)}
-          onSetAutoImport={onSetAutoImport}
-          onImportFromCli={onImportFromCli}
-          dialogOpen={importDialogOpen}
-          onDialogOpenChange={setImportDialogOpen}
-        />
-      ) : null}
-
       {/* Manual Input Modal */}
       <ManualInputModal
         t={t}
@@ -423,6 +463,9 @@ export const CodexConfigCard = ({
         accountLabel={accountLabel}
         onAccountLabelChange={setAccountLabel}
       />
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

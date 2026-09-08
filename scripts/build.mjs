@@ -30,3 +30,15 @@ for (const script of [
 ]) {
   runNode(`scripts/${script}`);
 }
+
+// This orchestrator is also called directly by the reproducibility gate, so
+// keep metadata stamping here rather than only in the npm wrapper. Stamping is
+// the final mutating step; verification that follows is deliberately read-only.
+runNode('node_modules/@elftia/plugin-kit/dist/cli.mjs', [
+  'stamp',
+  'dist/byo-providers',
+]);
+runNode('node_modules/@elftia/plugin-kit/dist/cli.mjs', [
+  'verify',
+  'dist/byo-providers',
+]);

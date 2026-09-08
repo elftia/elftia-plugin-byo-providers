@@ -20,7 +20,7 @@
  *
  * @module byo-providers/renderer/llmConfigClient
  */
-import type { HostModelTestResult } from '@byo/domain/plugin-types';
+import type { HostModelTestResult, HostProviderKeyQuota } from '@byo/domain/plugin-types';
 
 import type {
   ApiKeyEntry,
@@ -134,6 +134,11 @@ export const llmConfigClient = {
     invoke('llm.toggleApiKey', { id, enabled }),
   getKeyHealth: (providerId: string): Promise<KeyHealthMap> =>
     invoke('llm.getKeyHealth', { providerId }),
+  getKeyQuota: (
+    providerId: string,
+    keyId: string,
+    force?: boolean,
+  ): Promise<HostProviderKeyQuota> => invoke('llm.getKeyQuota', { providerId, keyId, force }),
 
   // ── Default model (router config) ───────────────────────────────────────────
   getRouterConfig: (): Promise<RouterConfig> => invoke('llm.getRouterConfig'),

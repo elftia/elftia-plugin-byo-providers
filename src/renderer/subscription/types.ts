@@ -6,7 +6,12 @@ import type {
   ClaudeAuthMethod,
   ClaudeTokenSanitized,
   CodexTokenSanitized,
+  CopilotTokenSanitized,
+  DeviceFlowView,
   GeminiTokenSanitized,
+  GrokTokenSanitized,
+  KimiDeviceFlowView,
+  KimiTokenSanitized,
   OAuthParams,
   OpenCodeGoTokenSanitized,
   SubscriptionAccountSanitized,
@@ -77,21 +82,47 @@ export interface ManualInputModalProps {
   platform: TokenPlatform;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (accessToken: string, extra?: { subscriptionLevel?: SubscriptionLevel; refreshToken?: string }) => Promise<void>;
+  onSubmit: (
+    accessToken: string,
+    extra?: {
+      subscriptionLevel?: SubscriptionLevel;
+      refreshToken?: string;
+      /** v1.72 — run the host's verify-before-persist probe (when supported). */
+      verify?: boolean;
+    },
+  ) => Promise<void>;
   isSubmitting: boolean;
   error: string | null;
   accountLabel?: string;
   onAccountLabelChange?: (label: string) => void;
+  /** v1.72 — the host honors the verify option (feature-detected). */
+  verifySupported?: boolean;
+}
+
+/**
+ * The secret-free structured refusal a verify-enabled paste can carry (v1.72).
+ * Local structural mirror of the host's `HostManualTokenVerifyFailure`.
+ */
+export interface ManualTokenVerifyFailure {
+  readonly provider: string;
+  readonly tier: 'local' | 'upstream';
+  readonly status?: number;
+  readonly reason?: string;
 }
 
 /** Base config card props */
 export interface BaseConfigCardProps {
   t: TranslationFn;
   isLoading?: boolean;
+  /**
+   * Bottom-of-card slot: the tab mounts the v1.70 `SubscriptionModelList`
+   * section here so it renders INSIDE the card container (native placement).
+   */
+  children?: React.ReactNode;
 }
 
 /** Props for ClaudeConfigCard */
-export interface ClaudeConfigCardProps extends BaseConfigCardProps, CliImportCardProps {
+export interface ClaudeConfigCardProps extends BaseConfigCardProps {
   config?: ClaudeTokenSanitized;
   onStartOAuth: () => Promise<OAuthParams>;
   // NOTE (byo-p2-subscription): the PKCE `verifier` is NOT a parameter — the
@@ -104,6 +135,7 @@ export interface ClaudeConfigCardProps extends BaseConfigCardProps, CliImportCar
     accessToken: string,
     subscriptionLevel?: SubscriptionLevel,
     label?: string,
+    options?: { verify?: boolean },
   ) => Promise<void>;
   onUpdateSubscriptionLevel: (level: SubscriptionLevel) => Promise<void>;
   onClear: () => Promise<void>;
@@ -111,51 +143,18 @@ export interface ClaudeConfigCardProps extends BaseConfigCardProps, CliImportCar
   // Multi-account (subscription-multi-account)
   accounts?: SubscriptionAccountSanitized[];
   onSetActiveAccount?: (id: string) => Promise<{ success: boolean; error?: string }>;
-  onApplyAccountToCli?: (id: string) => Promise<AccountMutationResult>;
   onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
   onRemoveAccount?: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
 
-/**
- * Result of an account mutation (set-active / remove). May carry a non-fatal
- * `externalSync` status when the external CLI native store could not be updated
- * (code-cli-account-switching D5). The renderer surfaces it as an inline warning.
- */
+/** Result of an internal account mutation. */
 export interface AccountMutationResult {
   success: boolean;
   error?: string;
-  externalSync?: { ok: boolean; reason?: string; error?: string };
-}
-
-/** Result of a user-driven CLI-credential re-import (cli-token-import). */
-export interface CliImportResult {
-  success: boolean;
-  error?: string;
-  refreshed?: boolean;
-}
-
-/**
- * Shared props for the CLI credential re-import affordance (cli-token-import),
- * mixed into the Claude / Codex config card props. All optional so the cards
- * still render without the feature wired.
- */
-export interface CliImportCardProps {
-  /** Re-import the active account's credential from the external CLI store. */
-  onImportFromCli?: () => Promise<CliImportResult>;
-  /** Current auto-import-on-refresh-failure toggle state. */
-  autoImportEnabled?: boolean;
-  /** Set the auto-import-on-refresh-failure toggle. */
-  onSetAutoImport?: (enabled: boolean) => Promise<void>;
-  /**
-   * Initial-import detection (cli-token-import bootstrap): the provider has
-   * ZERO accounts but a usable native CLI login exists on this machine —
-   * renders the "import existing CLI login" first-run block.
-   */
-  externalCliDetected?: boolean;
 }
 
 /** Props for CodexConfigCard (multi-account: code-cli-account-switching) */
-export interface CodexConfigCardProps extends BaseConfigCardProps, CliImportCardProps {
+export interface CodexConfigCardProps extends BaseConfigCardProps {
   config?: CodexTokenSanitized;
   onStartOAuth: () => Promise<OAuthParams>;
   /**
@@ -165,14 +164,31 @@ export interface CodexConfigCardProps extends BaseConfigCardProps, CliImportCard
    * plugin never holds it).
    */
   onExchangeToken: (code: string, state: string, label?: string) => Promise<void>;
+  /**
+   * Codex loopback sign-in (v1.67, optional — feature-detected): start the
+   * AUTO-COMPLETE flow (the host binds 127.0.0.1:1455 so the browser callback
+   * is captured host-side; no code to paste) + poll its token-free status.
+   * Absent on older hosts — the card falls back to the paste flow.
+   */
+  onStartLoopbackLogin?: () => Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  >;
+  onPollLoopbackFlow?: (
+    sessionId: string,
+  ) => Promise<{ sessionId: string; state: 'pending' | 'done' | 'error'; error?: string }>;
+  onCancelLoopbackFlow?: (sessionId: string) => Promise<void>;
   /** Set a manual token, appending a new account with an optional label. */
-  onSetManualToken: (accessToken: string, label?: string) => Promise<void>;
+  onSetManualToken: (
+    accessToken: string,
+    label?: string,
+    options?: { verify?: boolean },
+  ) => Promise<void>;
   onClear: () => Promise<void>;
   onRefresh: () => Promise<boolean>;
   // Multi-account (code-cli-account-switching)
   accounts?: SubscriptionAccountSanitized[];
   onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
-  onApplyAccountToCli?: (id: string) => Promise<AccountMutationResult>;
   onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
   onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
 }
@@ -201,7 +217,58 @@ export interface GeminiConfigCardProps extends BaseConfigCardProps {
   // `state` (from `onStartOAuth`) MUST be threaded back — the host looks the
   // retained PKCE verifier up by it; the verifier is NOT a parameter.
   onExchangeToken: (code: string, state: string) => Promise<void>;
-  onSetManualToken: (accessToken: string, refreshToken?: string) => Promise<void>;
+  onSetManualToken: (
+    accessToken: string,
+    refreshToken?: string,
+    options?: { verify?: boolean },
+  ) => Promise<void>;
+  onClear: () => Promise<void>;
+  onRefresh: () => Promise<boolean>;
+}
+
+/** Props for KimiConfigCard (RFC 8628 device flow; host holds the deviceCode) */
+export interface KimiConfigCardProps extends BaseConfigCardProps {
+  config?: KimiTokenSanitized;
+  accounts?: SubscriptionAccountSanitized[];
+  /** Start a device flow; the view carries ONLY display fields. */
+  onStartLogin: () => Promise<KimiDeviceFlowView>;
+  onPollFlow: (sessionId: string) => Promise<KimiDeviceFlowView>;
+  onCancelFlow: (sessionId: string) => Promise<void>;
+  onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onClear: () => Promise<void>;
+  onRefresh: () => Promise<boolean>;
+}
+
+/** Props for GrokConfigCard (RFC 8628 device flow; host holds the deviceCode) */
+export interface GrokConfigCardProps extends BaseConfigCardProps {
+  config?: GrokTokenSanitized;
+  accounts?: SubscriptionAccountSanitized[];
+  onStartLogin: () => Promise<DeviceFlowView>;
+  onPollFlow: (sessionId: string) => Promise<DeviceFlowView>;
+  onCancelFlow: (sessionId: string) => Promise<void>;
+  onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onClear: () => Promise<void>;
+  onRefresh: () => Promise<boolean>;
+}
+
+/**
+ * Props for CopilotConfigCard (RFC 8628 device flow; host holds the deviceCode
+ * AND the optional enterprise domain — only the normalized domain crosses back
+ * in the flow view for display).
+ */
+export interface CopilotConfigCardProps extends BaseConfigCardProps {
+  config?: CopilotTokenSanitized;
+  accounts?: SubscriptionAccountSanitized[];
+  onStartLogin: (enterpriseUrl?: string) => Promise<DeviceFlowView>;
+  onPollFlow: (sessionId: string) => Promise<DeviceFlowView>;
+  onCancelFlow: (sessionId: string) => Promise<void>;
+  onSetActiveAccount?: (id: string) => Promise<AccountMutationResult>;
+  onUpdateAccountLabel?: (id: string, label: string) => Promise<AccountMutationResult>;
+  onRemoveAccount?: (id: string) => Promise<AccountMutationResult>;
   onClear: () => Promise<void>;
   onRefresh: () => Promise<boolean>;
 }
@@ -216,7 +283,12 @@ export type {
   ClaudeAuthMethod,
   ClaudeTokenSanitized,
   CodexTokenSanitized,
+  CopilotTokenSanitized,
+  DeviceFlowView,
   GeminiTokenSanitized,
+  GrokTokenSanitized,
+  KimiDeviceFlowView,
+  KimiTokenSanitized,
   OAuthParams,
   OpenCodeGoTokenSanitized,
   SubscriptionAccountSanitized,
@@ -224,3 +296,26 @@ export type {
   TokenPlatform,
   TokenStatus,
 };
+
+/**
+ * Render a verify-refusal into the localized message taxonomy (v1.72):
+ * ONLY `unauthorized` (HTTP 401) means the token itself is INVALID — every
+ * other reason (forbidden / rate-limited / timeout / network-error /
+ * server-error / http-error) is a COULD-NOT-VERIFY (retryable) outcome, never
+ * an invalid-token verdict. A non-verify error falls back to its raw message.
+ */
+export function describeManualTokenError(
+  t: TranslationFn,
+  error: { message?: string; verifyFailure?: ManualTokenVerifyFailure },
+): string {
+  const failure = error.verifyFailure;
+  if (failure && typeof failure.reason === 'string') {
+    if (failure.reason === 'unauthorized' || failure.reason === 'no-token') {
+      return t('settings.accountTokens.manual.verify.invalid');
+    }
+    return t('settings.accountTokens.manual.verify.couldNotVerify', {
+      reason: failure.reason,
+    });
+  }
+  return error.message ?? '';
+}

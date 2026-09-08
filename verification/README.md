@@ -28,13 +28,15 @@ The aggregate verification covers:
 - package/manifest/SDK/entry parity;
 - exact seven-permission audit;
 - host-private, Electron, browser-process, and duplicate-React leak guards;
-- two clean builds with an identical normalized file list and SHA-256 hashes;
+- two isolated temporary checkouts with byte-identical raw trees, EPKGs, and
+  EPKG v2 sidecars;
 - plugin-kit validation of the completed `dist/byo-providers/` tree via
   `npm run verify:dist`;
-- plugin-kit release of `release/0.2.12/byo-providers.epkg` as a standard ZIP
+- plugin-kit release of `release/0.2.14/byo-providers.epkg` as a standard ZIP
   container plus the same-stem `byo-providers.json` integrity sidecar.
 
-The normalized 35-file artifact inventory and hashes are recorded in
+The normalized 35-file artifact inventory, tree hash, EPKG hash, and sidecar
+hash are recorded in
 `reproducibility.json`.
 
 Host extraction acceptance was checked with scoped Git status/diff:

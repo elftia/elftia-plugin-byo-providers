@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { activate } from '../src/main';
 
@@ -131,6 +131,13 @@ const RELAY_CASES: RelayCase[] = [
     method: 'toggleApiKey',
     payload: { id: 'key-a', enabled: false },
     args: [{ id: 'key-a', enabled: false }],
+  },
+  {
+    ipc: 'llm.getKeyQuota',
+    service: 'llmConfig',
+    method: 'getProviderKeyQuota',
+    payload: { providerId: 112, keyId: 113, force: false },
+    args: ['112', '113', false],
   },
   {
     ipc: 'llm.getKeyHealth',
@@ -363,25 +370,109 @@ const RELAY_CASES: RelayCase[] = [
     args: [{ authorizationCode: 'code-g', state: 'state-g' }],
   },
   {
-    ipc: 'subAuth.importFromExternalCli',
+    ipc: 'subAuth.startKimiDeviceFlow',
     service: 'subscriptionAuth',
-    method: 'importFromExternalCli',
-    payload: { platform: 401 },
-    args: ['401'],
+    method: 'startKimiDeviceFlow',
+    payload: undefined,
+    args: [],
   },
   {
-    ipc: 'subAuth.getCliAutoImport',
+    ipc: 'subAuth.pollKimiDeviceFlow',
     service: 'subscriptionAuth',
-    method: 'getCliAutoImport',
-    payload: { provider: 402 },
-    args: ['402'],
+    method: 'pollKimiDeviceFlow',
+    payload: { sessionId: 'kdf-x' },
+    args: ['kdf-x'],
   },
   {
-    ipc: 'subAuth.setCliAutoImport',
+    ipc: 'subAuth.cancelKimiDeviceFlow',
     service: 'subscriptionAuth',
-    method: 'setCliAutoImport',
-    payload: { provider: 403, enabled: 1 },
-    args: ['403', true],
+    method: 'cancelKimiDeviceFlow',
+    payload: { sessionId: 'kdf-x' },
+    args: ['kdf-x'],
+  },
+  {
+    ipc: 'subAuth.refreshKimiToken',
+    service: 'subscriptionAuth',
+    method: 'refreshKimiToken',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.startGrokDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'startGrokDeviceFlow',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.pollGrokDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'pollGrokDeviceFlow',
+    payload: { sessionId: 'gdf-x' },
+    args: ['gdf-x'],
+  },
+  {
+    ipc: 'subAuth.cancelGrokDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'cancelGrokDeviceFlow',
+    payload: { sessionId: 'gdf-x' },
+    args: ['gdf-x'],
+  },
+  {
+    ipc: 'subAuth.refreshGrokToken',
+    service: 'subscriptionAuth',
+    method: 'refreshGrokToken',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.startCopilotDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'startCopilotDeviceFlow',
+    payload: { enterpriseUrl: 'company.ghe.com' },
+    args: ['company.ghe.com'],
+  },
+  {
+    ipc: 'subAuth.pollCopilotDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'pollCopilotDeviceFlow',
+    payload: { sessionId: 'cdf-x' },
+    args: ['cdf-x'],
+  },
+  {
+    ipc: 'subAuth.cancelCopilotDeviceFlow',
+    service: 'subscriptionAuth',
+    method: 'cancelCopilotDeviceFlow',
+    payload: { sessionId: 'cdf-x' },
+    args: ['cdf-x'],
+  },
+  {
+    ipc: 'subAuth.refreshCopilotToken',
+    service: 'subscriptionAuth',
+    method: 'refreshCopilotToken',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.startCodexLoopbackLogin',
+    service: 'subscriptionAuth',
+    method: 'startCodexLoopbackLogin',
+    payload: undefined,
+    args: [],
+  },
+  {
+    ipc: 'subAuth.pollCodexLoopbackLogin',
+    service: 'subscriptionAuth',
+    method: 'pollCodexLoopbackLogin',
+    payload: { sessionId: 'cxlb-x' },
+    args: ['cxlb-x'],
+  },
+  {
+    ipc: 'subAuth.cancelCodexLoopbackLogin',
+    service: 'subscriptionAuth',
+    method: 'cancelCodexLoopbackLogin',
+    payload: { sessionId: 'cxlb-x' },
+    args: ['cxlb-x'],
   },
   {
     ipc: 'subAuth.getSanitized',
@@ -418,18 +509,38 @@ const RELAY_CASES: RelayCase[] = [
     args: ['409', '410', '411'],
   },
   {
-    ipc: 'subAuth.applyAccountToCli',
-    service: 'subscriptionAuth',
-    method: 'applyAccountToCli',
-    payload: { provider: 412, id: 413 },
-    args: ['412', '413'],
-  },
-  {
     ipc: 'subAuth.refreshAccount',
     service: 'subscriptionAuth',
     method: 'refreshAccount',
     payload: { provider: 414, id: 415 },
     args: ['414', '415'],
+  },
+  {
+    ipc: 'subAuth.getAccountAllowance',
+    service: 'subscriptionAuth',
+    method: 'getAccountAllowance',
+    payload: { provider: 416, id: 417, force: true },
+    args: ['416', '417', true],
+  },
+  {
+    ipc: 'subAuth.getSubscriptionModels',
+    service: 'subscriptionAuth',
+    method: 'getSubscriptionModels',
+    args: [],
+  },
+  {
+    ipc: 'subAuth.setSubscriptionExtraModels',
+    service: 'subscriptionAuth',
+    method: 'setSubscriptionExtraModels',
+    payload: { providerId: 423, models: [{ id: 'custom-model', kind: 'chat' }] },
+    args: ['423', [{ id: 'custom-model', kind: 'chat' }]],
+  },
+  {
+    ipc: 'subAuth.setSubscriptionModelEnabled',
+    service: 'subscriptionAuth',
+    method: 'setSubscriptionModelEnabled',
+    payload: { providerId: 423, modelId: 'built-in-model', enabled: false },
+    args: ['423', 'built-in-model', false],
   },
   {
     ipc: 'subAuth.clearConfig',
@@ -483,21 +594,22 @@ const RELAY_CASES: RelayCase[] = [
     service: 'subscriptionAuth',
     method: 'setClaudeManualToken',
     payload: { accessToken: 419, subscriptionLevel: 'max', label: 'Claude manual' },
-    args: ['419', 'max', 'Claude manual'],
+    // v1.72: the trailing `undefined` is the absent verify option (legacy path).
+    args: ['419', 'max', 'Claude manual', undefined],
   },
   {
     ipc: 'subAuth.setCodexManualToken',
     service: 'subscriptionAuth',
     method: 'setCodexManualToken',
     payload: { accessToken: 420, label: 'Codex manual' },
-    args: ['420', 'Codex manual'],
+    args: ['420', 'Codex manual', undefined],
   },
   {
     ipc: 'subAuth.setGeminiManualToken',
     service: 'subscriptionAuth',
     method: 'setGeminiManualToken',
     payload: { accessToken: 421, refreshToken: 'refresh-inward' },
-    args: ['421', 'refresh-inward'],
+    args: ['421', 'refresh-inward', undefined],
   },
   {
     ipc: 'subAuth.updateClaudeSubscriptionLevel',
@@ -605,6 +717,13 @@ const RELAY_CASES: RelayCase[] = [
     payload: { passphrase: 602 },
     args: [{ passphrase: '602' }],
   },
+  {
+    ipc: 'nativeOps.openExternal',
+    service: 'externalLinks',
+    method: 'openExternal',
+    payload: { url: 'https://x.ai/device' },
+    args: ['https://x.ai/device'],
+  },
 ];
 
 const SERVICE_NAMES = [
@@ -616,6 +735,7 @@ const SERVICE_NAMES = [
   'cliRuntime',
   'objectStorageConfig',
   'secretsPack',
+  'externalLinks',
 ] as const;
 
 function captureMethods(services: Record<string, unknown>): Record<string, IpcHandler> {
@@ -668,9 +788,18 @@ async function expectRelay(
 describe('main activation', () => {
   it('registers the complete current IPC method set in canonical order', () => {
     const methods = captureMethods({});
+    // v1.72 (`subscription-token-probe`): the verify-support probe registers
+    // right before the manual-token setters. It relays NO service method (a
+    // version read), so it is not a RelayCase — splice it into the canonical
+    // order instead (pinned here in registration position).
     const expectedMethods = RELAY_CASES.map(({ ipc }) => ipc);
+    expectedMethods.splice(
+      expectedMethods.indexOf('subAuth.setClaudeManualToken'),
+      0,
+      'subAuth.manualTokenVerifySupported',
+    );
 
-    expect(expectedMethods).toHaveLength(85);
+    expect(expectedMethods).toHaveLength(103);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });
@@ -713,17 +842,19 @@ describe('main activation', () => {
         args: [[]],
       },
       {
-        ipc: 'subAuth.setCliAutoImport',
-        service: 'subscriptionAuth',
-        method: 'setCliAutoImport',
-        payload: { provider: 703, enabled: 0 },
-        args: ['703', false],
-      },
-      {
         ipc: 'subAuth.setClaudeManualToken',
         service: 'subscriptionAuth',
         method: 'setClaudeManualToken',
-        args: ['', undefined, undefined],
+        args: ['', undefined, undefined, undefined],
+      },
+      {
+        // v1.72 — verify:true maps onto the port option; anything else (or
+        // absent) is the legacy `undefined` (pinned by the case above).
+        ipc: 'subAuth.setCodexManualToken',
+        service: 'subscriptionAuth',
+        method: 'setCodexManualToken',
+        payload: { accessToken: 'tok', verify: true },
+        args: ['tok', undefined, { verify: true }],
       },
       {
         ipc: 'secretsPack.export',
@@ -743,5 +874,53 @@ describe('main activation', () => {
     for (const [name, handler] of Object.entries(methods)) {
       await expect(handler({}), name).rejects.toThrow('host.services.');
     }
+  });
+
+  it('reports manual-token verify support from the host API version (v1.72)', async () => {
+    const probeFor = (version: string | undefined): IpcHandler => {
+      let methods: Record<string, IpcHandler> = {};
+      activate({
+        version,
+        services: { subscriptionAuth: {} },
+        registerIpcMethods(value: Record<string, IpcHandler>) {
+          methods = value;
+        },
+      } as never);
+      return methods['subAuth.manualTokenVerifySupported'] as IpcHandler;
+    };
+    await expect(probeFor('1.72.0')({})).resolves.toEqual({ supported: true });
+    await expect(probeFor('1.73.1')({})).resolves.toEqual({ supported: true });
+    await expect(probeFor('1.71.0')({})).resolves.toEqual({ supported: false });
+    await expect(probeFor(undefined)({})).resolves.toEqual({ supported: false });
+  });
+
+  it('degrades the v1.70 model verbs to an explicit unsupported marker on older hosts', async () => {
+    // Host port present but WITHOUT the v1.70 verbs (pre-1.70 host): the relays
+    // resolve the `{ error: 'unsupported' }` marker — never a fabricated empty
+    // view — so the renderer can hide the model sections entirely.
+    const methods = captureMethods({
+      subscriptionAuth: { getSanitized: async () => ({}) },
+    });
+    await expect(methods['subAuth.getSubscriptionModels']()).resolves.toEqual({
+      error: 'unsupported',
+    });
+    await expect(
+      methods['subAuth.setSubscriptionExtraModels']({
+        providerId: 'claude',
+        models: [],
+      }),
+    ).resolves.toEqual({ error: 'unsupported' });
+    await expect(methods['subAuth.setSubscriptionModelEnabled']({
+      providerId: 'claude', modelId: 'claude-opus-5', enabled: false,
+    })).resolves.toEqual({ error: 'unsupported' });
+  });
+
+  it('rejects a non-boolean model enable value without mutating the host', async () => {
+    const setEnabled = vi.fn();
+    const methods = captureMethods({ subscriptionAuth: { setSubscriptionModelEnabled: setEnabled } });
+    await expect(methods['subAuth.setSubscriptionModelEnabled']({
+      providerId: 'claude', modelId: 'claude-opus-5', enabled: 'false',
+    })).rejects.toThrow('enabled must be a boolean');
+    expect(setEnabled).not.toHaveBeenCalled();
   });
 });

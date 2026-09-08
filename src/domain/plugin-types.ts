@@ -10,7 +10,6 @@ import type {
 export type {
   AgentUiHostApi,
   HostAccountTokensSanitized,
-  HostCliImportResult,
   HostMaskedMediaProvider,
   HostMaskedSearchProviderConfig,
   HostMediaType,
@@ -67,6 +66,12 @@ export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
 export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
   /** v1.50 — reveal the stored provider key (user-initiated display only). */
   revealProviderKey?(providerId: string): Promise<HostKeyRevealResult>;
+  /** v1.64 — provider pool-key plan quota (optional; feature-detected). */
+  getProviderKeyQuota?(
+    providerId: string,
+    keyId: string,
+    force?: boolean,
+  ): Promise<HostProviderKeyQuota>;
 }
 
 export interface HostCliBackendConfig {
@@ -202,6 +207,45 @@ export interface HostObjectStorageConfigLike {
   setDefaultProvider(id: string | null): Promise<HostObjectStorageMutationResult>;
 }
 
+/**
+ * Secret-free account allowance snapshot (host-API v1.64). Local structural
+ * mirror — the plugin pins an older SDK (Kimi-flow precedent). Unknown /
+ * unsupported quota is explicit, never a measured 0%.
+ */
+export interface HostAllowanceWindow {
+  readonly id: string;
+  readonly label: string;
+  readonly scope: string;
+  readonly modelFamily?: string;
+  readonly usedPercent: number | null;
+  readonly windowMinutes?: number;
+  readonly resetsAt?: string;
+  readonly remainingSeconds?: number;
+  readonly state: string;
+}
+
+export interface HostAccountAllowanceSnapshot {
+  readonly providerId: string;
+  readonly accountId: string;
+  readonly source: string;
+  readonly observedAt: string;
+  readonly expiresAt?: string;
+  readonly windows: HostAllowanceWindow[];
+  readonly lastErrorCode?: string;
+  readonly primaryOverSecondaryLimitPercent?: number;
+}
+
+/** Secret-free plan quota for one provider pool key (host-API v1.64). */
+export interface HostProviderKeyQuota {
+  readonly providerId: string;
+  readonly keyId: string;
+  readonly supported: boolean;
+  readonly observedAt: string;
+  readonly expiresAt?: string;
+  readonly windows: HostAllowanceWindow[];
+  readonly lastErrorCode?: string;
+}
+
 export interface HostModelTestResult {
   readonly success: boolean;
   readonly message: string;
@@ -214,23 +258,167 @@ export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
   testModel(providerId: string, modelId: string): Promise<HostModelTestResult>;
 }
 
+/**
+ * Display-only view of one in-flight Kimi device flow (host-API v1.63). The
+ * `deviceCode` and all tokens stay HOST-side; only display fields cross.
+ * Local structural mirror — this plugin pins an older SDK (same pattern as
+ * the v1.50 reveal results above).
+ */
+export interface HostKimiDeviceFlowView {
+  readonly sessionId: string;
+  readonly state: 'pending' | 'done' | 'error';
+  readonly verificationUri: string;
+  readonly verificationUriComplete?: string;
+  readonly userCode: string;
+  readonly error?: string;
+}
+
+/**
+ * Display-only view of one in-flight Grok / Copilot device flow (host-API
+ * v1.65) — the same token-free shape as the Kimi view; copilot flows may
+ * carry the normalized `enterpriseUrl` back for display.
+ */
+export interface HostDeviceFlowView {
+  readonly sessionId: string;
+  readonly state: 'pending' | 'done' | 'error';
+  readonly verificationUri: string;
+  readonly verificationUriComplete?: string;
+  readonly userCode: string;
+  readonly error?: string;
+  /** Copilot only: the normalized GHE domain riding this flow (absent = personal). */
+  readonly enterpriseUrl?: string;
+}
+
+/** Secret-free model metadata (v1.70), with persisted enable state (v1.71). */
+export interface HostSubscriptionModelInfo {
+  readonly id: string;
+  readonly kind: 'chat' | 'image';
+  /** Absent on pre-v1.71 hosts means enabled. */
+  readonly enabled?: boolean;
+}
+
+/** Defaults and extras retain disabled entries so settings can re-enable them. */
+export interface HostSubscriptionProviderModels {
+  readonly configured?: boolean;
+  readonly defaults: HostSubscriptionModelInfo[];
+  readonly extras: HostSubscriptionModelInfo[];
+  readonly effective: HostSubscriptionModelInfo[];
+}
+
+/** The whole subscription-model view (host-API v1.70), keyed by providerId. */
+export type HostSubscriptionModelsView = Record<string, HostSubscriptionProviderModels>;
+
+/**
+ * v1.72 (`subscription-token-probe`) — OPTIONAL manual-token setter options.
+ * ADDITIVE: on a pre-v1.72 host the extra argument is ignored and the paste
+ * keeps the persist-always semantics.
+ */
+export interface HostManualTokenSetOptions {
+  /**
+   * Verify-before-persist: run the zero-cost token probe FIRST; persist ONLY
+   * on a pass. On a refusal the store stays unchanged and the return carries
+   * `{ success: false, verifyFailure }`.
+   */
+  readonly verify?: boolean;
+}
+
+/**
+ * The secret-free structured reason a verify-enabled paste was refused
+ * (v1.72): which provider, which probe tier answered, and the HTTP status or
+ * a sanitized reason code — a diagnostic to SHOW, never credential material.
+ */
+export interface HostManualTokenVerifyFailure {
+  readonly provider: string;
+  readonly tier: 'local' | 'upstream';
+  readonly status?: number;
+  readonly reason?: string;
+}
+
+/** The manual-token setters' return, widened with the v1.72 refusal reason. */
+export interface HostManualTokenOpResult {
+  readonly success: boolean;
+  readonly error?: string;
+  readonly expiresAt?: string;
+  readonly verifyFailure?: HostManualTokenVerifyFailure;
+}
+
 export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
   setClaudeManualToken(
     accessToken: string,
     subscriptionLevel?: string,
     label?: string,
-  ): Promise<{ success: boolean; error?: string }>;
+    options?: HostManualTokenSetOptions,
+  ): Promise<HostManualTokenOpResult>;
   setCodexManualToken(
     accessToken: string,
     label?: string,
-  ): Promise<{ success: boolean; error?: string }>;
+    options?: HostManualTokenSetOptions,
+  ): Promise<HostManualTokenOpResult>;
   setGeminiManualToken(
     accessToken: string,
     refreshToken?: string,
-  ): Promise<{ success: boolean; error?: string }>;
+    options?: HostManualTokenSetOptions,
+  ): Promise<HostManualTokenOpResult>;
   updateClaudeSubscriptionLevel(
     level: string,
   ): Promise<{ success: boolean; error?: string }>;
+  /** v1.64 — account allowance snapshot (optional; feature-detected). */
+  getAccountAllowance?(
+    providerId: string,
+    accountId: string,
+    force?: boolean,
+  ): Promise<HostAccountAllowanceSnapshot>;
+  /** v1.63 — Kimi RFC 8628 device flow (optional; feature-detected). */
+  startKimiDeviceFlow?(): Promise<HostKimiDeviceFlowView>;
+  pollKimiDeviceFlow?(sessionId: string): Promise<HostKimiDeviceFlowView>;
+  cancelKimiDeviceFlow?(sessionId: string): Promise<void>;
+  refreshKimiToken?(): Promise<boolean>;
+  /** v1.65 — Grok RFC 8628 device flow (optional; feature-detected). */
+  startGrokDeviceFlow?(): Promise<HostDeviceFlowView>;
+  pollGrokDeviceFlow?(sessionId: string): Promise<HostDeviceFlowView>;
+  cancelGrokDeviceFlow?(sessionId: string): Promise<void>;
+  refreshGrokToken?(): Promise<boolean>;
+  /**
+   * v1.65 — GitHub Copilot RFC 8628 device flow (optional; feature-detected).
+   * `enterpriseUrl` (bare host or full URL) routes the chain onto a GitHub
+   * Enterprise host; normalized + validated HOST-side.
+   */
+  startCopilotDeviceFlow?(enterpriseUrl?: string): Promise<HostDeviceFlowView>;
+  pollCopilotDeviceFlow?(sessionId: string): Promise<HostDeviceFlowView>;
+  cancelCopilotDeviceFlow?(sessionId: string): Promise<void>;
+  /** v1.65 — local no-op restamp (ghu_ tokens have no exchange endpoint). */
+  refreshCopilotToken?(): Promise<boolean>;
+  /**
+   * v1.67 — codex loopback sign-in (auto-complete via 127.0.0.1:1455; no code
+   * paste). Local structural mirror — this plugin pins an older SDK.
+   */
+  startCodexLoopbackLogin?(): Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  >;
+  pollCodexLoopbackLogin?(sessionId: string): Promise<{
+    sessionId: string;
+    state: 'pending' | 'done' | 'error';
+    error?: string;
+  }>;
+  cancelCodexLoopbackLogin?(sessionId: string): Promise<void>;
+  /**
+   * v1.70 — subscription model lists (defaults + user extras; optional;
+   * feature-detected). `setSubscriptionExtraModels` REPLACES the provider's
+   * whole extras list and returns the refreshed view. Older hosts lack BOTH
+   * verbs — the UI hides the model sections entirely (allowance precedent).
+   */
+  getSubscriptionModels?(): Promise<HostSubscriptionModelsView>;
+  setSubscriptionExtraModels?(
+    providerId: string,
+    models: HostSubscriptionModelInfo[],
+  ): Promise<HostSubscriptionModelsView>;
+  /** v1.71 — applies to built-in and user-added models; feature-detected. */
+  setSubscriptionModelEnabled?(
+    providerId: string,
+    modelId: string,
+    enabled: boolean,
+  ): Promise<HostSubscriptionModelsView>;
 }
 
 export type AgentBackendHostServices = SdkAgentBackendHostServices & {
@@ -241,7 +429,25 @@ export type AgentBackendHostServices = SdkAgentBackendHostServices & {
   readonly cliRuntime?: HostCliRuntimeLike;
   readonly secretsPack?: HostSecretsPackLike;
   readonly objectStorageConfig?: HostObjectStorageConfigLike;
+  /** v1.66 — system-browser URL opener (optional; feature-detected). */
+  readonly externalLinks?: HostExternalLinksLike;
 };
+
+/**
+ * Host system-browser URL opener (host-API v1.66). The plugin renderer frame
+ * is sandboxed (`allow-scripts`, opaque origin): `window.open` inside it is a
+ * silent no-op, so OAuth/device-flow verification pages MUST ride this port.
+ * Local structural mirror — this plugin pins an older SDK (Kimi-flow
+ * precedent).
+ */
+export interface HostExternalLinksLike {
+  /**
+   * Open an http(s) URL in the user's system browser. Resolves
+   * `{ ok: false, error: 'url-not-allowed' }` for non-http(s) URLs. Absent on
+   * older hosts — UI falls back to rendering the URL as selectable text.
+   */
+  openExternal(url: string): Promise<{ ok: boolean; error?: string }>;
+}
 
 export type AgentBackendHostApi = Omit<SdkAgentBackendHostApi, 'services'> & {
   readonly services: AgentBackendHostServices;

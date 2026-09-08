@@ -4,14 +4,15 @@
  * Allows users to manually enter access tokens for Claude, Codex, and Gemini.
  */
 
-import { RefreshCw, Save, X } from 'lucide-react';
-import { useCallback,useState } from 'react';
+import { RefreshCw, Save, ShieldCheck, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '../host/ui';
 import { Input } from '../host/ui';
 import { Select } from '../host/ui';
 import { RevealableInput } from '../host/vendored/revealable-input';
 
+import { subscriptionAuthClient } from '../subscriptionAuthClient';
 import type { ManualInputModalProps, SubscriptionLevel } from './types';
 
 const SUBSCRIPTION_LEVELS: SubscriptionLevel[] = ['Free', 'Pro', 'Max'];
@@ -26,22 +27,54 @@ export const ManualInputModal = ({
   error,
   accountLabel,
   onAccountLabelChange,
+  verifySupported,
 }: ManualInputModalProps) => {
   const [accessToken, setAccessToken] = useState('');
   const [refreshToken, setRefreshToken] = useState('');
   const [subscriptionLevel, setSubscriptionLevel] = useState<SubscriptionLevel>('Free');
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [showRefreshToken, setShowRefreshToken] = useState(false);
+  // v1.72 verify-before-persist: offered ONLY when the host honors the option
+  // (feature-detected; an older host silently ignores it, so a checked box
+  // would mislead). Default ON — an invalid token should never silently land.
+  const [hostVerifySupported, setHostVerifySupported] = useState(false);
+  const [verify, setVerify] = useState(true);
+
+  useEffect(() => {
+    if (verifySupported !== undefined) {
+      setHostVerifySupported(verifySupported);
+      return;
+    }
+    let alive = true;
+    subscriptionAuthClient
+      .manualTokenVerifySupported()
+      .then((supported) => {
+        if (alive) setHostVerifySupported(supported);
+      })
+      .catch(() => {
+        // Older main halves lack the probe — the checkbox stays hidden.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [verifySupported]);
 
   const handleSubmit = useCallback(async () => {
     if (!accessToken.trim()) return;
 
-    const extra: { subscriptionLevel?: SubscriptionLevel; refreshToken?: string } = {};
+    const extra: {
+      subscriptionLevel?: SubscriptionLevel;
+      refreshToken?: string;
+      verify?: boolean;
+    } = {};
     if (platform === 'claude') {
       extra.subscriptionLevel = subscriptionLevel;
     }
     if (platform === 'gemini' && refreshToken.trim()) {
       extra.refreshToken = refreshToken.trim();
+    }
+    if (hostVerifySupported) {
+      extra.verify = verify;
     }
 
     await onSubmit(accessToken.trim(), extra);
@@ -49,7 +82,7 @@ export const ManualInputModal = ({
     setAccessToken('');
     setRefreshToken('');
     setSubscriptionLevel('Free');
-  }, [accessToken, refreshToken, subscriptionLevel, platform, onSubmit]);
+  }, [accessToken, refreshToken, subscriptionLevel, platform, onSubmit, hostVerifySupported, verify]);
 
   const handleClose = useCallback(() => {
     setAccessToken('');
@@ -149,6 +182,30 @@ export const ManualInputModal = ({
               />
             </div>
           )}
+
+          {/* Verify-before-persist (v1.72; hosts that honor the option only) */}
+          {hostVerifySupported ? (
+            <label
+              className="flex cursor-pointer items-start gap-2 rounded-md bg-surface-2 p-3 text-xs text-text-muted"
+              data-testid="settings-manual-verify-toggle"
+            >
+              <input
+                type="checkbox"
+                checked={verify}
+                onChange={(event) => setVerify(event.target.checked)}
+                className="mt-0.5"
+                data-testid="settings-manual-verify-checkbox"
+              />
+              <span>
+                <ShieldCheck className="mr-1 inline h-3.5 w-3.5" />
+                <span className="font-medium text-foreground">
+                  {t('settings.accountTokens.manual.verify.label')}
+                </span>
+                <br />
+                {t('settings.accountTokens.manual.verify.desc')}
+              </span>
+            </label>
+          ) : null}
 
           {/* Hint */}
           <div className="rounded-md bg-surface-2 p-3 text-xs text-text-muted">

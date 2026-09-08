@@ -6,21 +6,23 @@
  * the 800-line tsx cap (subscription-multi-account D9).
  */
 
-import { AlertTriangle, Check, ChevronDown, ChevronRight, HardDriveDownload, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
 import { Button } from '../host/ui';
 import { Input } from '../host/ui';
 import { cn } from '../host/vendored/cn';
 
+import { AllowanceBars } from './AllowanceBars';
 import { StatusBadge } from './StatusBadge';
 import type { SubscriptionAccountSanitized, TranslationFn } from './types';
 
 export interface AccountListProps {
   t: TranslationFn;
+  /** When set, the expanded row shows the account allowance bars. */
+  providerId?: string;
   accounts: SubscriptionAccountSanitized[];
   onSetActive: (id: string) => Promise<{ success: boolean; error?: string }>;
-  onApplyToCli?: (id: string) => Promise<{ success: boolean; error?: string }>;
   onUpdateLabel?: (id: string, label: string) => Promise<{ success: boolean; error?: string }>;
   onRemove: (id: string) => Promise<{ success: boolean; error?: string }>;
   /**
@@ -38,8 +40,8 @@ export interface AccountListProps {
 export const AccountList = ({
   t,
   accounts,
+  providerId,
   onSetActive,
-  onApplyToCli,
   onUpdateLabel,
   onRemove,
   onRefreshActive,
@@ -72,34 +74,6 @@ export const AccountList = ({
       }
     },
     [onRemove],
-  );
-
-  const handleApplyToCli = useCallback(
-    async (id: string) => {
-      if (!onApplyToCli) return;
-      setBusyId(id);
-      setNotice(null);
-      try {
-        const result = await onApplyToCli(id);
-        setNotice({
-          kind: result.success ? 'success' : 'error',
-          text: result.success
-            ? t('settings.accountTokens.accounts.applyToCliSuccess')
-            : result.error ?? t('settings.accountTokens.accounts.applyToCliFailed'),
-        });
-      } catch (error) {
-        setNotice({
-          kind: 'error',
-          text:
-            error instanceof Error
-              ? error.message
-              : t('settings.accountTokens.accounts.applyToCliFailed'),
-        });
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [onApplyToCli, t],
   );
 
   const handleRefreshActive = useCallback(
@@ -253,20 +227,6 @@ export const AccountList = ({
                       {t('settings.accountTokens.accounts.setActive')}
                     </Button>
                   ) : null}
-                  {onApplyToCli ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isBusy}
-                      onClick={() => handleApplyToCli(account.id)}
-                      data-testid="settings-account-apply-cli-btn"
-                      data-account-id={account.id}
-                      title={t('settings.accountTokens.accounts.applyToCliTooltip')}
-                    >
-                      <HardDriveDownload className="mr-1 h-3.5 w-3.5" />
-                      {t('settings.accountTokens.accounts.applyToCli')}
-                    </Button>
-                  ) : null}
                   <Button
                     size="sm"
                     variant="outline"
@@ -364,6 +324,12 @@ export const AccountList = ({
                     </div>
                   ) : null}
                   </div>
+                  <AllowanceBars
+                    t={t}
+                    providerId={providerId}
+                    accountId={account.id}
+                    testidScope="account"
+                  />
                 </div>
               ) : null}
             </li>

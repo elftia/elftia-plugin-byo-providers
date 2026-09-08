@@ -13,6 +13,7 @@ const serviceToPermission = new Map([
   ['agentConfig', 'host:agent-config'],
   ['cliRuntime', 'host:cli-runtime'],
   ['secretsPack', 'host:secrets-pack'],
+  ['externalLinks', 'host:external-links'],
   ['secretsWrite', 'host:secrets-write'],
 ]);
 

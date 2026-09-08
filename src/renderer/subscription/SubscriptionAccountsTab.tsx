@@ -1,9 +1,8 @@
 /**
  * SubscriptionAccountsTab - subscription account management for Code CLI providers.
  *
- * Keeps OAuth/API-key account management separate from Code CLI installation and
- * detection. Claude/Codex accounts can still be applied to their native CLI
- * credential files per account row.
+ * Keeps app-owned OAuth/API-key accounts separate from native Code CLI logins,
+ * installation, and detection.
  */
 
 import { RefreshCw, UserCircle } from 'lucide-react';
@@ -12,9 +11,14 @@ import type { TranslateFn } from '../host/vendored/useTranslation';
 
 import { ClaudeConfigCard } from './ClaudeConfigCard';
 import { CodexConfigCard } from './CodexConfigCard';
+import { CopilotConfigCard } from './CopilotConfigCard';
 import { GeminiConfigCard } from './GeminiConfigCard';
+import { GrokConfigCard } from './GrokConfigCard';
+import { KimiConfigCard } from './KimiConfigCard';
 import { OpenCodeGoConfigCard } from './OpenCodeGoConfigCard';
+import { SubscriptionModelList } from './SubscriptionModelList';
 import { useSubscriptionAccounts } from './useSubscriptionAccounts';
+import { useSubscriptionModels } from './useSubscriptionModels';
 
 interface SubscriptionAccountsTabProps {
   t: TranslateFn;
@@ -33,14 +37,12 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     setClaudeManualToken,
     updateClaudeSubscriptionLevel,
     setActiveClaudeAccount,
-    applyClaudeAccountToCli,
     updateClaudeAccountLabel,
     removeClaudeAccount,
     startCodexOAuth,
     exchangeCodexToken,
     setCodexManualToken,
     setActiveCodexAccount,
-    applyCodexAccountToCli,
     updateCodexAccountLabel,
     removeCodexAccount,
     addOpenCodeGoAccount,
@@ -50,10 +52,52 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     startGeminiOAuth,
     exchangeGeminiToken,
     setGeminiManualToken,
+    startKimiLogin,
+    pollKimiFlow,
+    cancelKimiFlow,
+    setActiveKimiAccount,
+    removeKimiAccount,
+    updateKimiAccountLabel,
+    startGrokLogin,
+    pollGrokFlow,
+    cancelGrokFlow,
+    setActiveGrokAccount,
+    removeGrokAccount,
+    updateGrokAccountLabel,
+    startCopilotLogin,
+    pollCopilotFlow,
+    cancelCopilotFlow,
+    setActiveCopilotAccount,
+    removeCopilotAccount,
+    updateCopilotAccountLabel,
+    startCodexLoopbackLogin,
+    pollCodexLoopbackFlow,
+    cancelCodexLoopbackFlow,
     refreshToken,
-    importFromCli,
-    setCliAutoImport,
   } = useSubscriptionAccounts();
+
+  // v1.70 subscription model view — fetched ONCE per tab mount; on an older
+  // host `supported` stays false and every card's model section stays hidden.
+  const {
+    supported: modelsSupported,
+    view: modelsView,
+    setExtras: setModelExtras,
+    setEnabled: setModelEnabled,
+    toggleSupported,
+  } = useSubscriptionModels();
+
+  /** The per-card model section (mounted through each card's children slot). */
+  const modelSection = (providerId: string) =>
+    modelsSupported ? (
+      <SubscriptionModelList
+        t={t}
+        providerId={providerId}
+        models={modelsView?.[providerId]}
+        onSetExtras={setModelExtras}
+        onSetEnabled={setModelEnabled}
+        toggleSupported={toggleSupported}
+      />
+    ) : undefined;
 
   if (loading) {
     return (
@@ -93,7 +137,6 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           config={config?.claude}
           accounts={config?.claudeAccounts}
           onSetActiveAccount={(id) => setActiveClaudeAccount(id)}
-          onApplyAccountToCli={(id) => applyClaudeAccountToCli(id)}
           onUpdateAccountLabel={(id, label) => updateClaudeAccountLabel(id, label)}
           onRemoveAccount={(id) => removeClaudeAccount(id)}
           onStartOAuth={startClaudeOAuth}
@@ -114,18 +157,15 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('claude')}
           onRefresh={() => refreshToken('claude')}
-          onImportFromCli={() => importFromCli('claude')}
-          autoImportEnabled={config?.cliAutoImport?.claude}
-          onSetAutoImport={(enabled) => setCliAutoImport('claude', enabled)}
-          externalCliDetected={config?.externalCliDetected?.claude}
-        />
+        >
+          {modelSection('claude')}
+        </ClaudeConfigCard>
 
         <CodexConfigCard
           t={t}
           config={config?.codex}
           accounts={config?.codexAccounts}
           onSetActiveAccount={(id) => setActiveCodexAccount(id)}
-          onApplyAccountToCli={(id) => applyCodexAccountToCli(id)}
           onUpdateAccountLabel={(id, label) => updateCodexAccountLabel(id, label)}
           onRemoveAccount={(id) => removeCodexAccount(id)}
           onStartOAuth={startCodexOAuth}
@@ -134,16 +174,17 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
             // retained verifier up by `state` — the verifier never crosses here.
             await exchangeCodexToken(code, state, label);
           }}
+          onStartLoopbackLogin={startCodexLoopbackLogin}
+          onPollLoopbackFlow={pollCodexLoopbackFlow}
+          onCancelLoopbackFlow={cancelCodexLoopbackFlow}
           onSetManualToken={async (accessToken, label) => {
             await setCodexManualToken(accessToken, label);
           }}
           onClear={() => clearConfig('codex')}
           onRefresh={() => refreshToken('codex')}
-          onImportFromCli={() => importFromCli('codex')}
-          autoImportEnabled={config?.cliAutoImport?.codex}
-          onSetAutoImport={(enabled) => setCliAutoImport('codex', enabled)}
-          externalCliDetected={config?.externalCliDetected?.codex}
-        />
+        >
+          {modelSection('codex')}
+        </CodexConfigCard>
 
         <GeminiConfigCard
           t={t}
@@ -159,7 +200,57 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           }}
           onClear={() => clearConfig('gemini')}
           onRefresh={() => refreshToken('gemini')}
-        />
+        >
+          {modelSection('gemini')}
+        </GeminiConfigCard>
+
+        <KimiConfigCard
+          t={t}
+          config={config?.kimi}
+          accounts={config?.kimiAccounts}
+          onStartLogin={startKimiLogin}
+          onPollFlow={pollKimiFlow}
+          onCancelFlow={cancelKimiFlow}
+          onSetActiveAccount={(id) => setActiveKimiAccount(id)}
+          onUpdateAccountLabel={(id, label) => updateKimiAccountLabel(id, label)}
+          onRemoveAccount={(id) => removeKimiAccount(id)}
+          onClear={() => clearConfig('kimi')}
+          onRefresh={() => refreshToken('kimi')}
+        >
+          {modelSection('kimi')}
+        </KimiConfigCard>
+
+        <GrokConfigCard
+          t={t}
+          config={config?.grok}
+          accounts={config?.grokAccounts}
+          onStartLogin={startGrokLogin}
+          onPollFlow={pollGrokFlow}
+          onCancelFlow={cancelGrokFlow}
+          onSetActiveAccount={(id) => setActiveGrokAccount(id)}
+          onUpdateAccountLabel={(id, label) => updateGrokAccountLabel(id, label)}
+          onRemoveAccount={(id) => removeGrokAccount(id)}
+          onClear={() => clearConfig('grok')}
+          onRefresh={() => refreshToken('grok')}
+        >
+          {modelSection('grok')}
+        </GrokConfigCard>
+
+        <CopilotConfigCard
+          t={t}
+          config={config?.copilot}
+          accounts={config?.copilotAccounts}
+          onStartLogin={startCopilotLogin}
+          onPollFlow={pollCopilotFlow}
+          onCancelFlow={cancelCopilotFlow}
+          onSetActiveAccount={(id) => setActiveCopilotAccount(id)}
+          onUpdateAccountLabel={(id, label) => updateCopilotAccountLabel(id, label)}
+          onRemoveAccount={(id) => removeCopilotAccount(id)}
+          onClear={() => clearConfig('copilot')}
+          onRefresh={() => refreshToken('copilot')}
+        >
+          {modelSection('copilot')}
+        </CopilotConfigCard>
 
         <OpenCodeGoConfigCard
           t={t}
@@ -169,7 +260,9 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onSetActiveAccount={(id) => setActiveOpenCodeGoAccount(id)}
           onUpdateAccountLabel={(id, label) => updateOpenCodeGoAccountLabel(id, label)}
           onRemoveAccount={(id) => removeOpenCodeGoAccount(id)}
-        />
+        >
+          {modelSection('opencodego')}
+        </OpenCodeGoConfigCard>
       </div>
 
       <section className="rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4 md:p-5">

@@ -169,6 +169,11 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
       },
       "apiKeyPool": {
         "title": "API Key Pool",
+          "quota": {
+"title": "Plan quota",
+"refresh": "Refresh plan quota",
+"stateUnavailable": "Quota unavailable"
+          },
         "description": "Configure multiple API keys for load balancing. Each session sticks to one key to preserve prompt cache.",
         "defaultLabel": "Default",
         "weight": "Weight",
@@ -645,6 +650,11 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
       },
       "apiKeyPool": {
         "title": "API Key 池",
+          "quota": {
+            "title": "套餐额度",
+            "refresh": "刷新套餐额度",
+            "stateUnavailable": "暂无法获取额度"
+          },
         "description": "配置多个 API Key 实现负载均衡。每个会话绑定一个 Key 以保留 Prompt Cache。",
         "defaultLabel": "默认",
         "weight": "权重",
@@ -1121,6 +1131,11 @@ export const llmI18nSeed: Record<string, Record<string, unknown>> = {
       },
       "apiKeyPool": {
         "title": "APIキープール",
+          "quota": {
+"title": "プランクォータ",
+"refresh": "プランクォータを更新",
+"stateUnavailable": "クォータを取得できません"
+          },
         "description": "複数のAPIキーを設定してロードバランシングを行います。各セッションは1つのキーに固定され、プロンプトキャッシュが保持されます。",
         "defaultLabel": "デフォルト",
         "weight": "ウェイト",

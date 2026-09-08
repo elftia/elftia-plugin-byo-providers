@@ -11,7 +11,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
     "settings": {
       "accountTokens": {
         "title": "Account Tokens",
-        "description": "Configure OAuth tokens for external AI services. These tokens enable direct API access to Claude, Codex, and Gemini services.",
+        "description": "Manage accounts signed in within Elftia for Claude, Codex, and Gemini. Native CLI logins are managed separately.",
         "status": {
           "unconfigured": "Not configured",
           "authorized": "Authorized",
@@ -25,11 +25,61 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "codex": {
           "title": "Codex (OpenAI)",
-          "description": "OAuth token for OpenAI's Codex CLI"
+          "description": "OAuth token for OpenAI's Codex CLI",
+          "loopbackWaiting": "Complete the sign-in in your browser — Elftia picks it up automatically.",
+          "loopbackHint": "Waiting for the browser callback (127.0.0.1:1455)… the account is added automatically when done — no code to paste.",
+          "reopenAuthPage": "Reopen authorization page",
+          "fallbackToPaste": "Paste code manually instead",
+          "loopbackCancel": "Cancel",
+          "loopbackErrors": {
+            "timeout": "The sign-in timed out. Please start again.",
+            "failed": "The sign-in failed. Please start again."
+          }
         },
         "gemini": {
           "title": "Gemini (Google)",
           "description": "OAuth token for Google's Gemini CLI"
+        },
+        "kimi": {
+          "title": "Kimi Code (Moonshot)",
+          "description": "Sign in with your Kimi account using a device code; managed entirely inside Elftia.",
+          "addAccount": "Sign in with Kimi",
+          "flowInstructions": "Open the verification page and enter this code to sign in with your Kimi account.",
+          "openVerification": "Open verification page",
+          "waitingForApproval": "Waiting for approval…",
+          "cancel": "Cancel",
+          "flowDone": "Kimi account added.",
+          "flowErrors": {
+            "expired": "The device code expired or was denied. Please start again."
+          }
+        },
+        "grok": {
+          "title": "Grok (xAI SuperGrok)",
+          "description": "Sign in with your SuperGrok account using a device code; managed entirely inside Elftia.",
+          "addAccount": "Sign in with Grok",
+          "flowInstructions": "Open the verification page and enter this code to sign in with your xAI account.",
+          "openVerification": "Open verification page",
+          "waitingForApproval": "Waiting for approval…",
+          "cancel": "Cancel",
+          "flowDone": "Grok account added.",
+          "flowErrors": {
+            "expired": "The device code expired or was denied. Please start again."
+          }
+        },
+        "copilot": {
+          "title": "GitHub Copilot",
+          "description": "Sign in with GitHub using a device code; the long-lived token is managed entirely inside Elftia.",
+          "addAccount": "Sign in with GitHub",
+          "flowInstructions": "Open the verification page and enter this code to authorize the Copilot CLI app.",
+          "openVerification": "Open verification page",
+          "waitingForApproval": "Waiting for approval…",
+          "cancel": "Cancel",
+          "flowDone": "Copilot account added.",
+          "enterpriseLabel": "GitHub Enterprise domain (optional)",
+          "enterprisePlaceholder": "company.ghe.com — leave empty for personal GitHub",
+          "flowErrors": {
+            "expired": "The device code expired or was denied. Please start again."
+          }
         },
         "authMethod": {
           "label": "Authorization Method",
@@ -91,7 +141,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "oauthFlow": {
           "instructions": "Click the link below to authorize in your browser. After authorizing, paste the code here.",
           "pasteCode": "Authorization Code",
-          "codePlaceholder": "Paste the authorization code here (format: code#state)...",
+          "codePlaceholder": "Paste the authorization code here...",
           "authorize": "Complete Authorization",
           "emptyCode": "Please paste the authorization code.",
           "stateMismatch": "The pasted state does not match — possible CSRF. Please restart the authorization flow."
@@ -103,6 +153,12 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "refreshToken": "Refresh Token",
           "refreshToken.placeholder": "Used for automatic token refresh",
           "hint": "You can obtain the token from the developer settings page",
+          "verify": {
+            "label": "Verify before saving",
+            "desc": "Runs a free check against the provider first; an invalid token is not saved",
+            "invalid": "The token was rejected as invalid. Nothing was saved.",
+            "couldNotVerify": "Could not verify the token ({{reason}}). Check your connection and retry, or clear the checkbox to save without verification."
+          },
           "claude": {
             "description": "Manually enter Claude Access Token. You can get it from Claude.ai developer settings or other sources."
           },
@@ -119,10 +175,6 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "title": "Accounts",
           "active": "Active",
           "setActive": "Set active",
-          "applyToCli": "Apply to CLI",
-          "applyToCliTooltip": "Write this account to the native CLI credential file for standalone terminal sessions.",
-          "applyToCliSuccess": "Applied to the native CLI credential file.",
-          "applyToCliFailed": "Failed to update the native CLI credential file.",
           "remove": "Remove account",
           "addAccount": "Add account",
           "labelInput": "Account label",
@@ -144,36 +196,35 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "zenBaseUrlLabel": "Zen Base URL (optional)",
           "zenBaseUrlPlaceholder": "Override the default opencode-Zen host"
         },
-        "externalSync": {
-          "warning": "Switched the active account, but could not update the terminal CLI store. A standalone terminal session may still use the previous account."
+        "allowance": {
+          "title": "Usage quota",
+          "refresh": "Refresh usage quota",
+          "stateFresh": "Up to date",
+          "stateStale": "Stale — last known usage",
+          "stateUnavailable": "Usage unavailable",
+          "stateUnsupported": "No usage endpoint for this account type",
+          "resetsAt": "Resets at {{time}}"
         },
-        "cliImport": {
-          "autoImportLabel": "Auto-import from CLI on refresh failure",
-          "autoImportDesc": "If the CLI (e.g. Claude Code) refreshed the token before Elftia could, Elftia's own refresh fails. When enabled, Elftia automatically reads the current credential back from the CLI login file. Uses whichever account is currently signed in to the CLI.",
-          "importButton": "Import from CLI",
-          "dialogTitle": "Import credential from the CLI?",
-          "dialogDescription": "Token refresh failed — the CLI may have rotated the credential. Read the current token back from the CLI login file? This uses whichever account is currently signed in to the CLI.",
-          "importConfirm": "Import",
-          "importSuccess": "Imported the credential from the CLI.",
-          "importRefreshed": "Imported and refreshed the credential from the CLI.",
-          "importFailed": "Could not import from the CLI.",
-          "notRotated": "The CLI's stored credential is the same one that just failed — please re-authorize.",
-          "lineageMismatch": "The CLI login file belongs to a different account — set that account active first, or re-authorize.",
-          "foreignFileNamed": "Refresh failed. The native CLI login file currently belongs to the account \"{{label}}\", so it can't recover this account. Re-authorize this account, or switch the active account to \"{{label}}\".",
-          "foreignFile": "Refresh failed. The native CLI login file belongs to a different account, so it can't recover this account. Re-authorize this account."
+        "models": {
+          "title": "Models",
+          "add": "+ Add model",
+          "kindChat": "Chat",
+          "kindImage": "Image",
+          "enabled": "Model enabled",
+          "toggleUnsupported": "Update Elftia to enable or disable subscription models.",
+          "removeModel": "Remove model",
+          "placeholder": "Model id",
+          "save": "Save",
+          "errorEmpty": "Enter a model id.",
+          "errorDuplicate": "This model already exists.",
+          "errorSave": "Failed to save models."
         },
         "errors": {
           "refreshFailed": "Failed to refresh token"
         },
         "info": {
           "title": "About Account Tokens",
-          "description": "These tokens are used to authenticate with external AI services. Tokens are securely encrypted and stored locally. The app will automatically refresh tokens before they expire."
-        },
-        "importExternal": {
-          "detected": "An existing {{name}} CLI login was found on this machine.",
-          "hint": "Importing creates an account from it and keeps it fresh: after each token refresh the CLI login file is updated too, so the terminal CLI stays signed in.",
-          "button": "Import existing CLI login",
-          "failed": "Import failed. Please sign in manually."
+          "description": "Tokens are securely encrypted and stored locally. Elftia refreshes its own account tokens without reading or writing native CLI credential files. Existing imported accounts are retained; if refreshing one fails, sign in independently within Elftia to obtain a separate login instead of importing from the CLI again."
         }
       }
     }
@@ -182,7 +233,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
     "settings": {
       "accountTokens": {
         "title": "账号Token",
-        "description": "配置外部AI服务的OAuth令牌。这些令牌可以直接访问Claude、Codex和Gemini服务的API。",
+        "description": "管理在 Elftia 内登录的 Claude、Codex 和 Gemini 账号。本机 CLI 登录独立管理。",
         "status": {
           "unconfigured": "未配置",
           "authorized": "已授权",
@@ -196,11 +247,61 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "codex": {
           "title": "Codex (OpenAI)",
-          "description": "OpenAI Codex CLI的OAuth令牌"
+          "description": "OpenAI Codex CLI的OAuth令牌",
+          "loopbackWaiting": "在浏览器中完成登录即可，Elftia 会自动完成授权。",
+          "loopbackHint": "等待浏览器回调（127.0.0.1:1455）…完成后自动添加账号，无需粘贴授权码。",
+          "reopenAuthPage": "重新打开授权页面",
+          "fallbackToPaste": "改为手动粘贴授权码",
+          "loopbackCancel": "取消",
+          "loopbackErrors": {
+            "timeout": "登录超时，请重新开始。",
+            "failed": "登录失败，请重新开始。"
+          }
         },
         "gemini": {
           "title": "Gemini (Google)",
           "description": "Google Gemini CLI的OAuth令牌"
+        },
+        "kimi": {
+          "title": "Kimi Code（月之暗面）",
+          "description": "使用设备码登录 Kimi 账号，凭证完全由 Elftia 内部管理。",
+          "addAccount": "登录 Kimi",
+          "flowInstructions": "打开验证页面并输入此代码，使用你的 Kimi 账号登录。",
+          "openVerification": "打开验证页面",
+          "waitingForApproval": "等待授权确认…",
+          "cancel": "取消",
+          "flowDone": "已添加 Kimi 账号。",
+          "flowErrors": {
+            "expired": "设备码已过期或被拒绝，请重新开始。"
+          }
+        },
+        "grok": {
+          "title": "Grok（xAI SuperGrok）",
+          "description": "使用设备码登录 SuperGrok 账号，凭证完全由 Elftia 内部管理。",
+          "addAccount": "登录 Grok",
+          "flowInstructions": "打开验证页面并输入此代码，使用你的 xAI 账号登录。",
+          "openVerification": "打开验证页面",
+          "waitingForApproval": "等待授权确认…",
+          "cancel": "取消",
+          "flowDone": "已添加 Grok 账号。",
+          "flowErrors": {
+            "expired": "设备码已过期或被拒绝，请重新开始。"
+          }
+        },
+        "copilot": {
+          "title": "GitHub Copilot",
+          "description": "使用设备码通过 GitHub 登录，长期令牌完全由 Elftia 内部管理。",
+          "addAccount": "通过 GitHub 登录",
+          "flowInstructions": "打开验证页面并输入此代码，授权 Copilot CLI 应用。",
+          "openVerification": "打开验证页面",
+          "waitingForApproval": "等待授权确认…",
+          "cancel": "取消",
+          "flowDone": "已添加 Copilot 账号。",
+          "enterpriseLabel": "GitHub Enterprise 域名（可选）",
+          "enterprisePlaceholder": "company.ghe.com——个人 GitHub 请留空",
+          "flowErrors": {
+            "expired": "设备码已过期或被拒绝，请重新开始。"
+          }
         },
         "authMethod": {
           "label": "授权方式",
@@ -262,7 +363,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "oauthFlow": {
           "instructions": "点击下方链接在浏览器中授权。授权完成后，将代码粘贴到此处。",
           "pasteCode": "授权代码",
-          "codePlaceholder": "在此粘贴授权代码（格式：code#state）...",
+          "codePlaceholder": "在此粘贴授权代码...",
           "authorize": "完成授权",
           "emptyCode": "请粘贴授权代码。",
           "stateMismatch": "粘贴的 state 不匹配——可能存在 CSRF 风险。请重新发起授权流程。"
@@ -274,6 +375,12 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "refreshToken": "Refresh Token",
           "refreshToken.placeholder": "用于自动刷新 Access Token",
           "hint": "您可以从开发者设置页面获取令牌",
+          "verify": {
+            "label": "保存前验证",
+            "desc": "先向服务商发起一次免费校验；无效令牌不会被保存",
+            "invalid": "令牌被判定为无效，未保存。",
+            "couldNotVerify": "无法验证令牌（{{reason}}）。请检查网络后重试，或取消勾选以不验证直接保存。"
+          },
           "claude": {
             "description": "手动输入 Claude Access Token。您可以从 Claude.ai 开发者设置或其他来源获取。"
           },
@@ -290,10 +397,6 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "title": "账号",
           "active": "当前",
           "setActive": "设为当前",
-          "applyToCli": "应用到本机 CLI",
-          "applyToCliTooltip": "将此账号写入本机 CLI 的凭证文件，供终端单独启动时使用。",
-          "applyToCliSuccess": "已应用到本机 CLI 凭证文件。",
-          "applyToCliFailed": "更新本机 CLI 凭证文件失败。",
           "remove": "移除账号",
           "addAccount": "添加账号",
           "labelInput": "账号标签",
@@ -315,36 +418,35 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "zenBaseUrlLabel": "Zen Base URL（可选）",
           "zenBaseUrlPlaceholder": "覆盖默认的 opencode-Zen 主机地址"
         },
-        "externalSync": {
-          "warning": "已切换活跃账号，但未能更新终端 CLI 的凭证文件。在终端单独运行时可能仍会使用此前的账号。"
+        "allowance": {
+          "title": "用量额度",
+          "refresh": "刷新用量额度",
+          "stateFresh": "已更新",
+          "stateStale": "已过期——显示上次用量",
+          "stateUnavailable": "暂无法获取用量",
+          "stateUnsupported": "此账号类型没有用量接口",
+          "resetsAt": "{{time}} 重置"
         },
-        "cliImport": {
-          "autoImportLabel": "刷新失败时自动从 CLI 导入",
-          "autoImportDesc": "如果本机 CLI（如 Claude Code）抢先刷新了令牌，Elftia 自己再刷新就会失败。开启后，Elftia 会在刷新失败时自动从 CLI 的登录文件读回当前凭证。以 CLI 当前登录的账号为准。",
-          "importButton": "从 CLI 导入",
-          "dialogTitle": "从 CLI 导入凭证？",
-          "dialogDescription": "刷新令牌失败——可能是 CLI 已经轮换了凭证。是否从 CLI 的登录文件读回当前令牌？将以 CLI 当前登录的账号为准。",
-          "importConfirm": "导入",
-          "importSuccess": "已从 CLI 导入凭证。",
-          "importRefreshed": "已从 CLI 导入并刷新凭证。",
-          "importFailed": "无法从 CLI 导入。",
-          "notRotated": "CLI 中保存的凭证与刚刚刷新失败的是同一个——请重新授权。",
-          "lineageMismatch": "CLI 登录文件属于另一个账号——请先把该账号设为当前，或重新授权。",
-          "foreignFileNamed": "刷新失败。本机 CLI 登录文件当前属于账号「{{label}}」，无法用于恢复此账号。请重新授权此账号，或把当前账号切换为「{{label}}」。",
-          "foreignFile": "刷新失败。本机 CLI 登录文件属于另一个账号，无法用于恢复此账号。请重新授权此账号。"
+        "models": {
+          "title": "模型",
+          "add": "+ 添加模型",
+          "kindChat": "对话",
+          "kindImage": "画图",
+          "enabled": "启用模型",
+          "toggleUnsupported": "请更新 Elftia 以启用或停用订阅模型。",
+          "removeModel": "移除模型",
+          "placeholder": "模型 ID",
+          "save": "保存",
+          "errorEmpty": "请输入模型 ID。",
+          "errorDuplicate": "该模型已存在。",
+          "errorSave": "保存模型失败。"
         },
         "errors": {
           "refreshFailed": "刷新令牌失败"
         },
         "info": {
           "title": "关于账号Token",
-          "description": "这些令牌用于与外部AI服务进行身份验证。令牌将被安全加密并存储在本地。应用程序会在令牌过期前自动刷新。"
-        },
-        "importExternal": {
-          "detected": "检测到本机已有 {{name}} CLI 登录。",
-          "hint": "导入后将基于它创建账号并负责保鲜：每次刷新令牌都会同步更新 CLI 登录文件，终端里的 CLI 保持登录不掉线。",
-          "button": "导入现有 CLI 登录",
-          "failed": "导入失败，请手动登录。"
+          "description": "令牌经过安全加密并存储在本地。Elftia 仅刷新内部账号的令牌，不读取或写入本机 CLI 的凭证文件。此前导入的账号会保留；若刷新失败，请在 Elftia 内独立重新登录以获取单独的登录凭证，不再从 CLI 导入。"
         }
       }
     }
@@ -353,7 +455,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
     "settings": {
       "accountTokens": {
         "title": "アカウントトークン",
-        "description": "外部AIサービスのOAuthトークンを設定します。これらのトークンにより、Claude、Codex、GeminiサービスのAPIに直接アクセスできます。",
+        "description": "Elftia 内でログインした Claude、Codex、Gemini アカウントを管理します。ネイティブ CLI のログインは別に管理されます。",
         "status": {
           "unconfigured": "未設定",
           "authorized": "認証済み",
@@ -367,11 +469,61 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "codex": {
           "title": "Codex (OpenAI)",
-          "description": "OpenAI Codex CLIのOAuthトークン"
+          "description": "OpenAI Codex CLIのOAuthトークン",
+          "loopbackWaiting": "ブラウザーでログインを完了すれば、Elftia が自動で授権を完了します。",
+          "loopbackHint": "ブラウザーコールバック（127.0.0.1:1455）を待機中…完了後アカウントが自動追加されます（コードの貼り付け不要）。",
+          "reopenAuthPage": "認可ページを再開する",
+          "fallbackToPaste": "代わりにコードを手動貼り付け",
+          "loopbackCancel": "キャンセル",
+          "loopbackErrors": {
+            "timeout": "ログインがタイムアウトしました。もう一度実行してください。",
+            "failed": "ログインに失敗しました。もう一度実行してください。"
+          }
         },
         "gemini": {
           "title": "Gemini (Google)",
           "description": "Google Gemini CLIのOAuthトークン"
+        },
+        "kimi": {
+          "title": "Kimi Code（Moonshot）",
+          "description": "デバイスコードでKimiアカウントにログインします。認証情報はElftia内でのみ管理されます。",
+          "addAccount": "Kimiでログイン",
+          "flowInstructions": "確認ページを開き、このコードを入力してKimiアカウントでログインしてください。",
+          "openVerification": "確認ページを開く",
+          "waitingForApproval": "承認を待っています…",
+          "cancel": "キャンセル",
+          "flowDone": "Kimiアカウントを追加しました。",
+          "flowErrors": {
+            "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
+          }
+        },
+        "grok": {
+          "title": "Grok（xAI SuperGrok）",
+          "description": "デバイスコードでSuperGrokアカウントにログインします。認証情報はElftia内でのみ管理されます。",
+          "addAccount": "Grokでログイン",
+          "flowInstructions": "確認ページを開き、このコードを入力してxAIアカウントでログインしてください。",
+          "openVerification": "確認ページを開く",
+          "waitingForApproval": "承認を待っています…",
+          "cancel": "キャンセル",
+          "flowDone": "Grokアカウントを追加しました。",
+          "flowErrors": {
+            "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
+          }
+        },
+        "copilot": {
+          "title": "GitHub Copilot",
+          "description": "デバイスコードでGitHubにログインします。長期トークンはElftia内でのみ管理されます。",
+          "addAccount": "GitHubでログイン",
+          "flowInstructions": "確認ページを開き、このコードを入力してCopilot CLIアプリを承認してください。",
+          "openVerification": "確認ページを開く",
+          "waitingForApproval": "承認を待っています…",
+          "cancel": "キャンセル",
+          "flowDone": "Copilotアカウントを追加しました。",
+          "enterpriseLabel": "GitHub Enterpriseドメイン（任意）",
+          "enterprisePlaceholder": "company.ghe.com — 個人GitHubの場合は空欄のまま",
+          "flowErrors": {
+            "expired": "デバイスコードの有効期限が切れたか拒否されました。最初からやり直してください。"
+          }
         },
         "authMethod": {
           "label": "認証方式",
@@ -433,7 +585,7 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
         "oauthFlow": {
           "instructions": "下のリンクをクリックしてブラウザで認証してください。認証後、コードをここに貼り付けてください。",
           "pasteCode": "認証コード",
-          "codePlaceholder": "認証コードをここに貼り付け（形式：code#state）...",
+          "codePlaceholder": "認証コードをここに貼り付け...",
           "authorize": "認証を完了",
           "emptyCode": "認証コードを貼り付けてください。",
           "stateMismatch": "貼り付けた state が一致しません — CSRF の可能性があります。認証フローをやり直してください。"
@@ -445,6 +597,12 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "refreshToken": "リフレッシュトークン",
           "refreshToken.placeholder": "トークンの自動更新に使用",
           "hint": "開発者設定ページからトークンを取得できます",
+          "verify": {
+            "label": "保存前に検証",
+            "desc": "保存前にプロバイダへ無料の検証を一回実行します。無効なトークンは保存されません",
+            "invalid": "トークンが無効と判定されたため保存しませんでした。",
+            "couldNotVerify": "トークンを検証できませんでした（{{reason}}）。接続を確認して再試行するか、チェックを外して検証なしで保存してください。"
+          },
           "claude": {
             "description": "Claude アクセストークンを手動で入力します。Claude.ai の開発者設定などから取得できます。"
           },
@@ -461,10 +619,6 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "title": "アカウント",
           "active": "使用中",
           "setActive": "使用中にする",
-          "applyToCli": "CLIに適用",
-          "applyToCliTooltip": "このアカウントをネイティブ CLI の認証情報ファイルへ書き込み、ターミナル単体で使えるようにします。",
-          "applyToCliSuccess": "ネイティブ CLI の認証情報ファイルに適用しました。",
-          "applyToCliFailed": "ネイティブ CLI の認証情報ファイルを更新できませんでした。",
           "remove": "アカウントを削除",
           "addAccount": "アカウントを追加",
           "labelInput": "アカウントラベル",
@@ -486,36 +640,35 @@ export const subscriptionI18nSeed: Record<string, Record<string, unknown>> = {
           "zenBaseUrlLabel": "Zen Base URL（任意）",
           "zenBaseUrlPlaceholder": "デフォルトの opencode-Zen ホストを上書きします"
         },
-        "externalSync": {
-          "warning": "アクティブなアカウントを切り替えましたが、ターミナル CLI のストアを更新できませんでした。ターミナルで単独に実行した場合、以前のアカウントが使われる可能性があります。"
+        "allowance": {
+          "title": "使用量クォータ",
+          "refresh": "使用量クォータを更新",
+          "stateFresh": "最新",
+          "stateStale": "古いデータ — 前回の使用量",
+          "stateUnavailable": "使用量を取得できません",
+          "stateUnsupported": "このアカウント種別には使用量APIがありません",
+          "resetsAt": "{{time}} にリセット"
         },
-        "cliImport": {
-          "autoImportLabel": "更新失敗時に CLI から自動インポート",
-          "autoImportDesc": "CLI（Claude Code など）が先にトークンを更新すると、Elftia 側の更新は失敗します。有効にすると、更新失敗時に CLI のログインファイルから現在の資格情報を自動で読み戻します。CLI に現在サインインしているアカウントが使われます。",
-          "importButton": "CLI からインポート",
-          "dialogTitle": "CLI から資格情報をインポートしますか？",
-          "dialogDescription": "トークンの更新に失敗しました。CLI が資格情報をローテーションした可能性があります。CLI のログインファイルから現在のトークンを読み戻しますか？CLI に現在サインインしているアカウントが使われます。",
-          "importConfirm": "インポート",
-          "importSuccess": "CLI から資格情報をインポートしました。",
-          "importRefreshed": "CLI から資格情報をインポートして更新しました。",
-          "importFailed": "CLI からインポートできませんでした。",
-          "notRotated": "CLI に保存された資格情報は、今回更新に失敗したものと同じです。再認証してください。",
-          "lineageMismatch": "CLI のログインファイルは別のアカウントのものです。先にそのアカウントをアクティブにするか、再認証してください。",
-          "foreignFileNamed": "更新に失敗しました。本機の CLI ログインファイルは現在アカウント「{{label}}」のものなので、このアカウントの復旧には使えません。このアカウントを再認証するか、アクティブなアカウントを「{{label}}」に切り替えてください。",
-          "foreignFile": "更新に失敗しました。本機の CLI ログインファイルは別のアカウントのものなので、このアカウントの復旧には使えません。このアカウントを再認証してください。"
+        "models": {
+          "title": "モデル",
+          "add": "+ モデルを追加",
+          "kindChat": "チャット",
+          "kindImage": "画像",
+          "enabled": "モデルを有効にする",
+          "toggleUnsupported": "サブスクリプションモデルの有効・無効を切り替えるには Elftia を更新してください。",
+          "removeModel": "モデルを削除",
+          "placeholder": "モデル ID",
+          "save": "保存",
+          "errorEmpty": "モデル ID を入力してください。",
+          "errorDuplicate": "このモデルは既に存在します。",
+          "errorSave": "モデルの保存に失敗しました。"
         },
         "errors": {
           "refreshFailed": "トークンの更新に失敗しました"
         },
         "info": {
           "title": "アカウントトークンについて",
-          "description": "これらのトークンは外部AIサービスとの認証に使用されます。トークンは安全に暗号化され、ローカルに保存されます。アプリは有効期限前にトークンを自動的に更新します。"
-        },
-        "importExternal": {
-          "detected": "このマシンに既存の {{name}} CLI ログインが見つかりました。",
-          "hint": "インポートするとそこからアカウントを作成し、更新を管理します。トークンを更新するたびに CLI のログインファイルも更新され、ターミナルの CLI はログイン状態を維持します。",
-          "button": "既存の CLI ログインをインポート",
-          "failed": "インポートに失敗しました。手動でログインしてください。"
+          "description": "トークンは安全に暗号化され、ローカルに保存されます。Elftia は内部アカウントのトークンのみを更新し、ネイティブ CLI の認証情報ファイルを読み書きしません。以前インポートしたアカウントは保持されます。更新に失敗した場合は、CLI から再インポートせず、Elftia 内で独立してログインし直し、別のログイン認証情報を取得してください。"
         }
       }
     }

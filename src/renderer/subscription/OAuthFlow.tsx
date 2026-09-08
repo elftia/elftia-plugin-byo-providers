@@ -4,12 +4,13 @@
  * Provides step-by-step guidance for OAuth and Setup Token authorization flows.
  */
 
-import { Check, CheckCircle, Copy, ExternalLink,RefreshCw } from 'lucide-react';
-import { useCallback,useState } from 'react';
+import { Check, CheckCircle, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 import { Button } from '../host/ui';
 import { Input } from '../host/ui';
 
+import { openExternal } from '../externalLinksClient';
 import type { OAuthFlowProps } from './types';
 
 export const OAuthFlow = ({
@@ -38,8 +39,11 @@ export const OAuthFlow = ({
     }
   }, [oauthParams.authUrl]);
 
+  // The renderer frame is sandboxed (opaque origin, no allow-popups) —
+  // `window.open` is a silent no-op here. The host's shell handoff opens the
+  // page; the URL text below stays selectable as the manual fallback.
   const handleOpenUrl = useCallback(() => {
-    window.open(oauthParams.authUrl, '_blank');
+    void openExternal(oauthParams.authUrl);
   }, [oauthParams.authUrl]);
 
   return (
@@ -81,6 +85,14 @@ export const OAuthFlow = ({
             {t('settings.accountTokens.oauth.openAuthPage')}
           </Button>
         </div>
+        {/* Selectable fallback: the sandboxed frame cannot window.open (and the
+            clipboard API is unavailable too) — the raw URL stays copyable by hand. */}
+        <code
+          className="block select-text break-all rounded bg-surface-1 px-2 py-1.5 pl-8 text-xs text-text-muted"
+          data-testid="settings-oauth-auth-url"
+        >
+          {oauthParams.authUrl}
+        </code>
       </div>
 
       {/* Step 2: Auth URL Info */}
@@ -127,12 +139,19 @@ export const OAuthFlow = ({
           {t('settings.accountTokens.oauth.step4.desc')}
         </p>
         <div className="pl-8">
-          <input
+          {/* The host `Input` (not a raw <input>): host components forward
+              onChange through the direct callback dispatch, which works on
+              every host. A raw input's replayed change event is swallowed by
+              React's controlled-value dedup on hosts without the native-setter
+              replay fix — the paste field went dead and 完成授权 never enabled. */}
+          <Input
             type="text"
             value={authCode}
             onChange={(e) => onAuthCodeChange(e.target.value)}
             placeholder={t('settings.accountTokens.oauthFlow.codePlaceholder')}
-            className="w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            aria-label={t('settings.accountTokens.oauthFlow.pasteCode')}
+            data-testid="settings-oauth-code-input"
+            className="w-full"
           />
         </div>
       </div>

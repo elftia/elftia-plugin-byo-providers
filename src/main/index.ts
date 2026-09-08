@@ -69,6 +69,7 @@ import type {
   AgentBackendHostApi,
   HostMediaProviderSecretField,
   HostMediaType,
+  HostSubscriptionModelInfo,
 } from '@byo/domain/plugin-types';
 
 /** Local alias for the media discriminator union. */
@@ -77,6 +78,20 @@ type MediaType = HostMediaType;
 /** Narrow an unknown IPC payload to a record. */
 function asRecord(payload: unknown): Record<string, unknown> {
   return (payload ?? {}) as Record<string, unknown>;
+}
+
+/**
+ * The manual-token verify option arrived in host-API 1.72.0 — parse the host's
+ * reported API version and compare minor-aware (an unparseable version is an
+ * honest `false`, never a guessed `true`).
+ */
+function hostSupportsManualTokenVerify(version: string | undefined): boolean {
+  if (typeof version !== 'string') return false;
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 1 || (major === 1 && minor >= 72);
 }
 
 /**
@@ -111,6 +126,17 @@ export function activate(host: AgentBackendHostApi): void {
   const llm = () => host.services.llmConfig ?? missing();
   const media = () => host.services.mediaConfig ?? mediaMissing();
   const search = () => host.services.searchConfig ?? searchMissing();
+  // v1.66 — the system-browser URL opener. The plugin renderer frame is
+  // sandboxed (opaque origin, no allow-popups): its `window.open` is a silent
+  // no-op, so every "open in browser" affordance relays here instead. Absent
+  // port throws (the renderer client catches and the URL text fallback saves
+  // the flow on older hosts).
+  const externalLinksMissing = () => {
+    throw new Error('[byo-providers] host.services.externalLinks is unavailable');
+  };
+  const externalLinks = () =>
+    host.services.externalLinks?.openExternal?.bind(host.services.externalLinks) ??
+    externalLinksMissing;
   // P2e (`byo-p2-subscription`) — the subscription/OAuth/CLI-account, cli
   // sub-settings, and CLI-runtime ports (host-API 1.26).
   const subAuth = () => host.services.subscriptionAuth ?? subAuthMissing();
@@ -122,6 +148,16 @@ export function activate(host: AgentBackendHostApi): void {
   const storage = () => host.services.objectStorageConfig ?? storageMissing();
   /** Narrow an IPC payload's `mediaType` to the port's discriminator union. */
   const asMediaType = (v: unknown): MediaType => String(v) as MediaType;
+  /**
+   * v1.72 (`subscription-token-probe`) — does THIS host accept the manual-token
+   * setters' verify option? Feature-detection for the renderer's verify
+   * checkbox: on an older host the option is silently ignored, so the checkbox
+   * must not appear (a checked-but-ignored verify would mislead).
+   */
+  const manualTokenVerifySupported = hostSupportsManualTokenVerify(host.version);
+  /** Map the wire `verify` flag onto the port's options (absent = legacy). */
+  const toVerifyOptions = (verify: unknown): { verify: true } | undefined =>
+    verify === true ? { verify: true } : undefined;
 
   host.registerIpcMethods({
     // ── Providers ────────────────────────────────────────────────────────────
@@ -170,6 +206,23 @@ export function activate(host: AgentBackendHostApi): void {
     'llm.updateApiKey': async (p) => (await llm()?.updateApiKey(asRecord(p))) ?? missing(),
     'llm.deleteApiKey': async (p) => (await llm()?.deleteApiKey(String(asRecord(p).id))) ?? missing(),
     'llm.toggleApiKey': async (p) => (await llm()?.toggleApiKey(asRecord(p))) ?? missing(),
+    // v1.64 — provider pool-key plan quota (feature-detected; unsupported
+    // providers degrade to supported:false — never fabricated numbers).
+    'llm.getKeyQuota': async (p) => {
+      const { providerId, keyId, force } = asRecord(p);
+      const handle = llm();
+      if (!handle?.getProviderKeyQuota) {
+        return {
+          providerId: String(providerId),
+          keyId: String(keyId),
+          supported: false,
+          observedAt: new Date().toISOString(),
+          windows: [],
+          lastErrorCode: 'quota-unavailable',
+        };
+      }
+      return handle.getProviderKeyQuota(String(providerId), String(keyId), Boolean(force));
+    },
     'llm.getKeyHealth': async (p) => (await llm()?.getKeyHealth(String(asRecord(p).providerId))) ?? {},
 
     // ── Default model (router config) ─────────────────────────────────────────
@@ -341,14 +394,59 @@ export function activate(host: AgentBackendHostApi): void {
       (await subAuth()?.exchangeCodexToken(asRecord(p) as never)) ?? subAuthMissing(),
     'subAuth.exchangeGeminiToken': async (p) =>
       (await subAuth()?.exchangeGeminiToken(asRecord(p) as never)) ?? subAuthMissing(),
-    'subAuth.importFromExternalCli': async (p) =>
-      (await subAuth()?.importFromExternalCli(String(asRecord(p).platform))) ?? subAuthMissing(),
-    'subAuth.getCliAutoImport': async (p) =>
-      (await subAuth()?.getCliAutoImport(String(asRecord(p).provider))) ?? false,
-    'subAuth.setCliAutoImport': async (p) => {
-      const { provider, enabled } = asRecord(p);
-      await subAuth()?.setCliAutoImport(String(provider), Boolean(enabled));
-      return { success: true };
+    // v1.63 — Kimi RFC 8628 device flow. All verbs are feature-detected; the
+    // deviceCode and tokens stay HOST-side — only display views cross.
+    'subAuth.startKimiDeviceFlow': async () =>
+      (await subAuth()?.startKimiDeviceFlow?.()) ?? subAuthMissing(),
+    'subAuth.pollKimiDeviceFlow': async (p) =>
+      (
+        await subAuth()?.pollKimiDeviceFlow?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelKimiDeviceFlow': async (p) => {
+      await subAuth()?.cancelKimiDeviceFlow?.(String(asRecord(p).sessionId));
+    },
+    'subAuth.refreshKimiToken': async () =>
+      (await subAuth()?.refreshKimiToken?.()) ?? false,
+    // v1.65 — Grok / Copilot RFC 8628 device flows. Feature-detected like the
+    // Kimi verbs; the deviceCode and tokens stay HOST-side — only display
+    // views cross. Copilot's optional enterpriseUrl rides the start payload.
+    'subAuth.startGrokDeviceFlow': async () =>
+      (await subAuth()?.startGrokDeviceFlow?.()) ?? subAuthMissing(),
+    'subAuth.pollGrokDeviceFlow': async (p) =>
+      (
+        await subAuth()?.pollGrokDeviceFlow?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelGrokDeviceFlow': async (p) => {
+      await subAuth()?.cancelGrokDeviceFlow?.(String(asRecord(p).sessionId));
+    },
+    'subAuth.refreshGrokToken': async () =>
+      (await subAuth()?.refreshGrokToken?.()) ?? false,
+    'subAuth.startCopilotDeviceFlow': async (p) => {
+      const raw = asRecord(p).enterpriseUrl;
+      const enterpriseUrl = typeof raw === 'string' && raw.trim() ? raw : undefined;
+      return (await subAuth()?.startCopilotDeviceFlow?.(enterpriseUrl)) ?? subAuthMissing();
+    },
+    'subAuth.pollCopilotDeviceFlow': async (p) =>
+      (
+        await subAuth()?.pollCopilotDeviceFlow?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelCopilotDeviceFlow': async (p) => {
+      await subAuth()?.cancelCopilotDeviceFlow?.(String(asRecord(p).sessionId));
+    },
+    'subAuth.refreshCopilotToken': async () =>
+      (await subAuth()?.refreshCopilotToken?.()) ?? false,
+    // v1.67 — codex loopback sign-in (auto-complete; no code paste). The host
+    // binds 127.0.0.1:1455, captures the browser callback, exchanges, and
+    // appends the account — the renderer opens authUrl and POLLS the
+    // token-free status.
+    'subAuth.startCodexLoopbackLogin': async () =>
+      (await subAuth()?.startCodexLoopbackLogin?.()) ?? subAuthMissing(),
+    'subAuth.pollCodexLoopbackLogin': async (p) =>
+      (
+        await subAuth()?.pollCodexLoopbackLogin?.(String(asRecord(p).sessionId))
+      ) ?? subAuthMissing(),
+    'subAuth.cancelCodexLoopbackLogin': async (p) => {
+      await subAuth()?.cancelCodexLoopbackLogin?.(String(asRecord(p).sessionId));
     },
     'subAuth.getSanitized': async () => (await subAuth()?.getSanitized()) ?? {},
     'subAuth.listAccounts': async (p) =>
@@ -368,13 +466,61 @@ export function activate(host: AgentBackendHostApi): void {
         subAuthMissing()
       );
     },
-    'subAuth.applyAccountToCli': async (p) => {
-      const { provider, id } = asRecord(p);
-      return (await subAuth()?.applyAccountToCli(String(provider), String(id))) ?? subAuthMissing();
-    },
     'subAuth.refreshAccount': async (p) => {
       const { provider, id } = asRecord(p);
       return (await subAuth()?.refreshAccount(String(provider), String(id))) ?? false;
+    },
+    // v1.64 — secret-free account allowance snapshot (feature-detected; older
+    // hosts degrade to an explicit unavailable snapshot, never numbers).
+    'subAuth.getAccountAllowance': async (p) => {
+      const { provider, id, force } = asRecord(p);
+      // Resolve synchronously — awaiting the host handle directly would also
+      // await any thenable-shaped shim (the unit-test proxy hangs on it).
+      const handle = subAuth();
+      if (!handle?.getAccountAllowance) {
+        return {
+          providerId: String(provider),
+          accountId: String(id),
+          source: 'oauth-usage-api',
+          observedAt: new Date().toISOString(),
+          windows: [],
+          lastErrorCode: 'quota-unavailable',
+        };
+      }
+      return handle.getAccountAllowance(String(provider), String(id), Boolean(force));
+    },
+    // v1.70 — subscription model lists (defaults + user extras; feature-detected
+    // like the allowance relay). Older hosts resolve the explicit
+    // `{ error: 'unsupported' }` marker and the renderer hides the model
+    // sections — never a fabricated empty view.
+    'subAuth.getSubscriptionModels': async () => {
+      // Resolve synchronously — awaiting the host handle directly would also
+      // await any thenable-shaped shim (the unit-test proxy hangs on it).
+      const handle = subAuth();
+      if (!handle?.getSubscriptionModels) {
+        return { error: 'unsupported' };
+      }
+      return handle.getSubscriptionModels();
+    },
+    'subAuth.setSubscriptionExtraModels': async (p) => {
+      const { providerId, models } = asRecord(p);
+      // Resolve synchronously — awaiting the host handle directly would also
+      // await any thenable-shaped shim (the unit-test proxy hangs on it).
+      const handle = subAuth();
+      if (!handle?.setSubscriptionExtraModels) {
+        return { error: 'unsupported' };
+      }
+      return handle.setSubscriptionExtraModels(
+        String(providerId),
+        (models as HostSubscriptionModelInfo[]) ?? [],
+      );
+    },
+    'subAuth.setSubscriptionModelEnabled': async (p) => {
+      const { providerId, modelId, enabled } = asRecord(p);
+      const handle = subAuth();
+      if (!handle?.setSubscriptionModelEnabled) return { error: 'unsupported' };
+      if (typeof enabled !== 'boolean') throw new TypeError('enabled must be a boolean');
+      return handle.setSubscriptionModelEnabled(String(providerId), String(modelId), enabled);
     },
     'subAuth.clearConfig': async (p) => {
       await subAuth()?.clearConfig(String(asRecord(p).platform));
@@ -393,32 +539,47 @@ export function activate(host: AgentBackendHostApi): void {
       (await subAuth()?.clearOpenCodeGo()) ?? subAuthMissing(),
     'subAuth.refreshCredential': async (p) =>
       (await subAuth()?.refreshCredential(String(asRecord(p).providerId))) ?? subAuthMissing(),
-    // Manual-token paste (INWARD-only; status-only return, no token echoed back).
+    // Manual-token paste (INWARD-only; status-only return, no token echoed
+    // back). v1.72 (`subscription-token-probe`): `verify: true` runs the
+    // zero-cost host probe FIRST — a refusal carries the secret-free
+    // `verifyFailure` reason and persists NOTHING. On a pre-v1.72 host the
+    // extra options argument is ignored (legacy persist-always semantics).
+    'subAuth.manualTokenVerifySupported': async () => {
+      // Liveness through the SAME missing-service contract as every relay
+      // (throws `host.services.subscriptionAuth is unavailable` on older hosts
+      // whose main half still resolves this method... it won't — the renderer
+      // probe only reaches newer mains — but the contract stays uniform).
+      subAuth();
+      return { supported: manualTokenVerifySupported };
+    },
     'subAuth.setClaudeManualToken': async (p) => {
-      const { accessToken, subscriptionLevel, label } = asRecord(p);
+      const { accessToken, subscriptionLevel, label, verify } = asRecord(p);
       return (
         (await subAuth()?.setClaudeManualToken(
           String(accessToken ?? ''),
           subscriptionLevel as string | undefined,
           label as string | undefined,
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
     'subAuth.setCodexManualToken': async (p) => {
-      const { accessToken, label } = asRecord(p);
+      const { accessToken, label, verify } = asRecord(p);
       return (
         (await subAuth()?.setCodexManualToken(
           String(accessToken ?? ''),
           label as string | undefined,
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
     'subAuth.setGeminiManualToken': async (p) => {
-      const { accessToken, refreshToken } = asRecord(p);
+      const { accessToken, refreshToken, verify } = asRecord(p);
       return (
         (await subAuth()?.setGeminiManualToken(
           String(accessToken ?? ''),
           refreshToken as string | undefined,
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
@@ -484,6 +645,18 @@ export function activate(host: AgentBackendHostApi): void {
     'secretsPack.import': async (p) => {
       const { passphrase } = asRecord(p);
       return (await secretsPack()?.import({ passphrase: String(passphrase ?? '') })) ?? secretsPackMissing();
+    },
+
+    // ══ EXTERNAL LINKS (v1.66) — system-browser URL opener over host.services.externalLinks ══
+    // The plugin renderer frame is sandboxed (opaque origin, no allow-popups):
+    // its `window.open` is a silent no-op, so every "open in browser"
+    // affordance (OAuth authorization pages, device-flow verification pages,
+    // provider website links) relays here. The host validates http(s) only;
+    // older hosts without the port resolve `{ ok: false }` (the renderer
+    // surfaces the raw URL as selectable text instead).
+    'nativeOps.openExternal': async (p) => {
+      const raw = asRecord(p).url;
+      return externalLinks()(typeof raw === 'string' ? raw : '');
     },
   });
 }

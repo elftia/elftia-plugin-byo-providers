@@ -24,6 +24,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type {
   AccountTokensSanitized,
+  DeviceFlowView,
+  KimiDeviceFlowView,
   OAuthParams,
   SubscriptionAccountSanitized,
   SubscriptionLevel,
@@ -40,7 +42,6 @@ void React;
 type AccountMutationResult = {
   success: boolean;
   error?: string;
-  externalSync?: { ok: boolean; reason?: string; error?: string };
 };
 
 interface AddOpenCodeGoAccountInput {
@@ -49,8 +50,6 @@ interface AddOpenCodeGoAccountInput {
   baseUrl?: string;
   zenBaseUrl?: string;
 }
-
-type CliImportResult = { success: boolean; error?: string; refreshed?: boolean };
 
 /**
  * Surface a host op result as an `OAuthParams`-shaped value WITHOUT a real
@@ -62,9 +61,21 @@ function toOAuthParams(init: { authUrl: string; state: string }): OAuthParams {
 }
 
 /** Throw on a `{ success: false }` op result so the card's try/catch surfaces it. */
-function throwIfFailed(result: { success?: unknown; error?: unknown }): void {
+function throwIfFailed(result: {
+  success?: unknown;
+  error?: unknown;
+  verifyFailure?: unknown;
+}): void {
   if (result?.success === false) {
-    throw new Error(typeof result.error === 'string' && result.error ? result.error : 'Exchange failed');
+    const error = new Error(
+      typeof result.error === 'string' && result.error ? result.error : 'Exchange failed',
+    );
+    // v1.72 — carry the secret-free verify refusal up so the card renders the
+    // reason taxonomy (invalid vs could-not-verify) instead of a raw code.
+    if (result.verifyFailure && typeof result.verifyFailure === 'object') {
+      (error as Error & { verifyFailure?: unknown }).verifyFailure = result.verifyFailure;
+    }
+    throw error;
   }
 }
 
@@ -141,11 +152,13 @@ export function useSubscriptionAccounts() {
       accessToken: string,
       subscriptionLevel?: SubscriptionLevel,
       label?: string,
+      options?: { verify?: boolean },
     ): Promise<TokenExchangeResponse> => {
       const result = await subscriptionAuthClient.setClaudeManualToken(
         accessToken,
         subscriptionLevel as string | undefined,
         label,
+        options,
       );
       throwIfFailed(result);
       await refresh();
@@ -181,10 +194,6 @@ export function useSubscriptionAccounts() {
     (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('claude', id)),
     [mutate],
   );
-  const applyClaudeAccountToCli = useCallback(
-    (id: string) => mutate(() => subscriptionAuthClient.applyAccountToCli('claude', id)),
-    [mutate],
-  );
   const removeClaudeAccount = useCallback(
     (id: string) => mutate(() => subscriptionAuthClient.removeAccount('claude', id)),
     [mutate],
@@ -216,8 +225,16 @@ export function useSubscriptionAccounts() {
     [refresh],
   );
   const setCodexManualToken = useCallback(
-    async (accessToken: string, label?: string): Promise<TokenExchangeResponse> => {
-      const result = await subscriptionAuthClient.setCodexManualToken(accessToken, label);
+    async (
+      accessToken: string,
+      label?: string,
+      options?: { verify?: boolean },
+    ): Promise<TokenExchangeResponse> => {
+      const result = await subscriptionAuthClient.setCodexManualToken(
+        accessToken,
+        label,
+        options,
+      );
       throwIfFailed(result);
       await refresh();
       return result as unknown as TokenExchangeResponse;
@@ -226,10 +243,6 @@ export function useSubscriptionAccounts() {
   );
   const setActiveCodexAccount = useCallback(
     (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('codex', id)),
-    [mutate],
-  );
-  const applyCodexAccountToCli = useCallback(
-    (id: string) => mutate(() => subscriptionAuthClient.applyAccountToCli('codex', id)),
     [mutate],
   );
   const updateCodexAccountLabel = useCallback(
@@ -282,12 +295,146 @@ export function useSubscriptionAccounts() {
     [refresh],
   );
   const setGeminiManualToken = useCallback(
-    async (accessToken: string, refreshTokenValue?: string): Promise<TokenExchangeResponse> => {
-      const result = await subscriptionAuthClient.setGeminiManualToken(accessToken, refreshTokenValue);
+    async (
+      accessToken: string,
+      refreshTokenValue?: string,
+      options?: { verify?: boolean },
+    ): Promise<TokenExchangeResponse> => {
+      const result = await subscriptionAuthClient.setGeminiManualToken(
+        accessToken,
+        refreshTokenValue,
+        options,
+      );
+      throwIfFailed(result);
       await refresh();
       return result as unknown as TokenExchangeResponse;
     },
     [refresh],
+  );
+
+  // ── Kimi device flow (v1.63; display-only views, host holds deviceCode) ────
+  const startKimiLogin = useCallback(async (): Promise<KimiDeviceFlowView> => {
+    return subscriptionAuthClient.startKimiDeviceFlow();
+  }, []);
+  const pollKimiFlow = useCallback(
+    async (sessionId: string): Promise<KimiDeviceFlowView> => {
+      const view = await subscriptionAuthClient.pollKimiDeviceFlow(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelKimiFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelKimiDeviceFlow(sessionId);
+    },
+    [],
+  );
+
+  // ── Kimi multi-account (same generic wrappers as the other providers) ──────
+  const setActiveKimiAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('kimi', id)),
+    [mutate],
+  );
+  const removeKimiAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.removeAccount('kimi', id)),
+    [mutate],
+  );
+  const updateKimiAccountLabel = useCallback(
+    (id: string, label: string) =>
+      mutate(() => subscriptionAuthClient.updateAccountLabel('kimi', id, label)),
+    [mutate],
+  );
+
+  // ── Grok device flow (v1.65; display-only views, host holds deviceCode) ────
+  const startGrokLogin = useCallback(async (): Promise<DeviceFlowView> => {
+    return subscriptionAuthClient.startGrokDeviceFlow();
+  }, []);
+  const pollGrokFlow = useCallback(
+    async (sessionId: string): Promise<DeviceFlowView> => {
+      const view = await subscriptionAuthClient.pollGrokDeviceFlow(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelGrokFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelGrokDeviceFlow(sessionId);
+    },
+    [],
+  );
+
+  // ── Copilot device flow (v1.65; optional GHE domain rides the start) ───────
+  const startCopilotLogin = useCallback(
+    async (enterpriseUrl?: string): Promise<DeviceFlowView> => {
+      return subscriptionAuthClient.startCopilotDeviceFlow(enterpriseUrl);
+    },
+    [],
+  );
+  const pollCopilotFlow = useCallback(
+    async (sessionId: string): Promise<DeviceFlowView> => {
+      const view = await subscriptionAuthClient.pollCopilotDeviceFlow(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelCopilotFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelCopilotDeviceFlow(sessionId);
+    },
+    [],
+  );
+
+  // ── Grok / Copilot multi-account (same generic wrappers) ───────────────────
+  const setActiveGrokAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('grok', id)),
+    [mutate],
+  );
+  const removeGrokAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.removeAccount('grok', id)),
+    [mutate],
+  );
+  const updateGrokAccountLabel = useCallback(
+    (id: string, label: string) =>
+      mutate(() => subscriptionAuthClient.updateAccountLabel('grok', id, label)),
+    [mutate],
+  );
+  const setActiveCopilotAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.setActiveAccount('copilot', id)),
+    [mutate],
+  );
+  const removeCopilotAccount = useCallback(
+    (id: string) => mutate(() => subscriptionAuthClient.removeAccount('copilot', id)),
+    [mutate],
+  );
+  const updateCopilotAccountLabel = useCallback(
+    (id: string, label: string) =>
+      mutate(() => subscriptionAuthClient.updateAccountLabel('copilot', id, label)),
+    [mutate],
+  );
+
+  // ── Codex loopback sign-in (v1.67; auto-complete, no code paste) ──────────
+  const startCodexLoopbackLogin = useCallback(async (): Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  > => {
+    return subscriptionAuthClient.startCodexLoopbackLogin();
+  }, []);
+  const pollCodexLoopbackFlow = useCallback(
+    async (sessionId: string): Promise<{ sessionId: string; state: 'pending' | 'done' | 'error'; error?: string }> => {
+      const view = await subscriptionAuthClient.pollCodexLoopbackLogin(sessionId);
+      if (view.state === 'done') await refresh();
+      return view;
+    },
+    [refresh],
+  );
+  const cancelCodexLoopbackFlow = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await subscriptionAuthClient.cancelCodexLoopbackLogin(sessionId);
+    },
+    [],
   );
 
   // ── Token refresh ──────────────────────────────────────────────────────────
@@ -296,23 +443,6 @@ export function useSubscriptionAccounts() {
       const success = await subscriptionAuthClient.refreshAccount(platform, '');
       if (success) await refresh();
       return success;
-    },
-    [refresh],
-  );
-
-  // ── CLI credential re-import ───────────────────────────────────────────────
-  const importFromCli = useCallback(
-    async (platform: TokenPlatform): Promise<CliImportResult> => {
-      const result = await subscriptionAuthClient.importFromExternalCli(platform);
-      if (result.success) await refresh();
-      return result;
-    },
-    [refresh],
-  );
-  const setCliAutoImport = useCallback(
-    async (platform: TokenPlatform, enabled: boolean): Promise<void> => {
-      await subscriptionAuthClient.setCliAutoImport(platform, enabled);
-      await refresh();
     },
     [refresh],
   );
@@ -335,14 +465,12 @@ export function useSubscriptionAccounts() {
     updateClaudeSubscriptionLevel,
     listClaudeAccounts,
     setActiveClaudeAccount,
-    applyClaudeAccountToCli,
     removeClaudeAccount,
     updateClaudeAccountLabel,
     startCodexOAuth,
     exchangeCodexToken,
     setCodexManualToken,
     setActiveCodexAccount,
-    applyCodexAccountToCli,
     updateCodexAccountLabel,
     removeCodexAccount,
     addOpenCodeGoAccount,
@@ -352,8 +480,27 @@ export function useSubscriptionAccounts() {
     startGeminiOAuth,
     exchangeGeminiToken,
     setGeminiManualToken,
+    startKimiLogin,
+    pollKimiFlow,
+    cancelKimiFlow,
+    setActiveKimiAccount,
+    removeKimiAccount,
+    updateKimiAccountLabel,
+    startGrokLogin,
+    pollGrokFlow,
+    cancelGrokFlow,
+    setActiveGrokAccount,
+    removeGrokAccount,
+    updateGrokAccountLabel,
+    startCopilotLogin,
+    pollCopilotFlow,
+    cancelCopilotFlow,
+    setActiveCopilotAccount,
+    removeCopilotAccount,
+    updateCopilotAccountLabel,
+    startCodexLoopbackLogin,
+    pollCodexLoopbackFlow,
+    cancelCodexLoopbackFlow,
     refreshToken,
-    importFromCli,
-    setCliAutoImport,
   };
 }

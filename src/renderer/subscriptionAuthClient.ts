@@ -17,19 +17,48 @@
  */
 import type {
   HostAccountTokensSanitized,
-  HostCliImportResult,
+  HostDeviceFlowView,
+  HostKimiDeviceFlowView,
   HostOAuthExchangeRequest,
   HostOAuthInitParams,
   HostSubscriptionAccountSanitized,
   HostSubscriptionEntry,
   HostSubscriptionOpResult,
+  HostAccountAllowanceSnapshot,
   HostSubscriptionRefreshResult,
+  HostSubscriptionModelInfo,
+  HostSubscriptionModelsView,
 } from '@byo/domain/plugin-types';
 
 import { getHost } from './host/hostBridge';
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
+}
+
+/**
+ * The main relay's older-host degradation for the v1.70 model verbs (the host
+ * port lacks both verbs): an EXPLICIT marker, never a fabricated empty view —
+ * the renderer hides the model sections on it.
+ */
+export interface HostSubscriptionModelsUnsupported {
+  readonly error: 'unsupported';
+}
+
+/** A v1.70 model-verb result: the real view, or the older-host marker. */
+export type HostSubscriptionModelsResult =
+  | HostSubscriptionModelsView
+  | HostSubscriptionModelsUnsupported;
+
+/** Narrow a v1.70 relay result: `true` = older host, the section must hide. */
+export function isSubscriptionModelsUnsupported(
+  result: HostSubscriptionModelsResult,
+): result is HostSubscriptionModelsUnsupported {
+  return (
+    typeof result === 'object' &&
+    result !== null &&
+    (result as HostSubscriptionModelsUnsupported).error === 'unsupported'
+  );
 }
 
 /**
@@ -63,15 +92,51 @@ export const subscriptionAuthClient = {
   exchangeGeminiToken(request: HostOAuthExchangeRequest): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.exchangeGeminiToken', request);
   },
-  // ── CLI import (credential never returned) ───────────────────────────────────
-  importFromExternalCli(platform: string): Promise<HostCliImportResult> {
-    return invoke('subAuth.importFromExternalCli', { platform });
+  // ── Kimi device flow (v1.63; display-only views, never deviceCode/tokens) ────
+  startKimiDeviceFlow(): Promise<HostKimiDeviceFlowView> {
+    return invoke('subAuth.startKimiDeviceFlow');
   },
-  getCliAutoImport(provider: string): Promise<boolean> {
-    return invoke('subAuth.getCliAutoImport', { provider });
+  pollKimiDeviceFlow(sessionId: string): Promise<HostKimiDeviceFlowView> {
+    return invoke('subAuth.pollKimiDeviceFlow', { sessionId });
   },
-  setCliAutoImport(provider: string, enabled: boolean): Promise<{ success: boolean }> {
-    return invoke('subAuth.setCliAutoImport', { provider, enabled });
+  cancelKimiDeviceFlow(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelKimiDeviceFlow', { sessionId });
+  },
+  // ── Grok / Copilot device flows (v1.65; same token-free boundary) ───────────
+  startGrokDeviceFlow(): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.startGrokDeviceFlow');
+  },
+  pollGrokDeviceFlow(sessionId: string): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.pollGrokDeviceFlow', { sessionId });
+  },
+  cancelGrokDeviceFlow(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelGrokDeviceFlow', { sessionId });
+  },
+  startCopilotDeviceFlow(enterpriseUrl?: string): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.startCopilotDeviceFlow', { enterpriseUrl });
+  },
+  pollCopilotDeviceFlow(sessionId: string): Promise<HostDeviceFlowView> {
+    return invoke('subAuth.pollCopilotDeviceFlow', { sessionId });
+  },
+  cancelCopilotDeviceFlow(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelCopilotDeviceFlow', { sessionId });
+  },
+  // ── Codex loopback sign-in (v1.67; auto-complete, never a token) ────────────
+  startCodexLoopbackLogin(): Promise<
+    | { ok: true; authUrl: string; sessionId: string }
+    | { ok: false; error: string }
+  > {
+    return invoke('subAuth.startCodexLoopbackLogin');
+  },
+  pollCodexLoopbackLogin(sessionId: string): Promise<{
+    sessionId: string;
+    state: 'pending' | 'done' | 'error';
+    error?: string;
+  }> {
+    return invoke('subAuth.pollCodexLoopbackLogin', { sessionId });
+  },
+  cancelCodexLoopbackLogin(sessionId: string): Promise<void> {
+    return invoke('subAuth.cancelCodexLoopbackLogin', { sessionId });
   },
   // ── Account management (descriptors only) ────────────────────────────────────
   getSanitized(): Promise<HostAccountTokensSanitized> {
@@ -89,11 +154,32 @@ export const subscriptionAuthClient = {
   updateAccountLabel(provider: string, id: string, label: string): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.updateAccountLabel', { provider, id, label });
   },
-  applyAccountToCli(provider: string, id: string): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.applyAccountToCli', { provider, id });
-  },
   refreshAccount(provider: string, id: string): Promise<boolean> {
     return invoke('subAuth.refreshAccount', { provider, id });
+  },
+  getAccountAllowance(
+    provider: string,
+    id: string,
+    force?: boolean,
+  ): Promise<HostAccountAllowanceSnapshot> {
+    return invoke('subAuth.getAccountAllowance', { provider, id, force });
+  },
+  // ── Subscription models (v1.70; defaults + user extras; feature-detected) ───
+  getSubscriptionModels(): Promise<HostSubscriptionModelsResult> {
+    return invoke('subAuth.getSubscriptionModels');
+  },
+  setSubscriptionExtraModels(
+    providerId: string,
+    models: HostSubscriptionModelInfo[],
+  ): Promise<HostSubscriptionModelsResult> {
+    return invoke('subAuth.setSubscriptionExtraModels', { providerId, models });
+  },
+  setSubscriptionModelEnabled(
+    providerId: string,
+    modelId: string,
+    enabled: boolean,
+  ): Promise<HostSubscriptionModelsResult> {
+    return invoke('subAuth.setSubscriptionModelEnabled', { providerId, modelId, enabled });
   },
   clearConfig(platform: string): Promise<{ success: boolean }> {
     return invoke('subAuth.clearConfig', { platform });
@@ -117,19 +203,49 @@ export const subscriptionAuthClient = {
   refreshCredential(providerId: string): Promise<HostSubscriptionRefreshResult> {
     return invoke('subAuth.refreshCredential', { providerId });
   },
-  // ── Manual-token paste (INWARD-only; status-only return) ─────────────────────
+  // ── Manual-token paste (INWARD-only; status-only return). v1.72 adds the
+  // OPTIONAL verify option (probe-before-persist; a refusal returns the
+  // secret-free `verifyFailure` and persists nothing) + the support probe so
+  // the renderer only offers verification on hosts that honor it.
+  manualTokenVerifySupported(): Promise<boolean> {
+    return invoke('subAuth.manualTokenVerifySupported').then(
+      (result) => (result as { supported?: boolean } | null)?.supported === true,
+    );
+  },
   setClaudeManualToken(
     accessToken: string,
     subscriptionLevel?: string,
     label?: string,
+    options?: { verify?: boolean },
   ): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.setClaudeManualToken', { accessToken, subscriptionLevel, label });
+    return invoke('subAuth.setClaudeManualToken', {
+      accessToken,
+      subscriptionLevel,
+      label,
+      verify: options?.verify,
+    });
   },
-  setCodexManualToken(accessToken: string, label?: string): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.setCodexManualToken', { accessToken, label });
+  setCodexManualToken(
+    accessToken: string,
+    label?: string,
+    options?: { verify?: boolean },
+  ): Promise<HostSubscriptionOpResult> {
+    return invoke('subAuth.setCodexManualToken', {
+      accessToken,
+      label,
+      verify: options?.verify,
+    });
   },
-  setGeminiManualToken(accessToken: string, refreshToken?: string): Promise<HostSubscriptionOpResult> {
-    return invoke('subAuth.setGeminiManualToken', { accessToken, refreshToken });
+  setGeminiManualToken(
+    accessToken: string,
+    refreshToken?: string,
+    options?: { verify?: boolean },
+  ): Promise<HostSubscriptionOpResult> {
+    return invoke('subAuth.setGeminiManualToken', {
+      accessToken,
+      refreshToken,
+      verify: options?.verify,
+    });
   },
   updateClaudeSubscriptionLevel(level: string): Promise<HostSubscriptionOpResult> {
     return invoke('subAuth.updateClaudeSubscriptionLevel', { level });

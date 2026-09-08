@@ -26,6 +26,7 @@ export const OpenCodeGoConfigCard = ({
   onSetActiveAccount,
   onUpdateAccountLabel,
   onRemoveAccount,
+  children,
 }: OpenCodeGoConfigCardProps) => {
   const [apiKey, setApiKey] = useState('');
   const [label, setLabel] = useState('');
@@ -78,8 +79,6 @@ export const OpenCodeGoConfigCard = ({
     setIsAddFormOpen(false);
   }, [resetAddForm]);
 
-  // OpenCodeGo set-active writes NO external store, so no externalSync warning
-  // is expected — but pass the results through unchanged for symmetry.
   const handleSetActive = useCallback(
     (id: string): Promise<AccountMutationResult> => onSetActiveAccount(id),
     [onSetActiveAccount],
@@ -145,6 +144,7 @@ export const OpenCodeGoConfigCard = ({
       {/* Multi-account list (set active / remove) */}
       {hasAccounts && accounts ? (
         <AccountList
+          providerId="opencodego"
           t={t}
           accounts={accounts}
           onSetActive={handleSetActive}
@@ -237,6 +237,9 @@ export const OpenCodeGoConfigCard = ({
           {t('settings.accountTokens.accounts.addAccount')}
         </Button>
       )}
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };

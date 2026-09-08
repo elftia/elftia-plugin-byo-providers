@@ -7,7 +7,7 @@
  * - Manual: Direct token input with subscription level
  */
 
-import { Edit2, ExternalLink, HardDriveDownload, Key, RefreshCw, Trash2 } from 'lucide-react';
+import { Edit2, ExternalLink, Key, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback,useState } from 'react';
 
 import { Button } from '../host/ui';
@@ -15,12 +15,12 @@ import { Select } from '../host/ui';
 import { cn } from '../host/vendored/cn';
 
 import { AccountList } from './AccountList';
-import { CliImportControls } from './CliImportControls';
 import { ManualInputModal } from './ManualInputModal';
 import { OAuthFlow } from './OAuthFlow';
 import { parseOAuthPaste } from './oauthPaste';
 import { StatusBadge } from './StatusBadge';
-import type { ClaudeAuthMethod, ClaudeConfigCardProps, OAuthParams,SubscriptionLevel } from './types';
+import type { ClaudeAuthMethod, ClaudeConfigCardProps, ManualTokenVerifyFailure, OAuthParams,SubscriptionLevel } from './types';
+import { describeManualTokenError } from './types';
 
 const AUTH_METHOD_OPTIONS = ['oauth', 'setup_token', 'manual'] as const;
 const SUBSCRIPTION_LEVELS: SubscriptionLevel[] = ['Free', 'Pro', 'Max'];
@@ -38,13 +38,9 @@ export const ClaudeConfigCard = ({
   onRefresh,
   accounts,
   onSetActiveAccount,
-  onApplyAccountToCli,
   onUpdateAccountLabel,
   onRemoveAccount,
-  onImportFromCli,
-  autoImportEnabled,
-  onSetAutoImport,
-  externalCliDetected,
+  children,
 }: ClaudeConfigCardProps) => {
   // Auth method state
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<ClaudeAuthMethod>(
@@ -68,33 +64,6 @@ export const ClaudeConfigCard = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // CLI credential re-import (cli-token-import)
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const cliImportAvailable = Boolean(config?.cliImportAvailable);
-  const cliImportWired = Boolean(onImportFromCli && onSetAutoImport);
-
-  // Initial import (cli-token-import bootstrap): zero accounts + native CLI
-  // login detected → first-run "import existing CLI login" block.
-  const [isInitialImporting, setIsInitialImporting] = useState(false);
-  const showInitialImport = Boolean(
-    externalCliDetected && onImportFromCli && (!accounts || accounts.length === 0),
-  );
-  const handleInitialImport = useCallback(async () => {
-    if (!onImportFromCli) return;
-    setIsInitialImporting(true);
-    setError(null);
-    try {
-      const result = await onImportFromCli();
-      if (!result.success) {
-        setError(result.error ?? t('settings.accountTokens.importExternal.failed'));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setIsInitialImporting(false);
-    }
-  }, [onImportFromCli, t]);
 
   // Start OAuth flow
   const handleStartOAuth = useCallback(async () => {
@@ -159,23 +128,30 @@ export const ClaudeConfigCard = ({
   // Manual token input
   const handleManualSubmit = useCallback(async (
     accessToken: string,
-    extra?: { subscriptionLevel?: SubscriptionLevel }
+    extra?: { subscriptionLevel?: SubscriptionLevel; verify?: boolean }
   ) => {
     setManualError(null);
     setIsManualSubmitting(true);
     try {
-      await onSetManualToken(accessToken, extra?.subscriptionLevel, accountLabel.trim() || undefined);
+      await onSetManualToken(
+        accessToken,
+        extra?.subscriptionLevel,
+        accountLabel.trim() || undefined,
+        extra?.verify !== undefined ? { verify: extra.verify } : undefined,
+      );
       setIsManualModalOpen(false);
       setAccountLabel('');
     } catch (err) {
-      setManualError(err instanceof Error ? err.message : 'Failed to save token');
+      // v1.72 — a verify refusal renders the localized reason taxonomy, never
+      // a raw probe code.
+      setManualError(
+        describeManualTokenError(t, err as Error & { verifyFailure?: ManualTokenVerifyFailure }),
+      );
     } finally {
       setIsManualSubmitting(false);
     }
-  }, [accountLabel, onSetManualToken]);
+  }, [accountLabel, onSetManualToken, t]);
 
-  // Refresh token (single-account actions row). On failure, offer the CLI
-  // re-import recovery when available (cli-token-import).
   const handleRefresh = useCallback(async () => {
     setError(null);
     setIsRefreshing(true);
@@ -183,23 +159,13 @@ export const ClaudeConfigCard = ({
       const success = await onRefresh();
       if (!success) {
         setError(t('settings.accountTokens.errors.refreshFailed'));
-        if (cliImportAvailable && cliImportWired) setImportDialogOpen(true);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh token');
-      if (cliImportAvailable && cliImportWired) setImportDialogOpen(true);
     } finally {
       setIsRefreshing(false);
     }
-  }, [onRefresh, t, cliImportAvailable, cliImportWired]);
-
-  // Active-account refresh inside AccountList (multi-account); same CLI-import
-  // recovery on failure.
-  const handleRefreshActive = useCallback(async (): Promise<boolean> => {
-    const ok = await onRefresh();
-    if (!ok && cliImportAvailable && cliImportWired) setImportDialogOpen(true);
-    return ok;
-  }, [onRefresh, cliImportAvailable, cliImportWired]);
+  }, [onRefresh, t]);
 
   // Clear config
   const handleClear = useCallback(async () => {
@@ -266,32 +232,16 @@ export const ClaudeConfigCard = ({
           {error || config?.errorMessage}
         </div> : null}
 
-      {/* Cross-account hint: the native CLI file belongs to a DIFFERENT account,
-          so a failed refresh can't be recovered from it (cli-token-import). */}
-      {config?.cliFileForeignAccount &&
-      (config?.status === 'expired' || config?.status === 'error') ? (
-        <div
-          className="rounded-md bg-warning/10 px-3 py-2 text-sm text-warning"
-          data-testid="settings-cli-foreign-file-hint"
-        >
-          {config.cliFileForeignAccount.label
-            ? t('settings.accountTokens.cliImport.foreignFileNamed', {
-                label: config.cliFileForeignAccount.label,
-              })
-            : t('settings.accountTokens.cliImport.foreignFile')}
-        </div>
-      ) : null}
-
       {/* Multi-account list (set active / remove) */}
       {accounts && accounts.length > 0 && onSetActiveAccount && onRemoveAccount ? (
         <AccountList
+          providerId="claude"
           t={t}
           accounts={accounts}
           onSetActive={onSetActiveAccount}
-          onApplyToCli={onApplyAccountToCli}
           onUpdateLabel={onUpdateAccountLabel}
           onRemove={onRemoveAccount}
-          onRefreshActive={handleRefreshActive}
+          onRefreshActive={onRefresh}
           activeCanRefresh={hasRefreshToken}
         />
       ) : null}
@@ -318,34 +268,6 @@ export const ClaudeConfigCard = ({
         />
       ) : (
         <>
-          {/* Initial import: zero accounts + native CLI login detected. */}
-          {showInitialImport ? (
-            <div
-              className="space-y-2 rounded-md border border-border/40 bg-surface-2/40 p-3 dark:border-border/60"
-              data-testid="settings-cli-initial-import"
-              data-provider="claude"
-            >
-              <p className="text-sm text-foreground">
-                {t('settings.accountTokens.importExternal.detected', { name: 'Claude' })}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t('settings.accountTokens.importExternal.hint')}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={isInitialImporting}
-                onClick={() => void handleInitialImport()}
-                data-testid="settings-cli-initial-import-btn"
-              >
-                <HardDriveDownload
-                  className={cn('h-4 w-4 mr-2', isInitialImporting && 'animate-pulse')}
-                />
-                {t('settings.accountTokens.importExternal.button')}
-              </Button>
-            </div>
-          ) : null}
-
           {/* Auth Method Selector — always shown in multi-account mode (each
               login appends a new account), else only when not configured. */}
           {(isMulti || !isConfigured) ? <div className="space-y-2">
@@ -480,20 +402,6 @@ export const ClaudeConfigCard = ({
         </>
       )}
 
-      {/* CLI credential re-import (cli-token-import) */}
-      {cliImportWired && onImportFromCli && onSetAutoImport ? (
-        <CliImportControls
-          t={t}
-          switchId="claude-cli-auto-import"
-          importAvailable={cliImportAvailable}
-          autoImportEnabled={Boolean(autoImportEnabled)}
-          onSetAutoImport={onSetAutoImport}
-          onImportFromCli={onImportFromCli}
-          dialogOpen={importDialogOpen}
-          onDialogOpenChange={setImportDialogOpen}
-        />
-      ) : null}
-
       {/* Manual Input Modal */}
       <ManualInputModal
         t={t}
@@ -510,6 +418,9 @@ export const ClaudeConfigCard = ({
         accountLabel={accountLabel}
         onAccountLabelChange={setAccountLabel}
       />
+
+      {/* Subscription model list (v1.70; tab-mounted children slot) */}
+      {children}
     </div>
   );
 };
