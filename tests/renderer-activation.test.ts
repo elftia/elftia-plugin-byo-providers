@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe('renderer activation', () => {
-  it('registers ten canonical settings sections with preserved order/grouping/pinning', () => {
+  it('registers nine canonical settings sections with preserved order/grouping/pinning', () => {
     const sections: Array<Record<string, unknown>> = [];
     const registerNamespace = vi.fn();
 
@@ -24,8 +24,10 @@ describe('renderer activation', () => {
       i18n: { registerNamespace },
     } as never);
 
+    // The unified model-services section replaces the former separate
+    // `llm-providers` + `subscriptions` sections (omnicross parity).
     expect(sections.map(({ id }) => id)).toEqual([
-      'llm-providers',
+      'model-services',
       'media-image',
       'media-video',
       'media-music',
@@ -33,14 +35,19 @@ describe('renderer activation', () => {
       'media-asr',
       'search-providers',
       'object-storage',
-      'subscriptions',
       'code-cli',
     ]);
     expect(sections.map(({ order }) => order)).toEqual([
-      100, 110, 111, 112, 113, 114, 120, 125, 130, 131,
+      100, 110, 111, 112, 113, 114, 120, 125, 131,
     ]);
     expect(sections.every(({ pinToTop }) => pinToTop === true)).toBe(true);
 
+    // No standalone llm-providers / subscriptions registration remains.
+    expect(sections.some(({ id }) => id === 'llm-providers')).toBe(false);
+    expect(sections.some(({ id }) => id === 'subscriptions')).toBe(false);
+
+    // The unified section keeps the former LLM section's slot: pinned, inside
+    // the 提供商 group, order 100 — the media/search/storage siblings unchanged.
     for (const section of sections.slice(0, 8)) {
       expect(section.group).toMatchObject({ id: 'model-providers', order: 0 });
     }
@@ -57,8 +64,8 @@ describe('renderer activation', () => {
       key: 'navigation.providersGroup',
       fallback: 'Providers',
     });
+    // code-cli stays UNGROUPED (flat item after the providers group).
     expect(sections[8]?.group).toBeUndefined();
-    expect(sections[9]?.group).toBeUndefined();
 
     expect(registerNamespace).toHaveBeenCalledTimes(1);
     const [namespace, locales] = registerNamespace.mock.calls[0] as [
@@ -72,5 +79,27 @@ describe('renderer activation', () => {
       ja: { navigation: { providersGroup: 'プロバイダー' } },
       zh: { navigation: { providersGroup: '提供商' } },
     });
+    // The plugin-owned model-services copy is registered for every locale.
+    expect(locales).toMatchObject({
+      en: { modelServices: { title: 'Model Services' } },
+      ja: { modelServices: { title: 'モデルサービス' } },
+      zh: { modelServices: { title: '模型服务' } },
+    });
+  });
+
+  it('localizes the unified section label per locale', () => {
+    const sections: Array<Record<string, unknown>> = [];
+    activate({
+      react: { instance: React },
+      settings: {
+        registerSection(definition: Record<string, unknown>) {
+          sections.push(definition);
+          return () => undefined;
+        },
+      },
+      i18n: { registerNamespace: vi.fn() },
+    } as never);
+
+    expect(sections[0]?.label).toBe('Model Services');
   });
 });

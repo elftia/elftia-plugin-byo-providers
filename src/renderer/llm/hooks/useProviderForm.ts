@@ -30,7 +30,6 @@ export function useProviderForm(
   const [formData, setFormData] = useState<ProviderFormData>(emptyFormData);
   const [showApiKey, setShowApiKey] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [showTemplates, setShowTemplates] = useState(false);
 
   // ── Inline edit state ───────────────────────────────────────────
   const [inlineName, setInlineName] = useState('');
@@ -131,9 +130,14 @@ export function useProviderForm(
     setSelectedProviderId(null);
     setShowApiKey(false);
     setFormError(null);
-    setShowTemplates(false);
   };
 
+  /**
+   * Create a provider from a catalog preset through the host `addFromPreset`
+   * port (template-picker path). Returns the host result so the caller can
+   * react to success (close the picker, select the new row); `null` on a
+   * transport failure.
+   */
   const handleAddFromPreset = async (presetId: string) => {
     try {
       const result = await llmConfigClient.addFromPreset?.({ presetId, apiKey: '' });
@@ -166,8 +170,10 @@ export function useProviderForm(
         setShowApiKey(false);
         setFormError(null);
       }
+      return result ?? null;
     } catch (error) {
       console.error('Error adding from preset:', error);
+      return null;
     }
   };
 
@@ -189,7 +195,6 @@ export function useProviderForm(
       apiVersion: template.apiVersion,
       maxConcurrency: template.maxConcurrency,
     });
-    setShowTemplates(false);
   };
 
   const handleEditProvider = () => {
@@ -487,8 +492,6 @@ export function useProviderForm(
     formData,
     setFormData,
     formError,
-    showTemplates,
-    setShowTemplates,
     showApiKey,
     setShowApiKey,
     // provider-key-reveal: prefer the toggle handler (fetch + display-only
