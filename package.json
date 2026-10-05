@@ -1,6 +1,6 @@
 {
   "name": "@elftia/plugin-byo-providers",
-  "version": "0.2.23",
+  "version": "0.3.0",
   "private": true,
   "description": "Standalone first-party BYO Providers app-extension for Elftia.",
   "license": "MIT",
