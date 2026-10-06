@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   release:
-    uses: elftia/elftia/.github/workflows/release-plugin-package.yml@main
+    uses: elftia/elftia/.github/workflows/release-plugin-package.yml@b26e874f189a6668696653fee0d170a15392316a
     with:
       plugin_id: byo-providers
       release_tag: ${{ inputs.tag || github.ref_name }}
