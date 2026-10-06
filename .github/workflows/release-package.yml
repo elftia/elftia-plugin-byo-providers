@@ -1,0 +1,22 @@
+name: Release byo-providers package
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing immutable version tag
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: elftia/elftia/.github/workflows/release-plugin-package.yml@main
+    with:
+      plugin_id: byo-providers
+      release_tag: ${{ inputs.tag || github.ref_name }}
+    secrets: inherit

@@ -2,9 +2,13 @@
  * byo-providers — RENDERER half (`app-extension` plugin, P2b LLM + P2c media UI).
  *
  * `activate(host)` installs the host singleton (the bridge layer reads it),
- * registers the plugin-owned `byo-providers` i18n namespace (LLM ⊕ media seeds,
- * merged), and mounts the relocated provider settings UI as settings sections:
- *   - ONE "LLM Providers" section (`ProviderSettings`, P2b), AND
+ * registers the plugin-owned `byo-providers` i18n namespace (LLM ⊕ media ⊕
+ * subscription ⊕ model-services seeds, merged), and mounts the relocated
+ * provider settings UI as settings sections:
+ *   - ONE unified "Model Services" (模型服务) section (`ModelServicesPage`,
+ *     omnicross UpstreamsPage shape) — subscription account pools + BYO
+ *     providers in ONE sidebar, replacing the former separate `llm-providers`
+ *     and `subscriptions` sections, AND
  *   - FIVE media sections — Image / Video / Music / TTS / ASR Providers (P2c) —
  *     each rendering `MediaProviderSettings` with its `mediaType`, wrapped in the
  *     vendored `ImperativeConfirmProvider` (the panels use the host uiStore's
@@ -18,9 +22,9 @@
  * vendored wrappers / `host.i18n`); the data round-trips through the main `llm.*`
  * / `media.*` relays. NO host `@/...` module is imported at runtime.
  *
- * The heavy section bodies (the LLM tree + the 5 media panels + their dialogs)
- * are loaded via `React.lazy` so the `activate` critical path stays tiny — only
- * the section registers + thin Suspense shells are eager.
+ * The heavy section bodies (the unified page + the 5 media panels + their
+ * dialogs) are loaded via `React.lazy` so the `activate` critical path stays
+ * tiny — only the section registers + thin Suspense shells are eager.
  *
  * @module byo-providers/renderer/index
  */
@@ -30,7 +34,7 @@ import { setHost } from './host/hostBridge';
 import { ImperativeConfirmProvider } from './host/vendored/useImperativeConfirm';
 import { readLocale, registerLlmI18n, useTranslation } from './host/vendored/useTranslation';
 
-const SECTION_ID = 'llm-providers';
+const SECTION_ID = 'model-services';
 
 /** The 5 media types in nav order, each its own section after the LLM section. */
 const MEDIA_TYPES = ['image', 'video', 'music', 'tts', 'asr'] as const;
@@ -70,9 +74,10 @@ export function activate(host: AgentUiHostApi): void {
     order: 0,
   } as const;
 
-  // The LLM UI tree is lazy so the activate path stays small (DS precedent).
-  const LazyProviderSettings = React.lazy(() =>
-    import('./llm/ProviderSettings').then((m) => ({ default: m.ProviderSettings })),
+  // The unified model-services page is lazy so the activate path stays small
+  // (DS precedent) — the provider tree + subscription cards split off `activate`.
+  const LazyModelServicesPage = React.lazy(() =>
+    import('./llm/ModelServicesPage').then((m) => ({ default: m.ModelServicesPage })),
   );
 
   // The media dispatch container (renders the per-type panel) is lazy too; each
@@ -83,29 +88,25 @@ export function activate(host: AgentUiHostApi): void {
   const LazySearchProviderSettings = React.lazy(() => import('./search/SearchProviderSettings'));
   const LazyObjectStorageSettings = React.lazy(() => import('./storage/ObjectStorageSettings'));
 
-  // P2e (`byo-p2-subscription`) — the subscription/OAuth/CLI-account tab + the
-  // Code CLI runtime tab, both lazy (the heavy card trees split off `activate`).
-  const LazySubscriptionAccountsTab = React.lazy(() =>
-    import('./subscription/SubscriptionAccountsTab').then((m) => ({
-      default: m.SubscriptionAccountsTab,
-    })),
-  );
+  // P2e (`byo-p2-subscription`) — the Code CLI runtime tab, lazy (the heavy
+  // card tree splits off `activate`). The subscription/OAuth UI itself moved
+  // INTO the unified model-services section above.
   const LazyCodeCliTab = React.lazy(() =>
     import('./cli/CodeCliTab').then((m) => ({ default: m.CodeCliTab })),
   );
 
-  function LlmSection() {
+  function ModelServicesSection() {
     return h(
       React.Suspense,
       { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-      h(LazyProviderSettings),
+      h(LazyModelServicesPage),
     );
   }
 
   host.settings.registerSection({
     id: SECTION_ID,
     // Locale-resolved label from the plugin's own i18n bundle (never an i18n key).
-    label: readLlmSectionLabel(),
+    label: readModelServicesSectionLabel(),
     order: 100,
     group: providersGroup,
     pinToTop: true,
@@ -114,9 +115,9 @@ export function activate(host: AgentUiHostApi): void {
         'div',
         {
           className: 'h-full',
-          'data-testid': 'byo-providers-llm-section',
+          'data-testid': 'byo-providers-model-services-section',
         },
-        h(LlmSection),
+        h(ModelServicesSection),
       ),
   });
 
@@ -195,36 +196,15 @@ export function activate(host: AgentUiHostApi): void {
       ),
   });
 
-  // ── P2e: Subscription/OAuth/CLI-account section + Code CLI runtime section ──
-  // Both consume `t` from the plugin's own i18n bundle (a thin wrapper resolves
+  // ── P2e: Code CLI runtime section ──
+  // Consumes `t` from the plugin's own i18n bundle (a thin wrapper resolves
   // it per render so the panel follows locale changes). Ordered after search.
-  function SubscriptionSection() {
-    const t = useTranslation();
-    return h(LazySubscriptionAccountsTab, { t });
-  }
+  // The former standalone `subscriptions` section was folded INTO the unified
+  // model-services section (omnicross parity) — no separate registration.
   function CodeCliSectionPanel() {
     const t = useTranslation();
     return h(LazyCodeCliTab, { t });
   }
-
-  host.settings.registerSection({
-    id: 'subscriptions',
-    label: readSubscriptionSectionLabel(),
-    order: 130,
-    // UNGROUPED (independent flat item) but pinned to the top block — sits
-    // directly after the "提供商" collapsible parent, not nested under it.
-    pinToTop: true,
-    render: () =>
-      h(
-        'div',
-        { className: 'h-full', 'data-testid': 'byo-providers-subscriptions-section' },
-        h(
-          React.Suspense,
-          { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-          h(SubscriptionSection),
-        ),
-      ),
-  });
 
   host.settings.registerSection({
     // sectionId `code-cli` — the host AgentBackendSection gates the `cli` engine
@@ -233,7 +213,7 @@ export function activate(host: AgentUiHostApi): void {
     id: 'code-cli',
     label: readCodeCliSectionLabel(),
     order: 131,
-    // UNGROUPED flat item, pinned to the top block (after Subscriptions).
+    // UNGROUPED flat item, pinned to the top block (after the providers group).
     pinToTop: true,
     render: () =>
       h(
@@ -249,19 +229,19 @@ export function activate(host: AgentUiHostApi): void {
 }
 
 /**
- * The "LLM Providers" section label, localized to the host's active locale.
- * Uses the shared `readLocale()` (JSON-parses the host's persisted `locale`,
- * maps the tag to a seed base). The seed has no single-word section title, so
- * the three strings are inlined.
+ * The "Model Services" (模型服务) section label, localized to the host's active
+ * locale. Uses the shared `readLocale()` (JSON-parses the host's persisted
+ * `locale`, maps the tag to a seed base). Inlined like the sibling section-label
+ * helpers (the nav label is a thunk, never an i18n key).
  */
-function readLlmSectionLabel(): string {
+function readModelServicesSectionLabel(): string {
   switch (readLocale()) {
     case 'zh':
-      return 'LLM 提供商';
+      return '模型服务';
     case 'ja':
-      return 'LLM プロバイダー';
+      return 'モデルサービス';
     default:
-      return 'LLM Providers';
+      return 'Model Services';
   }
 }
 
@@ -307,18 +287,6 @@ function readSearchSectionLabel(): string {
       return '検索プロバイダー';
     default:
       return 'Search Providers';
-  }
-}
-
-/** The "Subscriptions" section label (localized), inlined like the others. */
-function readSubscriptionSectionLabel(): string {
-  switch (readLocale()) {
-    case 'zh':
-      return '订阅账号';
-    case 'ja':
-      return 'サブスクリプション';
-    default:
-      return 'Subscriptions';
   }
 }
 

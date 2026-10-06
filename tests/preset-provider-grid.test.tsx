@@ -20,6 +20,10 @@ vi.mock('../src/renderer/host/vendored/useTranslation', () => ({
       'providerSettings.presets.retry': 'Retry',
       'providerSettings.presets.add': 'Add',
       'providerSettings.presets.added': 'Added',
+      'modelServices.presets.customTitle': 'Start from an API type',
+      'modelServices.presets.customDescription': 'No template needed.',
+      'modelServices.presets.searchPlaceholder': 'Search presets…',
+      'modelServices.presets.empty': 'No presets match your search.',
     })[key] ?? key,
 }));
 
@@ -39,6 +43,20 @@ vi.mock('../src/renderer/host/ui', async () => {
         size?: string;
       }
     >) => ReactModule.createElement('button', props, children),
+    Input: ({
+      value,
+      onChange,
+      placeholder,
+      ...props
+    }: React.PropsWithChildren<
+      React.InputHTMLAttributes<HTMLInputElement> & { density?: string }
+    >) =>
+      ReactModule.createElement('input', {
+        ...props,
+        value: value ?? '',
+        placeholder,
+        onChange,
+      }),
   };
 });
 
@@ -46,7 +64,36 @@ vi.mock('../src/renderer/llm/utils', () => ({
   getProviderIcon: () => null,
 }));
 
-import { PresetProviderGrid } from '../src/renderer/llm/PresetProviderGrid';
+import { ProviderTemplatePicker } from '../src/renderer/llm/PresetProviderGrid';
+
+/** A catalog preset shaped like the host `getProviderPresets` port output. */
+function preset(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    presetId: id,
+    name: id === 'commandcode' ? 'Command Code' : id,
+    apiFormat: 'openai',
+    api_base_url: `https://${id}.example.invalid/v1`,
+    models: [`${id}-model-a`],
+    ...overrides,
+  };
+}
+
+function renderPicker(
+  addedPresetIds: Set<string> = new Set(),
+  handlers: {
+    onSelectPreset?: (id: string) => void;
+    onStartCustom?: (apiFormat: string) => void;
+  } = {},
+): React.ReactElement {
+  return (
+    <ProviderTemplatePicker
+      addedPresetIds={addedPresetIds}
+      onSelectPreset={handlers.onSelectPreset ?? vi.fn()}
+      onStartCustom={handlers.onStartCustom ?? vi.fn()}
+    />
+  );
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -58,56 +105,124 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function renderGrid(): React.ReactElement {
-  return (
-    <PresetProviderGrid
-      addedPresetIds={new Set()}
-      onSelectPreset={vi.fn()}
-    />
-  );
-}
-
 beforeEach(() => {
   getProviderPresets.mockReset();
 });
 
-describe('PresetProviderGrid loading', () => {
-  it('renders presets returned by the host port', async () => {
+describe('ProviderTemplatePicker catalog', () => {
+  it('renders presets returned by the host port, including commandcode', async () => {
     getProviderPresets.mockResolvedValueOnce([
-      {
-        id: 'openai',
-        presetId: 'openai',
-        name: 'OpenAI',
-        baseUrl: 'https://example.invalid',
-        models: [],
-      },
+      preset('openai'),
+      preset('commandcode', {
+        apiFormat: 'openai',
+        features: ['coding-plan'],
+        formatVariants: { anthropic: 'anthropic', 'openai-response': 'openai-response' },
+      }),
     ]);
     let renderer!: ReactTestRenderer;
 
     await act(async () => {
-      renderer = create(renderGrid());
+      renderer = create(renderPicker());
     });
 
-    expect(JSON.stringify(renderer.toJSON())).toContain('OpenAI');
+    // The multi-wire commandcode preset (openai primary + anthropic /
+    // openai-response variants) renders as ONE addable card keyed by its id.
+    expect(renderer.root.findByProps({ 'data-testid': 'preset-card-commandcode' })).toBeDefined();
     expect(renderer.root.findByProps({ 'aria-busy': false })).toBeDefined();
+  });
+
+  it('badges added presets and disables their Add button', async () => {
+    getProviderPresets.mockResolvedValueOnce([preset('kimi'), preset('openai')]);
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(renderPicker(new Set(['kimi'])));
+    });
+
+    const kimiCard = renderer.root.findByProps({ 'data-testid': 'preset-card-kimi' });
+    expect(JSON.stringify(renderer.toJSON())).toContain('Added');
+    // The disabled Add button: find buttons inside the kimi card with disabled.
+    const kimiButtons = kimiCard.findAllByType('button');
+    // PresetCard's Add is the only button in the card.
+    expect(kimiButtons.length).toBe(1);
+    expect(kimiButtons[0]?.props.disabled).toBe(true);
+
+    // A NOT-added preset's Add button stays enabled and fires onSelectPreset
+    // with the preset's unique `id` (variant disambiguation).
+    const onSelectPreset = vi.fn();
+    await act(async () => {
+      renderer.update(renderPicker(new Set(['kimi']), { onSelectPreset }));
+    });
+    const openaiButtons = renderer.root
+      .findByProps({ 'data-testid': 'preset-card-openai' })
+      .findAllByType('button');
+    expect(openaiButtons[0]?.props.disabled).toBe(false);
+    await act(async () => {
+      openaiButtons[0]?.props.onClick();
+    });
+    expect(onSelectPreset).toHaveBeenCalledWith('openai');
+  });
+
+  it('narrows the grid to presets matching the search query', async () => {
+    getProviderPresets.mockResolvedValueOnce([
+      preset('openai', { description: 'The OpenAI API' }),
+      preset('commandcode'),
+    ]);
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(renderPicker());
+    });
+
+    const search = renderer.root.findByProps({
+      placeholder: 'Search presets…',
+    });
+    expect(search).toBeDefined();
+
+    await act(async () => {
+      search.props.onChange({ target: { value: 'command' } });
+    });
+
+    expect(renderer.root.findByProps({ 'data-testid': 'preset-card-commandcode' })).toBeDefined();
+    expect(renderer.root.findAllByProps({ 'data-testid': 'preset-card-openai' })).toHaveLength(0);
+  });
+
+  it('offers the API-type escape hatch, wired to onStartCustom', async () => {
+    getProviderPresets.mockResolvedValueOnce([preset('openai')]);
+    const onStartCustom = vi.fn();
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(renderPicker(new Set(), { onStartCustom }));
+    });
+
+    // All five wire formats render as chips.
+    for (const apiFormat of [
+      'openai',
+      'anthropic',
+      'google',
+      'openai-response',
+      'azure-openai',
+    ]) {
+      expect(
+        renderer.root.findByProps({ 'data-testid': `custom-type-${apiFormat}` }),
+      ).toBeDefined();
+    }
+
+    await act(async () => {
+      renderer.root.findByProps({ 'data-testid': 'custom-type-anthropic' }).props.onClick();
+    });
+    expect(onStartCustom).toHaveBeenCalledWith('anthropic');
   });
 
   it('shows a recoverable error and retries the host request', async () => {
     getProviderPresets
       .mockRejectedValueOnce(new Error('temporarily unavailable'))
-      .mockResolvedValueOnce([
-        {
-          id: 'retry-provider',
-          presetId: 'retry-provider',
-          name: 'Recovered Provider',
-          baseUrl: 'https://example.invalid',
-          models: [],
-        },
-      ]);
+      .mockResolvedValueOnce([preset('retry-provider')]);
     let renderer!: ReactTestRenderer;
 
     await act(async () => {
-      renderer = create(renderGrid());
+      renderer = create(renderPicker());
     });
 
     expect(renderer.root.findByProps({ role: 'alert' })).toBeDefined();
@@ -118,7 +233,9 @@ describe('PresetProviderGrid loading', () => {
     });
 
     expect(getProviderPresets).toHaveBeenCalledTimes(2);
-    expect(JSON.stringify(renderer.toJSON())).toContain('Recovered Provider');
+    expect(
+      renderer.root.findByProps({ 'data-testid': 'preset-card-retry-provider' }),
+    ).toBeDefined();
     expect(renderer.root.findAllByProps({ role: 'alert' })).toHaveLength(0);
   });
 
@@ -129,7 +246,7 @@ describe('PresetProviderGrid loading', () => {
     let renderer!: ReactTestRenderer;
 
     await act(async () => {
-      renderer = create(renderGrid());
+      renderer = create(renderPicker());
     });
     await act(async () => {
       renderer.unmount();

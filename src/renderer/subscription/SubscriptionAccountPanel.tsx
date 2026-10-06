@@ -1,13 +1,17 @@
 /**
- * SubscriptionAccountsTab - subscription account management for Code CLI providers.
+ * SubscriptionAccountPanel — the account half of the model-services right
+ * panel: ONE provider's config card (OAuth / manual-token / device-flow entry +
+ * account list), wired from the SAME `useSubscriptionAccounts` bag the unified
+ * sidebar reads, so a completed login lands in the sidebar without a manual
+ * refresh (both render from one hook instance held by `ModelServicesPage`).
  *
- * Keeps app-owned OAuth/API-key accounts separate from native Code CLI logins,
- * installation, and detection.
+ * The card + its props are lifted verbatim from the former
+ * `SubscriptionAccountsTab` full-list rendering — masked-port data behavior
+ * unchanged (verifier stays host-side; only code + state cross).
  */
-
-import { RefreshCw, UserCircle } from 'lucide-react';
-
 import type { TranslateFn } from '../host/vendored/useTranslation';
+
+import type { TokenPlatform } from '@byo/domain/subscription';
 
 import { ClaudeConfigCard } from './ClaudeConfigCard';
 import { CodexConfigCard } from './CodexConfigCard';
@@ -17,18 +21,20 @@ import { GrokConfigCard } from './GrokConfigCard';
 import { KimiConfigCard } from './KimiConfigCard';
 import { OpenCodeGoConfigCard } from './OpenCodeGoConfigCard';
 import { SubscriptionModelList } from './SubscriptionModelList';
-import { useSubscriptionAccounts } from './useSubscriptionAccounts';
+import type { useSubscriptionAccounts } from './useSubscriptionAccounts';
 import { useSubscriptionModels } from './useSubscriptionModels';
 
-interface SubscriptionAccountsTabProps {
+export type SubscriptionAccountsBag = ReturnType<typeof useSubscriptionAccounts>;
+
+export interface SubscriptionAccountPanelProps {
   t: TranslateFn;
+  platform: TokenPlatform;
+  accounts: SubscriptionAccountsBag;
 }
 
-export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
+export function SubscriptionAccountPanel({ t, platform, accounts }: SubscriptionAccountPanelProps) {
   const {
     config,
-    loading,
-    error,
     clearConfig,
     startClaudeOAuth,
     exchangeClaudeToken,
@@ -74,10 +80,10 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     pollCodexLoopbackFlow,
     cancelCodexLoopbackFlow,
     refreshToken,
-  } = useSubscriptionAccounts();
+  } = accounts;
 
-  // v1.70 subscription model view — fetched ONCE per tab mount; on an older
-  // host `supported` stays false and every card's model section stays hidden.
+  // v1.70 subscription model view — fetched ONCE per panel mount; on an older
+  // host `supported` stays false and the card's model section stays hidden.
   const {
     supported: modelsSupported,
     view: modelsView,
@@ -86,52 +92,22 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
     toggleSupported,
   } = useSubscriptionModels();
 
-  /** The per-card model section (mounted through each card's children slot). */
-  const modelSection = (providerId: string) =>
+  /** The card's model section (mounted through the card's children slot). */
+  const modelSection =
     modelsSupported ? (
       <SubscriptionModelList
         t={t}
-        providerId={providerId}
-        models={modelsView?.[providerId]}
+        providerId={platform}
+        models={modelsView?.[platform]}
         onSetExtras={setModelExtras}
         onSetEnabled={setModelEnabled}
         toggleSupported={toggleSupported}
       />
     ) : undefined;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="h-6 w-6 animate-spin text-text-muted" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4 md:p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-2">
-            <UserCircle className="h-5 w-5 text-text-muted" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              {t('settings.accountTokens.title')}
-            </h2>
-            <p className="mt-1 text-sm text-text-muted">
-              {t('settings.accountTokens.description')}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {error ? (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
-
-      <div className="space-y-4">
+  switch (platform) {
+    case 'claude':
+      return (
         <ClaudeConfigCard
           t={t}
           config={config?.claude}
@@ -158,9 +134,11 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onClear={() => clearConfig('claude')}
           onRefresh={() => refreshToken('claude')}
         >
-          {modelSection('claude')}
+          {modelSection}
         </ClaudeConfigCard>
-
+      );
+    case 'codex':
+      return (
         <CodexConfigCard
           t={t}
           config={config?.codex}
@@ -183,9 +161,11 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onClear={() => clearConfig('codex')}
           onRefresh={() => refreshToken('codex')}
         >
-          {modelSection('codex')}
+          {modelSection}
         </CodexConfigCard>
-
+      );
+    case 'gemini':
+      return (
         <GeminiConfigCard
           t={t}
           config={config?.gemini}
@@ -195,15 +175,17 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
             // verifier up by `state` — the verifier never crosses here.
             await exchangeGeminiToken(code, state);
           }}
-          onSetManualToken={async (accessToken, refreshToken) => {
-            await setGeminiManualToken(accessToken, refreshToken);
+          onSetManualToken={async (accessToken, refreshTokenValue) => {
+            await setGeminiManualToken(accessToken, refreshTokenValue);
           }}
           onClear={() => clearConfig('gemini')}
           onRefresh={() => refreshToken('gemini')}
         >
-          {modelSection('gemini')}
+          {modelSection}
         </GeminiConfigCard>
-
+      );
+    case 'kimi':
+      return (
         <KimiConfigCard
           t={t}
           config={config?.kimi}
@@ -217,9 +199,11 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onClear={() => clearConfig('kimi')}
           onRefresh={() => refreshToken('kimi')}
         >
-          {modelSection('kimi')}
+          {modelSection}
         </KimiConfigCard>
-
+      );
+    case 'grok':
+      return (
         <GrokConfigCard
           t={t}
           config={config?.grok}
@@ -233,9 +217,11 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onClear={() => clearConfig('grok')}
           onRefresh={() => refreshToken('grok')}
         >
-          {modelSection('grok')}
+          {modelSection}
         </GrokConfigCard>
-
+      );
+    case 'copilot':
+      return (
         <CopilotConfigCard
           t={t}
           config={config?.copilot}
@@ -249,9 +235,11 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onClear={() => clearConfig('copilot')}
           onRefresh={() => refreshToken('copilot')}
         >
-          {modelSection('copilot')}
+          {modelSection}
         </CopilotConfigCard>
-
+      );
+    case 'opencodego':
+      return (
         <OpenCodeGoConfigCard
           t={t}
           config={config?.opencodego}
@@ -261,18 +249,12 @@ export function SubscriptionAccountsTab({ t }: SubscriptionAccountsTabProps) {
           onUpdateAccountLabel={(id, label) => updateOpenCodeGoAccountLabel(id, label)}
           onRemoveAccount={(id) => removeOpenCodeGoAccount(id)}
         >
-          {modelSection('opencodego')}
+          {modelSection}
         </OpenCodeGoConfigCard>
-      </div>
-
-      <section className="rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4 md:p-5">
-        <h3 className="mb-2 text-base font-semibold text-foreground">
-          {t('settings.accountTokens.info.title')}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {t('settings.accountTokens.info.description')}
-        </p>
-      </section>
-    </div>
-  );
+      );
+    default:
+      return null;
+  }
 }
+
+export default SubscriptionAccountPanel;

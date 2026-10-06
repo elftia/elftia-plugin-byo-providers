@@ -4,11 +4,11 @@
 
 // Main components
 export { ProviderDetails } from './ProviderDetails';
+export { ProviderDetailPanel } from './ProviderDetailPanel';
 export { ProviderForm } from './ProviderForm';
 export { ProviderList } from './ProviderList';
 export { ProviderModelSelector } from './ProviderModelSelector';
-export { default } from './ProviderSettings';
-export { ProviderSettings } from './ProviderSettings';
+export { ModelServicesPage } from './ModelServicesPage';
 
 // Dialogs
 export type { EditModelEntry } from './EditModelDialog';
