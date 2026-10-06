@@ -46,6 +46,7 @@ jobs:
           repository: elftia/elftia
           ref: main
           path: .elftia-sign-tool
+          token: ${{ secrets.ELFTIA_REPO_TOKEN }}
           persist-credentials: false
       - name: Sign and package the reviewed bytes
         shell: bash
