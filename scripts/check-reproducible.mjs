@@ -1,8 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  copyFileSync,
-  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -35,15 +33,20 @@ function trackedPaths() {
 }
 
 function copyTrackedTree(target) {
-  for (const tracked of trackedPaths()) {
-    const source = resolve(root, tracked);
-    if (!lstatSync(source).isFile()) {
-      throw new Error(`reproducibility input is not a regular file: ${tracked}`);
-    }
-    const destination = resolve(target, tracked);
-    mkdirSync(dirname(destination), { recursive: true });
-    copyFileSync(source, destination);
-  }
+  // Export repository blob bytes (LF) rather than the working copy: a Windows
+  // checkout smudges text files to CRLF, which flows into the build output and
+  // makes a locally refreshed reproducibility.json stale on LF CI runners (and
+  // vice versa). `git checkout-index` with autocrlf disabled emits canonical
+  // blob bytes on every platform (no tar involved — GNU tar misreads `C:` as a
+  // remote host). Consequence: the gate verifies the STAGED tree — stage new
+  // inputs before running it.
+  mkdirSync(target, { recursive: true });
+  run(
+    'git',
+    ['-c', 'core.autocrlf=false', 'checkout-index', '-a', '--force', `--prefix=${join(target, '')}/`],
+    root,
+    'pipe',
+  );
   run('git', ['init', '--quiet'], target);
   run('git', ['add', '--all'], target, 'pipe');
 }
