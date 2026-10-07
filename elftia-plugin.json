@@ -29,5 +29,6 @@
       "requiredMinor": 50,
       "builtAgainst": "1.50.0"
     }
-  }
+  },
+  "minElftiaVersion": "0.2.8"
 }
