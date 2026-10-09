@@ -11,7 +11,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
     "settings": {
       "codeCli": {
         "title": "About Code CLI",
-        "description": "Code CLI tools (Claude Code, Codex, Gemini CLI) let you use AI directly from the command line. Configure your accounts here so Elftia can use them as an alternative backend.",
+        "description": "Code CLI tools (Claude Code, Codex, Gemini CLI) let you use AI directly from the command line.",
         "installed": "Installed",
         "notInstalled": "Not Installed",
         "checking": "Checking...",
@@ -23,6 +23,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
         "clearButton": "Clear",
         "refreshButton": "Refresh",
         "installButton": "Install",
+        "upgradeButton": "Upgrade",
         "installing": "Installing...",
         "launch": {
           "button": "Launch",
@@ -89,7 +90,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "info": {
           "title": "About Code CLI",
-          "description": "Code CLI tools (Claude Code, Codex, Gemini CLI) let you use AI directly from the command line. Configure your accounts here so Elftia can use them as an alternative backend."
+          "description": "Code CLI tools (Claude Code, Codex, Gemini CLI) let you use AI directly from the command line."
         }
       }
     }
@@ -98,7 +99,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
     "settings": {
       "codeCli": {
         "title": "关于 Code CLI",
-        "description": "Code CLI 工具（Claude Code、Codex、Gemini CLI）可以直接从命令行使用 AI。在此配置您的账号，Elftia 即可将它们作为替代后端使用。",
+        "description": "Code CLI 工具（Claude Code、Codex、Gemini CLI）可以直接从命令行使用 AI。",
         "installed": "已安装",
         "notInstalled": "未安装",
         "checking": "检测中...",
@@ -110,6 +111,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
         "clearButton": "清除",
         "refreshButton": "刷新",
         "installButton": "安装",
+        "upgradeButton": "升级",
         "installing": "安装中...",
         "launch": {
           "button": "启动",
@@ -176,7 +178,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "info": {
           "title": "关于 Code CLI",
-          "description": "Code CLI 工具（Claude Code、Codex、Gemini CLI）可以直接从命令行使用 AI。在此配置您的账号，Elftia 即可将它们作为替代后端使用。"
+          "description": "Code CLI 工具（Claude Code、Codex、Gemini CLI）可以直接从命令行使用 AI。"
         }
       }
     }
@@ -185,7 +187,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
     "settings": {
       "codeCli": {
         "title": "Code CLI について",
-        "description": "Code CLI ツール（Claude Code、Codex、Gemini CLI）を使用すると、コマンドラインから直接 AI を利用できます。ここでアカウントを設定すると、Elftia が代替バックエンドとして使用できるようになります。",
+        "description": "Code CLI ツール（Claude Code、Codex、Gemini CLI）を使用すると、コマンドラインから直接 AI を利用できます。",
         "installed": "インストール済み",
         "notInstalled": "未インストール",
         "checking": "確認中...",
@@ -197,6 +199,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
         "clearButton": "クリア",
         "refreshButton": "更新",
         "installButton": "インストール",
+        "upgradeButton": "アップグレード",
         "installing": "インストール中...",
         "launch": {
           "button": "起動",
@@ -263,7 +266,7 @@ export const cliI18nSeed: Record<string, Record<string, unknown>> = {
         },
         "info": {
           "title": "Code CLI について",
-          "description": "Code CLI ツール（Claude Code、Codex、Gemini CLI）を使用すると、コマンドラインから直接 AI を利用できます。ここでアカウントを設定すると、Elftia が代替バックエンドとして使用できるようになります。"
+          "description": "Code CLI ツール（Claude Code、Codex、Gemini CLI）を使用すると、コマンドラインから直接 AI を利用できます。"
         }
       }
     }

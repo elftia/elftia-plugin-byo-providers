@@ -609,6 +609,15 @@ export function activate(host: AgentBackendHostApi): void {
     'cliRt.launchTerminal': async (p) =>
       (await cliRt()?.launchTerminal(asRecord(p) as never)) ?? cliRtMissing(),
     'cliRt.listBackends': async () => (await cliRt()?.listBackends()) ?? [],
+    // Feature-detect: the version probe (omnicross parity) exists only on hosts
+    // with host-API `cliRuntime.getVersions`; older hosts answer [] and the
+    // renderer degrades to its pre-probe rendering.
+    'cliRt.getVersions': async () => {
+      // cliRt() resolves the service SYNCHRONOUSLY (never await the service
+      // itself — a thenable-looking proxy would hang the relay).
+      const port = cliRt() as { getVersions?: () => Promise<unknown[]> } | undefined;
+      return (await port?.getVersions?.()) ?? [];
+    },
 
     // ══ OBJECT STORAGE — masked config + write-only credentials ══
     'storage.listProviders': async () => (await storage()?.listProviders()) ?? [],

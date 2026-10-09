@@ -45,6 +45,10 @@ export const cliRuntimeClient = {
   listBackends(): Promise<HostCliBackendInfo[]> {
     return invoke('cliRt.listBackends');
   },
+  /** Version probe (omnicross parity): `{ backendId → { installed?, latest? } }`. */
+  getVersions(): Promise<unknown> {
+    return invoke('cliRt.getVersions');
+  },
 };
 
 export type CliRuntimeClient = typeof cliRuntimeClient;

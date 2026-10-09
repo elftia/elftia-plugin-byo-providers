@@ -36,8 +36,8 @@ import {
 import type { TranslateFn } from '../host/vendored/useTranslation';
 
 import { CliAvailabilityBadge } from './CliAvailabilityBadge';
-import { CliSubSettings } from './CliSubSettings';
 import { useCliAvailability } from './useCliAvailability';
+import { useCliVersions } from './useCliVersions';
 
 interface CodeCliTabProps {
   t: TranslateFn;
@@ -74,10 +74,13 @@ function InstallButton({
   backendId,
   onInstalled,
   t,
+  mode = 'install',
 }: {
   backendId: string;
   onInstalled: () => void;
   t: TranslateFn;
+  /** `upgrade` re-runs the same install command at the latest release. */
+  mode?: 'install' | 'upgrade';
 }) {
   const [state, setState] = useState<'idle' | 'installing' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -111,12 +114,16 @@ function InstallButton({
       >
         {state === 'installing' ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : mode === 'upgrade' ? (
+          <RefreshCw className="h-3.5 w-3.5" />
         ) : (
           <Download className="h-3.5 w-3.5" />
         )}
         {state === 'installing'
           ? t('settings.codeCli.installing')
-          : t('settings.codeCli.installButton')}
+          : mode === 'upgrade'
+            ? t('settings.codeCli.upgradeButton')
+            : t('settings.codeCli.installButton')}
       </Button>
       {state === 'error' ? <p className="text-xs text-destructive">{errorMsg}</p> : null}
     </div>
@@ -219,6 +226,7 @@ function CodeCliSection({
   backendId,
   status,
   loading,
+  version,
   onRefresh,
   t,
 }: {
@@ -226,22 +234,42 @@ function CodeCliSection({
   backendId: string;
   status: CliAuthStatus | undefined;
   loading: boolean;
+  /** Version probe outcome (`{installed?, latest?}`); absent = not probed. */
+  version?: { installed?: string; latest?: string };
   onRefresh: () => void;
   t: TranslateFn;
 }) {
   const showInstallButton =
     status?.installed === false && status?.installable !== false && !status.authenticated;
   const showLaunchButton = status?.installed === true;
+  // omnicross CliCard shape: "1.2.3" / "1.2.3 → 1.3.0"; Upgrade re-installs at
+  // the latest release and is offered only when a probe saw a newer one.
+  const upgradeAvailable = Boolean(
+    status?.installed && status?.installable !== false && version?.installed && version.latest && version.latest !== version.installed,
+  );
+  const versionText = version?.installed
+    ? version.latest && version.latest !== version.installed
+      ? `${version.installed} → ${version.latest}`
+      : version.installed
+    : null;
 
   return (
     <section className="space-y-3 rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          {title}
+          {versionText ? (
+            <span className="ml-2 font-normal text-xs text-muted-foreground">{versionText}</span>
+          ) : null}
+        </h3>
         <div className="flex items-center gap-2">
           <CliAvailabilityBadge status={status} loading={loading} t={t} />
           {showLaunchButton ? <LaunchButton backendId={backendId} title={title} t={t} /> : null}
           {showInstallButton ? (
             <InstallButton backendId={backendId} onInstalled={onRefresh} t={t} />
+          ) : null}
+          {upgradeAvailable ? (
+            <InstallButton backendId={backendId} onInstalled={onRefresh} t={t} mode="upgrade" />
           ) : null}
         </div>
       </div>
@@ -256,7 +284,11 @@ function CodeCliSection({
 
 export function CodeCliTab({ t }: CodeCliTabProps) {
   const { statuses, loading: cliLoading, refresh: refreshCli } = useCliAvailability();
-  const handleRefreshCli = useCallback(() => void refreshCli(), [refreshCli]);
+  const { versions, refresh: refreshVersions } = useCliVersions();
+  const handleRefreshCli = useCallback(() => {
+    void refreshCli();
+    void refreshVersions();
+  }, [refreshCli, refreshVersions]);
 
   const claudeStatus = statuses.find((status) => status.backendId === 'claude-code');
   const codexStatus = statuses.find(
@@ -291,16 +323,13 @@ export function CodeCliTab({ t }: CodeCliTabProps) {
         </div>
       </section>
 
-      {/* The cli sub-settings (migrated from the host AgentBackendSection — the
-          GENERAL engine selector stays host). */}
-      <CliSubSettings t={t} statuses={statuses} />
-
       <div className="space-y-4">
         <CodeCliSection
           title="Claude Code"
           backendId="claude-code"
           status={claudeStatus}
           loading={cliLoading}
+          version={versions['claude-code']}
           onRefresh={handleRefreshCli}
           t={t}
         />
@@ -309,6 +338,7 @@ export function CodeCliTab({ t }: CodeCliTabProps) {
           backendId="codex"
           status={codexStatus}
           loading={cliLoading}
+          version={versions['codex'] ?? versions['codex-cli']}
           onRefresh={handleRefreshCli}
           t={t}
         />
@@ -317,6 +347,7 @@ export function CodeCliTab({ t }: CodeCliTabProps) {
           backendId="gemini-cli"
           status={geminiStatus}
           loading={cliLoading}
+          version={versions['gemini-cli']}
           onRefresh={handleRefreshCli}
           t={t}
         />

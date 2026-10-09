@@ -667,6 +667,13 @@ const RELAY_CASES: RelayCase[] = [
     method: 'listBackends',
     args: [],
   },
+  {
+    ipc: 'cliRt.getVersions',
+    service: 'cliRuntime',
+    // Feature-detected on the port (older hosts answer []).
+    method: 'getVersions',
+    args: [],
+  },
 
   {
     ipc: 'storage.listProviders',
@@ -799,7 +806,7 @@ describe('main activation', () => {
       'subAuth.manualTokenVerifySupported',
     );
 
-    expect(expectedMethods).toHaveLength(103);
+    expect(expectedMethods).toHaveLength(104);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });

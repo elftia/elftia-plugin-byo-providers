@@ -6,17 +6,17 @@
 export const navigationI18nSeed: Record<string, Record<string, unknown>> = {
   en: {
     navigation: {
-      providersGroup: 'Providers',
+      providersGroup: 'Model Services',
     },
   },
   zh: {
     navigation: {
-      providersGroup: '提供商',
+      providersGroup: '模型服务',
     },
   },
   ja: {
     navigation: {
-      providersGroup: 'プロバイダー',
+      providersGroup: 'モデルサービス',
     },
   },
 };

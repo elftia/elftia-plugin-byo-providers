@@ -68,7 +68,7 @@ export function activate(host: AgentUiHostApi): void {
         kind: 'plugin-i18n',
         namespace: 'byo-providers',
         key: 'navigation.providersGroup',
-        fallback: 'Providers',
+        fallback: 'Model Services',
       },
     },
     order: 0,
@@ -213,7 +213,9 @@ export function activate(host: AgentUiHostApi): void {
     id: 'code-cli',
     label: readCodeCliSectionLabel(),
     order: 131,
-    // UNGROUPED flat item, pinned to the top block (after the providers group).
+    // Grouped at the BOTTOM of the model-services group (below Language Models
+    // and the media/search/storage sections) per owner direction.
+    group: providersGroup,
     pinToTop: true,
     render: () =>
       h(
@@ -237,16 +239,16 @@ export function activate(host: AgentUiHostApi): void {
 function readModelServicesSectionLabel(): string {
   switch (readLocale()) {
     case 'zh':
-      return '模型服务';
+      return '大语言模型';
     case 'ja':
-      return 'モデルサービス';
+      return '大規模言語モデル';
     default:
-      return 'Model Services';
+      return 'Language Models';
   }
 }
 
 /**
- * The "提供商" (Providers) collapsible-PARENT label, localized to the
+ * The "模型服务" (Model Services) collapsible-PARENT label, localized to the
  * host's active locale via the plugin's own `readLocale()` (NEVER a renderer
  * i18n key). Inlined like the sibling section-label helpers — the three strings
  * have no single-word seed key. Resolved per render through the `group.label`
@@ -255,21 +257,21 @@ function readModelServicesSectionLabel(): string {
 function readProvidersGroupLabel(): string {
   switch (readLocale()) {
     case 'zh':
-      return '提供商';
+      return '模型服务';
     case 'ja':
-      return 'プロバイダー';
+      return 'モデルサービス';
     default:
-      return 'Providers';
+      return 'Model Services';
   }
 }
 
 /** Per-mediaType section nav labels (localized), inlined like the LLM label. */
 const MEDIA_SECTION_LABELS: Record<MediaType, Record<'en' | 'zh' | 'ja', string>> = {
-  image: { en: 'Image Providers', zh: '图像提供商', ja: '画像プロバイダー' },
-  video: { en: 'Video Providers', zh: '视频提供商', ja: '動画プロバイダー' },
-  music: { en: 'Music Providers', zh: '音乐提供商', ja: '音楽プロバイダー' },
-  tts: { en: 'TTS Providers', zh: '语音合成提供商', ja: '音声合成プロバイダー' },
-  asr: { en: 'ASR Providers', zh: '语音识别提供商', ja: '音声認識プロバイダー' },
+  image: { en: 'Image Models', zh: '图像模型', ja: '画像モデル' },
+  video: { en: 'Video Models', zh: '视频模型', ja: '動画モデル' },
+  music: { en: 'Music Models', zh: '音乐模型', ja: '音楽モデル' },
+  tts: { en: 'TTS Models', zh: '语音合成模型', ja: '音声合成モデル' },
+  asr: { en: 'ASR Models', zh: '语音识别模型', ja: '音声認識モデル' },
 };
 
 function readMediaSectionLabel(mediaType: MediaType): string {
@@ -278,26 +280,26 @@ function readMediaSectionLabel(mediaType: MediaType): string {
   return labels[(locale as 'en' | 'zh' | 'ja') in labels ? (locale as 'en' | 'zh' | 'ja') : 'en'];
 }
 
-/** The "Search Providers" section label (localized), inlined like the others. */
+/** The "Search Services" section label (localized), inlined like the others. */
 function readSearchSectionLabel(): string {
   switch (readLocale()) {
     case 'zh':
-      return '搜索提供商';
+      return '搜索服务';
     case 'ja':
-      return '検索プロバイダー';
+      return '検索サービス';
     default:
-      return 'Search Providers';
+      return 'Search Services';
   }
 }
 
 function readObjectStorageSectionLabel(): string {
   switch (readLocale()) {
     case 'zh':
-      return '对象存储';
+      return '对象存储服务';
     case 'ja':
-      return 'オブジェクトストレージ';
+      return 'オブジェクトストレージサービス';
     default:
-      return 'Object Storage';
+      return 'Object Storage Services';
   }
 }
 

@@ -57,15 +57,15 @@ describe('renderer activation', () => {
         label?: Record<string, unknown>;
       };
     };
-    expect(providersGroup.label()).toBe('Providers');
+    expect(providersGroup.label()).toBe('Model Services');
     expect(providersGroup.opaqueFrame?.label).toEqual({
       kind: 'plugin-i18n',
       namespace: 'byo-providers',
       key: 'navigation.providersGroup',
-      fallback: 'Providers',
+      fallback: 'Model Services',
     });
-    // code-cli stays UNGROUPED (flat item after the providers group).
-    expect(sections[8]?.group).toBeUndefined();
+    // code-cli joined the providers group (bottom slot, owner direction).
+    expect(sections[8]?.group).toMatchObject({ id: 'model-providers', order: 0 });
 
     expect(registerNamespace).toHaveBeenCalledTimes(1);
     const [namespace, locales] = registerNamespace.mock.calls[0] as [
@@ -75,9 +75,9 @@ describe('renderer activation', () => {
     expect(namespace).toBe('byo-providers');
     expect(Object.keys(locales).sort()).toEqual(['en', 'ja', 'zh']);
     expect(locales).toMatchObject({
-      en: { navigation: { providersGroup: 'Providers' } },
-      ja: { navigation: { providersGroup: 'プロバイダー' } },
-      zh: { navigation: { providersGroup: '提供商' } },
+      en: { navigation: { providersGroup: 'Model Services' } },
+      ja: { navigation: { providersGroup: 'モデルサービス' } },
+      zh: { navigation: { providersGroup: '模型服务' } },
     });
     // The plugin-owned model-services copy is registered for every locale.
     expect(locales).toMatchObject({
@@ -100,6 +100,6 @@ describe('renderer activation', () => {
       i18n: { registerNamespace: vi.fn() },
     } as never);
 
-    expect(sections[0]?.label).toBe('Model Services');
+    expect(sections[0]?.label).toBe('Language Models');
   });
 });
