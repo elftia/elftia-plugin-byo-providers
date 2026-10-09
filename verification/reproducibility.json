@@ -5,75 +5,75 @@
   "files": [
     {
       "path": "elftia-plugin.json",
-      "sha256": "93eb96f22722ab14e00a2878187f68e2b8cbbf692a230d0591fc40aeadc4befc"
+      "sha256": "c021dde6b5338b251428bb97332d3e93fa85c3d7d7d178075b111e3f019c3c9d"
     },
     {
       "path": "main/index.cjs",
       "sha256": "0e7d59f90c931b23ba5fb2048aca43a765e57839e07e9864edff400dd6d6a18b"
     },
     {
-      "path": "renderer/chunks/AsrProviderSettingsPanel-D_1uXid6.mjs",
-      "sha256": "d6fca3624439645648654fc248f7b356c1b98649ca6f6b9fa81ad660c950aad2"
+      "path": "renderer/chunks/AsrProviderSettingsPanel-Dn32ma-3.mjs",
+      "sha256": "57aa123324a1274f99941e3bb877b9cbba876a96d508daaabd1694d83863021a"
     },
     {
-      "path": "renderer/chunks/CodeCliTab-BRb0wf6-.mjs",
-      "sha256": "9b939389bc1c30b22ad3c788a4dd046301c38d1542d859e32d07092961bf8567"
+      "path": "renderer/chunks/CodeCliTab-DMFz_YkZ.mjs",
+      "sha256": "b3f7b9f4c58440643d79c9b1df83c6292e108240ae91db0b1e13e598debaff8e"
     },
     {
-      "path": "renderer/chunks/EditModelDialog--Y9pD8-v.mjs",
-      "sha256": "5fabc00818f39dcda0e355f14e8733f24f6ffbbf92a4700aec07c588f39d5714"
+      "path": "renderer/chunks/EditModelDialog-Bu7xarFv.mjs",
+      "sha256": "556f3e00fec4b2e19cae74d19fe79729873f2f1d3b1e9ae84a97886ac5fa41d6"
     },
     {
-      "path": "renderer/chunks/ImageProviderSettingsPanel-De-sUu4I.mjs",
-      "sha256": "13312fea14704508749890965760dfd9279e10490ae426728380dbba8d56f20b"
+      "path": "renderer/chunks/ImageProviderSettingsPanel-Xv4w0IXw.mjs",
+      "sha256": "e7aa834e8389217cb85c0352af0bbfeae2e9583aa98e352f67df9cc625478ec6"
     },
     {
-      "path": "renderer/chunks/ManageModelsDialog-C0Ksi66W.mjs",
-      "sha256": "4aac91c41d704aa5ceba8b65976a7d99e326de6ac7d29b68187350c3dda8b541"
+      "path": "renderer/chunks/ManageModelsDialog-BsfKBdoa.mjs",
+      "sha256": "8d091fec466b9d5b614e4bb489762d3b4cb6cc1202b6377009bebb9c1b45adcf"
     },
     {
-      "path": "renderer/chunks/ManualModelDialog-H7Q0Il9M.mjs",
-      "sha256": "1f31f8eebb1601215c6965f2db1d97fd6e6ca31cccf824e3d36786585b7a35cc"
+      "path": "renderer/chunks/ManualModelDialog-DiaSbYdC.mjs",
+      "sha256": "26a5f9b33b19c9dd1caf4a617d8a4d98dd782a1df6c4f64cbede9f57cc3f8a66"
     },
     {
-      "path": "renderer/chunks/MediaProviderSettings-2jKtWf2j.mjs",
-      "sha256": "ec76347a2a79e07391e8cf7855d8b178e3ab6d38e673ef6547410aa5b226ceb3"
+      "path": "renderer/chunks/MediaProviderSettings-3J3Mtoz5.mjs",
+      "sha256": "f87894232864dc0418d2079c744f35982e57f3453cd05163b63599759d375138"
     },
     {
-      "path": "renderer/chunks/MigrationPackDialogs-CCy_P7g4.mjs",
-      "sha256": "9d13f19e055d43dabee74fd0fccf4e7e6593882393961428ff7cb6ffac448a46"
+      "path": "renderer/chunks/MigrationPackDialogs-CkVB_DR4.mjs",
+      "sha256": "c39670cd36b6c4dab87288e17ec1f3851d9435c9ee532080ae52492116545aa4"
     },
     {
-      "path": "renderer/chunks/ModelServicesPage-CmxslywB.mjs",
-      "sha256": "72ed9fd934658a422101a0671d60cbc0dc0dfd50fbc093fdb1ec44ea5a44990c"
+      "path": "renderer/chunks/ModelServicesPage-DIItgHbI.mjs",
+      "sha256": "dde70edd18fb80012fdc7f20707f373fb2fbe2d8ffb75bab2ef5cace700c0a3c"
     },
     {
-      "path": "renderer/chunks/MusicProviderSettingsPanel-4FjDsTMT.mjs",
-      "sha256": "c216e2cb504156dc801c14559cb6e46fcd774896eae8bd9f3c84ee0c27d07229"
+      "path": "renderer/chunks/MusicProviderSettingsPanel-C8DEWasu.mjs",
+      "sha256": "73ae8a60c7acd6e644e8d52f5c4292af382f9fb357c666461fb2b8064ad3e8fa"
     },
     {
-      "path": "renderer/chunks/ObjectStorageSettings-B-hLieq0.mjs",
-      "sha256": "8f9ddea4bf1fa33f1c9b1d4c7e5d8a73b9b58c1a03cb2168edcdaa7028a36afe"
+      "path": "renderer/chunks/ObjectStorageSettings-DVPPNUtL.mjs",
+      "sha256": "5b3be476febf9daa72486335a7730b80e15c0a7e819ff9c6a29dea2a249af350"
     },
     {
-      "path": "renderer/chunks/OpenRouterProviderConfig-miCfligp.mjs",
-      "sha256": "873f9de2c3292b05625b6ef006208b93c51d5e897c65f89c727c1949fe4b68d7"
+      "path": "renderer/chunks/OpenRouterProviderConfig-8wZuP3v9.mjs",
+      "sha256": "85b8aa2ec6aaedf261856880339d0a688f9d9515c041e811bbea726d5cdd215a"
     },
     {
-      "path": "renderer/chunks/ProviderDetailsPanel-DwuU_XMz.mjs",
-      "sha256": "28e6d94baa6c6e6cd5f3d21c7b08e5aa67cb0b5af950427fb0b7fb83606501dd"
+      "path": "renderer/chunks/ProviderDetailsPanel-DMfElUUK.mjs",
+      "sha256": "6faeaac5c014681dc6e5050a2d28814573baf04436f2346fb32aadb1534182c8"
     },
     {
-      "path": "renderer/chunks/SearchProviderSettings-wpSCIvbA.mjs",
-      "sha256": "81d26cf56a2e804b3172547103b5c78b8a67ccb73d5013a0a8ffcd576ae8d847"
+      "path": "renderer/chunks/SearchProviderSettings-m4Be0ZsH.mjs",
+      "sha256": "852c41417392648c0831b05e560953d6a8733da818439524aeb7cec722042956"
     },
     {
-      "path": "renderer/chunks/TtsProviderSettingsPanel-ZOiLkKKR.mjs",
-      "sha256": "bcfb670e758fcd58fd18a832d5c3b11f57c2b2dce29bd62d0096240348574f63"
+      "path": "renderer/chunks/TtsProviderSettingsPanel-W8pS8IUj.mjs",
+      "sha256": "f526befbd1cda45cb1faa98fa22c1f4fa75d5c4f55cc774229c7eab2cb717a65"
     },
     {
-      "path": "renderer/chunks/VideoProviderSettingsPanel-D-lAq1pO.mjs",
-      "sha256": "a65985a6255e128c4617f2aa49bd02f15eb725efa112e6d0dfa57b9b0656fc25"
+      "path": "renderer/chunks/VideoProviderSettingsPanel-DrCJy-NZ.mjs",
+      "sha256": "a171fc7b67199b16390b6b7e03338f6ebb1016007e596ae4e3b5160b0d67e175"
     },
     {
       "path": "renderer/chunks/cn-BALkE5jr.mjs",
@@ -92,16 +92,16 @@
       "sha256": "c149fafe64136cfd05f95f921d75045e9cc91cfc57b20438db80231f19405fe0"
     },
     {
-      "path": "renderer/chunks/externalLinksClient-DKApOSKh.mjs",
-      "sha256": "b6d4383390379c77ce74c8dd748d76585bce491e18c4df2a2d2db1bc774436d5"
+      "path": "renderer/chunks/externalLinksClient-Cvokjy4t.mjs",
+      "sha256": "734ca2c591071ddd70ed6d60c928d99e895947b7694b784173e469c082d4aae8"
     },
     {
       "path": "renderer/chunks/eye-off-BV5OXMfS.mjs",
       "sha256": "ae5bfd692de4c727eb0b25e58243a7d336bc03f3aafda136e79be6807f77779c"
     },
     {
-      "path": "renderer/chunks/index-ByEaVKPl.mjs",
-      "sha256": "b2db7479b5b38fdffa8e30e1809d52ac1334597ca697114e2b2d00c6cba8cc2f"
+      "path": "renderer/chunks/index-BERetomQ.mjs",
+      "sha256": "454766623e0873217cf8badb3d7421ac8ebb6d9809300d23d9be7e52672091bd"
     },
     {
       "path": "renderer/chunks/key-round-DmAhVYXt.mjs",
@@ -121,14 +121,14 @@
     },
     {
       "path": "renderer/index.mjs",
-      "sha256": "72076e8edf7654714e33dfcc158eb63b304a257baac63172b035b8daa3ced5bd"
+      "sha256": "ddf958501c79b4e8f185a59c86e07e1fe36ca7ff5c171cb4056f202fbb5cff14"
     }
   ],
   "release": {
-    "epkgSha256": "607057700168dce69a1c0c49e4b5b1779451400af746d515d1e5c679d4ffc63b",
-    "sidecarSha256": "a35b6c0fae2887249b1a9f28d58d0be178797174f7b731703f500f07dde5cfd5",
-    "size": 198825,
+    "epkgSha256": "a096b682fb2890504d8be49304b341b864f6f07eff09a12391cc7e04fa9d369c",
+    "sidecarSha256": "44371d044f016df22c21421d5d6548dff77709a4f0f4ac1ca434921ba36171ac",
+    "size": 198908,
     "fileCount": 30,
-    "treeSha256": "f80bb1e349b564d5e2257888369762c61b7393d04d7d1d5118bff8d6b106b88e"
+    "treeSha256": "7fe0edd5a1458f9995dc8cddd2c7faa15b3c9f3717f41e11426eae31b8831da7"
   }
 }
