@@ -538,9 +538,23 @@ export function ModelServicesPage() {
         </div>
       </div>
 
-      {/* 添加提供商 — the catalog template picker dialog. */}
+      {/* 添加提供商 — the catalog template picker dialog. Sized inline: the
+          vendored DialogContent's tailwind classes (max-w-lg, grid) are
+          generated from the HOST's stylesheet, where the plugin's override
+          classes (flex, !max-w-4xl) don't exist — inline styles are the only
+          reliable lever from plugin code. Height caps at the viewport with the
+          preset grid scrolling inside. */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="flex flex-col overflow-hidden p-0 !max-w-4xl">
+        <DialogContent
+          className="p-0"
+          style={{
+            width: 'min(64rem, 92vw)',
+            maxWidth: 'min(64rem, 92vw)',
+            maxHeight: '85dvh',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <DialogHeader className="border-b border-border/70 px-5 py-4">
             <DialogTitle>{t('modelServices.addProvider')}</DialogTitle>
             <DialogDescription>{t('modelServices.addProviderDescription')}</DialogDescription>
