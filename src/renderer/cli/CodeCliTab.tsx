@@ -25,6 +25,7 @@ import type { CliAuthStatus } from '@byo/domain/cli-types';
 import { cliRuntimeClient } from '../cliRuntimeClient';
 import { Button } from '../host/ui';
 import {
+  ByoPortalRoot,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -365,6 +366,8 @@ export function CodeCliTab({ t }: CodeCliTabProps) {
           );
         })}
       </div>
+      {/* In-tree portal target (see host/vendored/dialog.tsx). */}
+      <ByoPortalRoot />
     </div>
   );
 }

@@ -47,11 +47,31 @@ interface DialogContentProps
   hideCloseButton?: boolean;
 }
 
+/**
+ * Portal target for vendored dialogs. Agent-ui surfaces render via the HOST's
+ * React into HOST DOM while the plugin modules still execute against the
+ * compartment frame's `document` — a portal to `document.body` (Radix default,
+ * resolved through that frame global) lands in the hidden frame and is
+ * physically invisible. The container MUST be captured from the real, live DOM
+ * node via a ref callback (refs run in the rendering React's context), never
+ * via the `document` global. Surfaces that host dialogs render
+ * `<ByoPortalRoot />`; `document.body` remains the fallback.
+ */
+export const byoPortalTarget: { current: HTMLElement | null } = { current: null };
+
+export function ByoPortalRoot() {
+  return <div data-byo-portal-root ref={(el) => { if (el) byoPortalTarget.current = el; }} />;
+}
+
+function dialogPortalContainer(): HTMLElement | undefined {
+  return byoPortalTarget.current ?? undefined;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, hideCloseButton, ...props }, ref) => (
-  <DialogPortal>
+  <DialogPortal container={dialogPortalContainer()}>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}

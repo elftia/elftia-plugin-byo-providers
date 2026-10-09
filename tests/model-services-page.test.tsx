@@ -144,6 +144,8 @@ vi.mock('../src/renderer/host/vendored/dialog', async () => {
     DialogDescription: passthrough('dialog-description'),
     DialogHeader: passthrough('dialog-header'),
     DialogTitle: passthrough('dialog-title'),
+    ByoPortalRoot: () => ReactModule.createElement('div', { 'data-testid': 'byo-portal-root' }),
+    byoPortalTarget: { current: null },
   };
 });
 

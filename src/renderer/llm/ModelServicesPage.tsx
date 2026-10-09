@@ -42,6 +42,7 @@ import { useSubscriptionAccounts } from '../subscription/useSubscriptionAccounts
 import { Badge, Button, Input } from '../host/ui';
 import { cn } from '../host/vendored/cn';
 import {
+  ByoPortalRoot,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -579,6 +580,10 @@ export function ModelServicesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* In-tree portal target: dialogs portal here (not the frame's
+          document.body) so they land inside the live host DOM and stay
+          visible — see host/vendored/dialog.tsx. */}
+      <ByoPortalRoot />
     </div>
   );
 }
