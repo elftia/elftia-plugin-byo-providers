@@ -100,20 +100,28 @@ describe('credential boundaries', () => {
       },
     });
 
-    const llmRevealed = await methods['llm.revealProviderKey']({ id: 'p' });
+    const password = 'fixture-view-password';
+    const llmRevealed = await methods['llm.revealProviderKey']({ id: 'p', password });
     const mediaRevealed = await methods['media.revealProviderKey']({
       mediaType: 'image',
       id: 'p1',
+      password,
     });
     const secretRevealed = await methods['media.revealProviderSecret']({
       mediaType: 'video',
       id: 'video-seedance-vod',
       field: 'byteplusAk',
+      password,
     });
 
-    expect(llmReveal).toHaveBeenCalledWith('p');
-    expect(mediaReveal).toHaveBeenCalledWith('image', 'p1');
-    expect(mediaSecretReveal).toHaveBeenCalledWith('video', 'video-seedance-vod', 'byteplusAk');
+    expect(llmReveal).toHaveBeenCalledWith('p', password);
+    expect(mediaReveal).toHaveBeenCalledWith('image', 'p1', password);
+    expect(mediaSecretReveal).toHaveBeenCalledWith(
+      'video',
+      'video-seedance-vod',
+      'byteplusAk',
+      password
+    );
     // The reveal verbs carry the value OUT (the deliberate exception)...
     expect(llmRevealed).toEqual({ success: true, value: storedLlmKey });
     expect(mediaRevealed).toEqual({ success: true, value: storedMediaKey });

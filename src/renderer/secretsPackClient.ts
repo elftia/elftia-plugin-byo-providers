@@ -22,6 +22,7 @@ import type {
 } from '@byo/domain/secrets-pack';
 
 import { getHost } from './host/hostBridge';
+import { requestKeyViewing } from './shared/keyViewingRequest';
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
@@ -35,7 +36,7 @@ export const secretsPackClient = {
    * returns `{ success, path?, canceled?, message? }`. No blob/plaintext returns.
    */
   export(args: SecretsPackArgs): Promise<SecretsPackExportResult> {
-    return invoke('secretsPack.export', args);
+    return requestKeyViewing((password) => invoke('secretsPack.export', { ...args, password }));
   },
   /**
    * Import an encrypted pack. Passes ONLY the passphrase; the host picks the

@@ -1,12 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type {
-  LLMProvider,
-  ProviderTemplate,
-} from '@byo/domain/llm';
+import type { LLMProvider, ProviderTemplate } from '@byo/domain/llm';
 
 import { useTranslation } from '../../host/vendored/useTranslation';
 import { llmConfigClient } from '../../llmConfigClient';
+import { cancelKeyViewing, onKeyViewingBlur } from '../../shared/keyViewingRequest';
 import { emptyFormData } from '../constants';
 import type { ProviderFormData } from '../types';
 import { getProviderDisplayName } from '../utils';
@@ -20,7 +18,7 @@ export function useProviderForm(
   setSelectedProviderId: (id: string | null) => void,
   selectedProvider: LLMProvider | null,
   refreshProviders: () => Promise<void>,
-  updateProviderInCache: (p: LLMProvider) => void,
+  updateProviderInCache: (p: LLMProvider) => void
 ) {
   const t = useTranslation();
 
@@ -32,11 +30,17 @@ export function useProviderForm(
   const [formError, setFormError] = useState<string | null>(null);
 
   // ── Inline edit state ───────────────────────────────────────────
-  const [inlineName, setInlineName] = useState('');
-  const [inlineModelsEndpoint, setInlineModelsEndpoint] = useState('');
-  const [inlineApiKey, setInlineApiKey] = useState('');
-  const [inlineApiUrl, setInlineApiUrl] = useState('');
-  const [inlineMaxConcurrency, setInlineMaxConcurrency] = useState('');
+  const [inlineName, setInlineName] = useState(() =>
+    selectedProvider ? getProviderDisplayName(t, selectedProvider) : ''
+  );
+  const [inlineModelsEndpoint, setInlineModelsEndpoint] = useState(
+    selectedProvider?.modelsEndpoint || ''
+  );
+  const [inlineApiKey, setInlineApiKey] = useState(selectedProvider?.api_key || '');
+  const [inlineApiUrl, setInlineApiUrl] = useState(selectedProvider?.api_base_url || '');
+  const [inlineMaxConcurrency, setInlineMaxConcurrency] = useState(
+    selectedProvider?.maxConcurrency != null ? String(selectedProvider.maxConcurrency) : ''
+  );
 
   // ── provider-key-reveal: DISPLAY-ONLY fetched key ────────────────
   // The explicit `revealProviderKey` verb (host-API v1.50) fetches the stored
@@ -47,10 +51,35 @@ export function useProviderForm(
   /** Live selected-provider id for stale-reveal guards. */
   const selectedIdRef = useRef(selectedProviderId);
   selectedIdRef.current = selectedProviderId;
+  // Invalidate pending reveals on hide/edit/switch, including A → B → A.
+  const revealRequestRef = useRef(0);
+
+  useEffect(() => {
+    const hide = () => {
+      revealRequestRef.current += 1;
+      setShowApiKey(false);
+      setRevealedApiKey(null);
+    };
+    const unsubscribe = onKeyViewingBlur(hide);
+    return () => {
+      unsubscribe();
+      cancelKeyViewing();
+    };
+  }, [selectedProviderId]);
+  useEffect(() => {
+    if (revealedApiKey === null) return;
+    const timer = setTimeout(() => {
+      revealRequestRef.current += 1;
+      setShowApiKey(false);
+      setRevealedApiKey(null);
+    }, 30_000);
+    return () => clearTimeout(timer);
+  }, [revealedApiKey]);
 
   const handleToggleShowApiKey = useCallback(
     (next: boolean | undefined) => {
       const shown = typeof next === 'boolean' ? next : !showApiKey;
+      const request = ++revealRequestRef.current;
       setShowApiKey(shown);
       if (!shown) {
         setRevealedApiKey(null);
@@ -65,16 +94,18 @@ export function useProviderForm(
         selectedProviderId
       ) {
         const pid = selectedProviderId;
-        llmConfigClient.revealProviderKey?.(pid)
+        llmConfigClient
+          .revealProviderKey?.(pid)
           .then((r) => {
             // Stale-guard: a provider switch must drop the resolved value.
-            if (selectedIdRef.current !== pid) return;
+            if (selectedIdRef.current !== pid || revealRequestRef.current !== request) return;
             if (r.success && typeof r.value === 'string' && r.value.length > 0) {
               setRevealedApiKey(r.value);
-            }
+            } else setShowApiKey(false);
           })
           .catch(() => {
-            /* reveal is best-effort — the field just stays empty */
+            if (selectedIdRef.current === pid && revealRequestRef.current === request)
+              setShowApiKey(false);
           });
       }
     },
@@ -84,20 +115,26 @@ export function useProviderForm(
   /** Clear the display-only reveal (called when the user starts editing). */
   const handleApiKeyInputChange = useCallback(
     (value: string) => {
+      revealRequestRef.current += 1;
       setRevealedApiKey(null);
       setInlineApiKey(value);
     },
     [setInlineApiKey]
   );
 
-  const updateProviderState = useCallback((updated: LLMProvider) => {
-    updateProviderInCache(updated);
-  }, [updateProviderInCache]);
+  const updateProviderState = useCallback(
+    (updated: LLMProvider) => {
+      updateProviderInCache(updated);
+    },
+    [updateProviderInCache]
+  );
 
   // ── Sync inline fields when selected provider changes ──
   const [prevSelectedId, setPrevSelectedId] = useState(selectedProvider?.id);
   if (prevSelectedId !== selectedProvider?.id) {
     setPrevSelectedId(selectedProvider?.id);
+    revealRequestRef.current += 1;
+    setShowApiKey(false);
     setRevealedApiKey(null);
     if (selectedProvider) {
       // The masked plugin port BLANKS `api_key` (it never returns a stored
@@ -111,7 +148,15 @@ export function useProviderForm(
       setInlineApiUrl(selectedProvider.api_base_url || '');
       setInlineName(getProviderDisplayName(t, selectedProvider));
       setInlineModelsEndpoint(selectedProvider.modelsEndpoint || '');
-      setInlineMaxConcurrency(selectedProvider.maxConcurrency != null ? String(selectedProvider.maxConcurrency) : '');
+      setInlineMaxConcurrency(
+        selectedProvider.maxConcurrency != null ? String(selectedProvider.maxConcurrency) : ''
+      );
+    } else {
+      setInlineApiKey('');
+      setInlineApiUrl('');
+      setInlineName('');
+      setInlineModelsEndpoint('');
+      setInlineMaxConcurrency('');
     }
   }
 
@@ -228,6 +273,7 @@ export function useProviderForm(
   };
 
   const handleSaveProvider = async () => {
+    setFormError(null);
     if (!formData.name.trim()) {
       setFormError(t('providerSettings.errors.nameRequired'));
       return;
@@ -250,7 +296,7 @@ export function useProviderForm(
         // when the user actually typed a replacement; an empty field preserves
         // the stored (encrypted) key rather than wiping it.
         const keyEdited = formData.api_key.trim().length > 0;
-        await llmConfigClient.updateProvider({
+        const result = await llmConfigClient.updateProvider({
           id: selectedProviderId,
           name: formData.name,
           apiFormat: formData.apiFormat,
@@ -271,6 +317,10 @@ export function useProviderForm(
           codingPlan: formData.codingPlan,
           presetId: formData.presetId,
         });
+        if (!result.success) {
+          setFormError(result.message || t('providerSettings.errors.saveFailed'));
+          return;
+        }
       } else {
         const result = await llmConfigClient.addProvider({
           name: formData.name,
@@ -317,27 +367,46 @@ export function useProviderForm(
     }
   };
 
-  const handleInlineUpdate = async (field: string, value: string) => {
-    if (!selectedProviderId || !selectedProvider) return;
+  const handleInlineUpdate = async (
+    field: string,
+    value: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    if (!selectedProviderId || !selectedProvider) {
+      return { success: false, message: t('providerSettings.errors.saveFailed') };
+    }
     // provider-storage-secrets leave-unchanged-on-empty: an empty inline key
     // edit must NOT wipe the stored (encrypted) key — treat it as a no-op.
-    if (field === 'api_key' && value.trim().length === 0) return;
+    if (field === 'api_key' && value.trim().length === 0) {
+      return { success: false, message: t('providerSettings.errors.saveFailed') };
+    }
     try {
-      const parsedValue: unknown = field === 'maxConcurrency'
-        ? (value ? parseInt(value, 10) || null : null)
-        : value;
+      const parsedValue: unknown =
+        field === 'maxConcurrency' ? (value ? parseInt(value, 10) || null : null) : value;
       const result = await llmConfigClient.updateProvider({
         id: selectedProviderId,
         [field]: parsedValue,
       });
       if (!result.success) {
         console.error('Failed to update provider:', result.message);
-        return;
+        return { success: false, message: result.message };
       }
-      updateProviderState({ ...selectedProvider, [field]: parsedValue } as LLMProvider);
+      if (result.provider) {
+        updateProviderState(result.provider);
+      } else if (field === 'api_key') {
+        // Never copy the plaintext replacement back into the renderer cache.
+        updateProviderState({ ...selectedProvider, api_key: '', hasKey: true });
+      } else {
+        updateProviderState({ ...selectedProvider, [field]: parsedValue } as LLMProvider);
+      }
+      if (field === 'api_key') setInlineApiKey('');
       await refreshProviders();
+      return { success: true };
     } catch (error) {
       console.error('Error updating provider:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : t('providerSettings.errors.saveFailed'),
+      };
     }
   };
 
@@ -356,7 +425,7 @@ export function useProviderForm(
     if (!selectedProviderId || !selectedProvider) return false;
     const modes = selectedProvider.apiModes;
     if (!modes || modes.length === 0) return false;
-    const next = modes.find(m => m.id === modeId);
+    const next = modes.find((m) => m.id === modeId);
     if (!next) return false;
 
     const updates: Record<string, unknown> = { selectedApiModeId: modeId };

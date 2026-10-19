@@ -193,6 +193,17 @@ export function ProviderTemplatePicker({
     });
   }, [presets, query]);
 
+  // Decision presets (category 'other' — Jev / LogJev / OpenRouter Decisions)
+  // render under their own labeled section instead of mixing into the chat grid.
+  const mainPresets = useMemo(
+    () => visiblePresets.filter((preset) => preset.category !== 'other'),
+    [visiblePresets],
+  );
+  const otherPresets = useMemo(
+    () => visiblePresets.filter((preset) => preset.category === 'other'),
+    [visiblePresets],
+  );
+
   return (
     <div className="space-y-5 p-4" aria-busy={loadState === 'loading'} data-testid="provider-template-picker">
       {/* Start from an API type — the no-template path, kept above the fold. */}
@@ -273,17 +284,37 @@ export function ProviderTemplatePicker({
               : t('modelServices.presets.empty')}
           </p>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {visiblePresets.map((preset) => (
-              <PresetCard
-                key={preset.id}
-                preset={preset}
-                isAdded={addedPresetIds.has(preset.id)}
-                onSelect={() => onSelectPreset(preset.id)}
-                t={t}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {mainPresets.map((preset) => (
+                <PresetCard
+                  key={preset.id}
+                  preset={preset}
+                  isAdded={addedPresetIds.has(preset.id)}
+                  onSelect={() => onSelectPreset(preset.id)}
+                  t={t}
+                />
+              ))}
+            </div>
+            {otherPresets.length > 0 ? (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('modelServices.presets.categoryOther')}
+                </h4>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {otherPresets.map((preset) => (
+                    <PresetCard
+                      key={preset.id}
+                      preset={preset}
+                      isAdded={addedPresetIds.has(preset.id)}
+                      onSelect={() => onSelectPreset(preset.id)}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </div>

@@ -32,6 +32,7 @@ import type {
 } from '@byo/domain/llm';
 
 import { getHost } from './host/hostBridge';
+import { requestKeyViewing } from './shared/keyViewingRequest';
 
 type OpResult = { success: boolean; message?: string };
 type ProviderResult = { success: boolean; provider?: LLMProvider; message?: string };
@@ -86,8 +87,9 @@ export const llmConfigClient = {
   // ── Providers ────────────────────────────────────────────────────────────
   getProviders: (): Promise<LLMProvider[]> => invoke('llm.getProviders'),
   getProvider: (id: string): Promise<LLMProvider | null> => invoke('llm.getProvider', { id }),
-  addProvider: (payload: Omit<LLMProvider, 'id' | 'createdAt' | 'updatedAt'>): Promise<ProviderResult> =>
-    mutateProviders('llm.addProvider', payload),
+  addProvider: (
+    payload: Omit<LLMProvider, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<ProviderResult> => mutateProviders('llm.addProvider', payload),
   updateProvider: (payload: Partial<LLMProvider> & { id: string }): Promise<ProviderResult> =>
     mutateProviders('llm.updateProvider', payload),
   deleteProvider: (id: string): Promise<OpResult> => mutateProviders('llm.deleteProvider', { id }),
@@ -95,10 +97,11 @@ export const llmConfigClient = {
     mutateProviders('llm.toggleProvider', { id, enabled }),
   reorderProviders: (orderedIds: string[]): Promise<OpResult> =>
     mutateProviders('llm.reorderProviders', { orderedIds }),
-  resetProvider: (id: string): Promise<ProviderResult> => mutateProviders('llm.resetProvider', { id }),
+  resetProvider: (id: string): Promise<ProviderResult> =>
+    mutateProviders('llm.resetProvider', { id }),
   discoverModels: (
     id: string,
-    options?: { forceRefresh?: boolean },
+    options?: { forceRefresh?: boolean }
   ): Promise<ProviderModelDiscoveryResult> => invoke('llm.discoverModels', { id, options }),
   /**
    * P2b-2 (`byo-p2-llm-2`) — probe a provider/model for reachability. A
@@ -114,7 +117,7 @@ export const llmConfigClient = {
    * trigger provider-cache refresh churn.
    */
   revealProviderKey: (id: string): Promise<{ success: boolean; value?: string; error?: string }> =>
-    invoke('llm.revealProviderKey', { id }),
+    requestKeyViewing((password) => invoke('llm.revealProviderKey', { id, password })),
 
   // ── Presets ──────────────────────────────────────────────────────────────
   getProviderPresets: (): Promise<unknown> => invoke('llm.getProviderPresets'),
@@ -127,7 +130,7 @@ export const llmConfigClient = {
   addApiKey: (input: ApiKeyEntryInput): Promise<KeyResult> => invoke('llm.addApiKey', input),
   updateApiKey: (
     id: string,
-    updates: Partial<Pick<ApiKeyEntry, 'label' | 'weight' | 'enabled' | 'apiKey'>>,
+    updates: Partial<Pick<ApiKeyEntry, 'label' | 'weight' | 'enabled' | 'apiKey'>>
   ): Promise<KeyResult> => invoke('llm.updateApiKey', { id, ...updates }),
   deleteApiKey: (id: string): Promise<OpResult> => invoke('llm.deleteApiKey', { id }),
   toggleApiKey: (id: string, enabled: boolean): Promise<OpResult> =>
@@ -137,13 +140,13 @@ export const llmConfigClient = {
   getKeyQuota: (
     providerId: string,
     keyId: string,
-    force?: boolean,
+    force?: boolean
   ): Promise<HostProviderKeyQuota> => invoke('llm.getKeyQuota', { providerId, keyId, force }),
 
   // ── Default model (router config) ───────────────────────────────────────────
   getRouterConfig: (): Promise<RouterConfig> => invoke('llm.getRouterConfig'),
   setRouterConfig: (
-    payload: Partial<RouterConfig>,
+    payload: Partial<RouterConfig>
   ): Promise<{ success: boolean; router?: RouterConfig; message?: string }> =>
     invoke('llm.setRouterConfig', payload),
 };

@@ -48,29 +48,31 @@ export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
     mediaType: 'video',
     id: string,
     field: HostMediaProviderSecretField,
-    value: string,
+    value: string
   ): Promise<{ success: boolean; error?: string }>;
   /** v1.50 — reveal the stored provider key (user-initiated display only). */
   revealProviderKey?(
     mediaType: HostMediaType,
     id: string,
+    password?: string
   ): Promise<HostKeyRevealResult>;
   /** v1.50 — reveal a stored video secret field (user-initiated display only). */
   revealProviderSecret?(
     mediaType: 'video',
     id: string,
     field: HostMediaProviderSecretField,
+    password?: string
   ): Promise<HostKeyRevealResult>;
 }
 
 export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
   /** v1.50 — reveal the stored provider key (user-initiated display only). */
-  revealProviderKey?(providerId: string): Promise<HostKeyRevealResult>;
+  revealProviderKey?(providerId: string, password?: string): Promise<HostKeyRevealResult>;
   /** v1.64 — provider pool-key plan quota (optional; feature-detected). */
   getProviderKeyQuota?(
     providerId: string,
     keyId: string,
-    force?: boolean,
+    force?: boolean
   ): Promise<HostProviderKeyQuota>;
 }
 
@@ -85,9 +87,7 @@ export interface HostCliBackendConfig {
 
 export interface HostAgentConfigLike {
   getCliBackendConfig(): Promise<HostCliBackendConfig>;
-  setCliBackendConfig(
-    patch: HostCliBackendConfig,
-  ): Promise<{ success: boolean; error?: string }>;
+  setCliBackendConfig(patch: HostCliBackendConfig): Promise<{ success: boolean; error?: string }>;
 }
 
 export interface HostCliAuthStatus {
@@ -130,6 +130,7 @@ export interface HostCliRuntimeLike {
 }
 
 export interface HostSecretsPackArgs {
+  readonly password?: string;
   readonly passphrase: string;
 }
 
@@ -144,6 +145,7 @@ export interface HostSecretsPackImportCounts {
 }
 
 export interface HostSecretsPackExportResult {
+  readonly error?: string;
   readonly success: boolean;
   readonly path?: string;
   readonly canceled?: boolean;

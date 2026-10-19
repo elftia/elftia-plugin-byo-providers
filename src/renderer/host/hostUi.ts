@@ -24,6 +24,7 @@ export function ui(): {
   Button: ComponentType<AnyProps>;
   Dialog: ComponentType<AnyProps>;
   DialogContent: ComponentType<AnyProps>;
+  DialogTitle: ComponentType<AnyProps>;
   Select: ComponentType<AnyProps>;
   ConfirmDialog: ComponentType<AnyProps>;
   Input: ComponentType<AnyProps>;

@@ -21,6 +21,8 @@ import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Badge, Button, Input, Switch } from '../../host/ui';
+import { cancelKeyViewing, onKeyViewingBlur } from '../../shared/keyViewingRequest';
+import { copySavedKey, KeyCopyButton } from '../../shared/KeyCopyButton';
 
 // ============================================================================
 // Types
@@ -39,7 +41,12 @@ export interface ModelManagementProps {
   setModelSearchTerm: (term: string) => void;
   setShowManageModels: (show: boolean) => void;
   setShowAddModelDialog: (show: boolean) => void;
-  setNewModelEntry: (entry: { id: string; name: string; groupId: string; originalId: string }) => void;
+  setNewModelEntry: (entry: {
+    id: string;
+    name: string;
+    groupId: string;
+    originalId: string;
+  }) => void;
   defaultGroupId: string;
   modelStatus: { type: 'success' | 'error'; message: string } | null;
 }
@@ -115,10 +122,7 @@ export interface ProviderDetailsPanelProps {
 // Helper: 统一凭证字段标签
 // ============================================================================
 
-function getUnifiedFieldLabel(
-  fieldKey: string,
-  t: (key: string) => string
-): string {
+function getUnifiedFieldLabel(fieldKey: string, t: (key: string) => string): string {
   const lowerKey = fieldKey.toLowerCase();
   if (lowerKey === 'apikey' || lowerKey === 'api_key') {
     return t('providerSettings.credentials.apiKey');
@@ -167,7 +171,7 @@ export function ProviderDetailsPanel({
   hasStoredKey,
   onRevealSecret,
   revealScopeKey,
-  t
+  t,
 }: ProviderDetailsPanelProps) {
   // 控制密码字段显示/隐藏
   const [showSecretFields, setShowSecretFields] = useState<Record<string, boolean>>({});
@@ -178,14 +182,46 @@ export function ProviderDetailsPanel({
   const [revealPending, setRevealPending] = useState<Record<string, boolean>>({});
   // Stale-guard: a reveal resolving after a provider switch must be dropped.
   const revealScopeRef = useRef(revealScopeKey);
+  const revealGeneration = useRef(0);
+  const revealIds = useRef<Record<string, number>>({});
+  const revealTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const clearTimers = () => {
+    Object.values(revealTimers.current).forEach(clearTimeout);
+    revealTimers.current = {};
+  };
 
-  useEffect(() => {
+  // Reset during selection rendering so the new provider never paints the old key.
+  if (revealScopeRef.current !== revealScopeKey) {
     revealScopeRef.current = revealScopeKey;
+    revealGeneration.current += 1;
     setRevealedSecrets({});
     setRevealPending({});
+    setShowSecretFields({});
+  }
+  useEffect(() => {
+    return () => {
+      revealGeneration.current += 1;
+      clearTimers();
+      cancelKeyViewing();
+    };
   }, [revealScopeKey]);
 
+  useEffect(
+    () =>
+      onKeyViewingBlur(() => {
+        revealGeneration.current += 1;
+        clearTimers();
+        setRevealedSecrets({});
+        setShowSecretFields({});
+        setRevealPending({});
+      }),
+    []
+  );
+
   const dropRevealed = (fieldKey: string) => {
+    revealIds.current[fieldKey] = (revealIds.current[fieldKey] ?? 0) + 1;
+    clearTimeout(revealTimers.current[fieldKey]);
+    delete revealTimers.current[fieldKey];
     setRevealedSecrets((prev) => {
       if (!(fieldKey in prev)) return prev;
       const next = { ...prev };
@@ -198,11 +234,13 @@ export function ProviderDetailsPanel({
     const nextShown = !showSecretFields[fieldKey];
     setShowSecretFields((prev) => ({
       ...prev,
-      [fieldKey]: nextShown
+      [fieldKey]: nextShown,
     }));
     if (!nextShown) {
       // Hiding → drop the display override too.
       dropRevealed(fieldKey);
+      setRevealPending((prev) => ({ ...prev, [fieldKey]: false }));
+      cancelKeyViewing();
       return;
     }
     // Showing with an EMPTY field (the masked port never pre-fills a stored
@@ -215,19 +253,41 @@ export function ProviderDetailsPanel({
       !revealPending[fieldKey]
     ) {
       const scope = revealScopeKey;
+      const generation = revealGeneration.current;
+      const requestId = (revealIds.current[fieldKey] ?? 0) + 1;
+      revealIds.current[fieldKey] = requestId;
       setRevealPending((prev) => ({ ...prev, [fieldKey]: true }));
       onRevealSecret(fieldKey)
         .then((value) => {
-          if (revealScopeRef.current !== scope) return; // stale — drop
+          if (
+            revealScopeRef.current !== scope ||
+            revealGeneration.current !== generation ||
+            revealIds.current[fieldKey] !== requestId
+          )
+            return;
           if (typeof value === 'string' && value.length > 0) {
             setRevealedSecrets((prev) => ({ ...prev, [fieldKey]: value }));
-          }
+            revealTimers.current[fieldKey] = setTimeout(() => {
+              dropRevealed(fieldKey);
+              setShowSecretFields((prev) => ({ ...prev, [fieldKey]: false }));
+            }, 30_000);
+          } else setShowSecretFields((prev) => ({ ...prev, [fieldKey]: false }));
         })
         .catch(() => {
-          /* leave the field as-is (empty) — reveal is best-effort */
+          if (
+            revealScopeRef.current === scope &&
+            revealGeneration.current === generation &&
+            revealIds.current[fieldKey] === requestId
+          ) {
+            setShowSecretFields((prev) => ({ ...prev, [fieldKey]: false }));
+          }
         })
         .finally(() => {
-          if (revealScopeRef.current === scope) {
+          if (
+            revealScopeRef.current === scope &&
+            revealGeneration.current === generation &&
+            revealIds.current[fieldKey] === requestId
+          ) {
             setRevealPending((prev) => ({ ...prev, [fieldKey]: false }));
           }
         });
@@ -253,19 +313,13 @@ export function ProviderDetailsPanel({
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline">{typeBadge}</Badge>
               {isCustom ? (
-                <Badge variant="secondary">
-                  {t('mediaSettings.image.customLabel')}
-                </Badge>
+                <Badge variant="secondary">{t('mediaSettings.image.customLabel')}</Badge>
               ) : null}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch
-            checked={enabled}
-            onCheckedChange={onToggleEnabled}
-            disabled={switchDisabled}
-          />
+          <Switch checked={enabled} onCheckedChange={onToggleEnabled} disabled={switchDisabled} />
           {isCustom && onDelete ? (
             <Button
               type="button"
@@ -354,6 +408,15 @@ export function ProviderDetailsPanel({
                   }
                   disabled={isCredentialSaving || revealPending[field.key]}
                   readOnly={revealed !== undefined}
+                  data-elftia-protected-secret={revealed !== undefined}
+                  onCopy={(event) => {
+                    if (revealed === undefined || !onRevealSecret) return;
+                    event.preventDefault();
+                    void copySavedKey(async () => {
+                      const value = await onRevealSecret(field.key);
+                      return { success: value !== null, value: value ?? undefined };
+                    }).catch(() => undefined);
+                  }}
                   className="pr-10"
                 />
                 <button
@@ -377,6 +440,15 @@ export function ProviderDetailsPanel({
                 disabled={isCredentialSaving}
               />
             )}
+            {field.secret && onRevealSecret ? (
+              <KeyCopyButton
+                key={`${revealScopeKey}:${field.key}`}
+                read={async () => {
+                  const value = await onRevealSecret(field.key);
+                  return { success: value !== null, value: value ?? undefined };
+                }}
+              />
+            ) : null}
           </div>
         );
       })}
@@ -422,7 +494,7 @@ export function ProviderDetailsPanel({
                   id: '',
                   name: '',
                   groupId: modelManagement.defaultGroupId,
-                  originalId: ''
+                  originalId: '',
                 });
                 modelManagement.setShowAddModelDialog(true);
               }}

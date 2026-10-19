@@ -10,7 +10,7 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import type { LLMProvider, ModelConfig, ModelGroup } from '@byo/domain/llm';
 
@@ -20,6 +20,8 @@ import { FormField } from '../host/vendored/form-field';
 import { RevealableInput } from '../host/vendored/revealable-input';
 import { SettingRow } from '../host/vendored/setting-row';
 import { useTranslation } from '../host/vendored/useTranslation';
+import { llmConfigClient } from '../llmConfigClient';
+import { copySavedKey, KeyCopyButton } from '../shared/KeyCopyButton';
 
 import { ApiKeyPoolSection } from './ApiKeyPoolSection';
 import { ModelTestDialog } from './ModelTestDialog';
@@ -56,7 +58,10 @@ interface ProviderDetailsProps {
   inlineMaxConcurrency: string;
   setInlineMaxConcurrency: (val: string) => void;
 
-  onInlineUpdate: (field: string, value: string) => Promise<void>;
+  onInlineUpdate: (
+    field: string,
+    value: string
+  ) => Promise<{ success: boolean; message?: string }>;
   onSelectApiMode?: (modeId: string, opts?: { keepCustomizations?: boolean }) => Promise<boolean>;
   onToggleProvider: (enabled: boolean) => Promise<void>;
   onToggleOfficial: (isOfficial: boolean) => Promise<void>;
@@ -107,14 +112,23 @@ export function ProviderDetails({
   onApplyModelEdit,
   onToggleModelEnabled,
   onRemoveModel,
-  onShowEditModelDialog
+  onShowEditModelDialog,
 }: ProviderDetailsProps) {
   const t = useTranslation();
   const [pendingModeSwitch, setPendingModeSwitch] = useState<string | null>(null);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [apiKeySaveState, setApiKeySaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>(
+    'idle'
+  );
+  const [apiKeySaveMessage, setApiKeySaveMessage] = useState<string | null>(null);
   // P2b-2 (`byo-p2-llm-2`) — the model under connectivity test (the dialog opens
   // when set; auto-runs the probe over `llm.testModel`). No secret crosses.
   const [testingModel, setTestingModel] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    setApiKeySaveState('idle');
+    setApiKeySaveMessage(null);
+  }, [selectedProvider?.id]);
 
   if (!selectedProvider) {
     return (
@@ -126,13 +140,28 @@ export function ProviderDetails({
 
   const emptyState = visibleModelGroups.length === 0;
 
+  const saveInlineApiKey = async () => {
+    if (apiKeySaveState === 'saving' || inlineApiKey.trim().length === 0) return;
+    setApiKeySaveState('saving');
+    setApiKeySaveMessage(null);
+    const result = await onInlineUpdate('api_key', inlineApiKey);
+    if (result.success) {
+      setInlineApiKey('');
+      setApiKeySaveState('saved');
+      setShowApiKey(false);
+      return;
+    }
+    setApiKeySaveState('error');
+    setApiKeySaveMessage(result.message ?? t('providerSettings.errors.saveFailed'));
+  };
+
   // provider-storage-overlay: show "restore defaults" only when the user has
   // customized a preset-tracked field. `overriddenFields` is the read-only
   // projection of the backend `userOverrides.fields`, and is ONLY ever populated
   // for preset-derived rows by `resolveEffectiveProvider` — so a non-empty list
   // already implies preset-derived (custom rows get `[]`).
   const hasOverrides = Boolean(
-    onResetProvider && (selectedProvider.overriddenFields?.length ?? 0) > 0,
+    onResetProvider && (selectedProvider.overriddenFields?.length ?? 0) > 0
   );
 
   const getGroupDisplayName = (group: ModelGroup) => {
@@ -183,9 +212,7 @@ export function ProviderDetails({
                 className="h-9 text-lg font-semibold border-transparent hover:border-border focus:border-border bg-transparent px-0"
               />
             )}
-            <Badge variant="outline">
-              {getApiFormatLabel(selectedProvider)}
-            </Badge>
+            <Badge variant="outline">{getApiFormatLabel(selectedProvider)}</Badge>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -203,10 +230,7 @@ export function ProviderDetails({
               {t('providerSettings.reset.button')}
             </Button>
           ) : null}
-          <Switch
-            checked={selectedProvider.enabled}
-            onCheckedChange={onToggleProvider}
-          />
+          <Switch checked={selectedProvider.enabled} onCheckedChange={onToggleProvider} />
           {/* Delete button - only for non-system providers */}
           {!selectedProvider.isSystem && (
             <Button
@@ -236,35 +260,66 @@ export function ProviderDetails({
         description={t('providerSettings.form.apiKeyHelper')}
       >
         <RevealableInput
+          key={selectedProvider.id}
           revealed={showApiKey}
           onRevealedChange={onToggleShowApiKey ?? setShowApiKey}
-          placeholder={selectedProvider.hasKey && inlineApiKey.length === 0 && revealedApiKey == null
-            ? t('providerSettings.form.apiKeySetPlaceholder')
-            : t('providerSettings.form.apiKeyPlaceholder')}
+          placeholder={
+            selectedProvider.hasKey && inlineApiKey.length === 0 && revealedApiKey == null
+              ? t('providerSettings.form.apiKeySetPlaceholder')
+              : t('providerSettings.form.apiKeyPlaceholder')
+          }
           value={revealedApiKey ?? inlineApiKey}
           readOnly={revealedApiKey != null}
-          onChange={(e) => {
-            if (revealedApiKey != null && onApiKeyInputChange) {
-              onApiKeyInputChange(e.target.value);
-            } else {
-              setInlineApiKey(e.target.value);
-            }
+          data-elftia-protected-secret={revealedApiKey != null}
+          onCopy={(event) => {
+            if (revealedApiKey == null) return;
+            event.preventDefault();
+            void copySavedKey(() => llmConfigClient.revealProviderKey(selectedProvider.id)).catch(
+              () => undefined
+            );
           }}
-          onBlur={() => {
-            // Only persist a non-empty replacement; empty = leave unchanged.
-            if (inlineApiKey.trim().length > 0 && inlineApiKey !== (selectedProvider.api_key || '')) {
-              onInlineUpdate('api_key', inlineApiKey);
-            }
+          onChange={(e) => {
+            setApiKeySaveState('idle');
+            setApiKeySaveMessage(null);
+            (onApiKeyInputChange ?? setInlineApiKey)(e.target.value);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              e.currentTarget.blur();
+              e.preventDefault();
+              void saveInlineApiKey();
             }
           }}
         />
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            disabled={apiKeySaveState === 'saving' || inlineApiKey.trim().length === 0}
+            data-testid="provider-save-api-key"
+            onClick={() => void saveInlineApiKey()}
+          >
+            {t('providerSettings.form.saveApiKey')}
+          </Button>
+          {apiKeySaveState === 'saved' ? (
+            <span role="status" className="text-xs text-muted-foreground">
+              {t('providerSettings.form.apiKeySaved')}
+            </span>
+          ) : null}
+          {apiKeySaveState === 'error' ? (
+            <span role="alert" className="text-xs text-destructive">
+              {apiKeySaveMessage ?? t('providerSettings.errors.saveFailed')}
+            </span>
+          ) : null}
+        </div>
       </FormField>
 
       {/* API Key Pool */}
+      {selectedProvider.hasKey ? (
+        <KeyCopyButton
+          key={selectedProvider.id}
+          read={() => llmConfigClient.revealProviderKey(selectedProvider.id)}
+        />
+      ) : null}
       <ApiKeyPoolSection providerId={selectedProvider.id} />
 
       {/* API mode switcher — only renders when provider declares >= 2 modes */}
@@ -272,48 +327,58 @@ export function ProviderDetails({
         const apiModes = selectedProvider.apiModes;
         if (!apiModes || apiModes.length < 2 || !onSelectApiMode) return null;
         return (
-        <FormField label={t('apiMode.label')}>
-          <div className="flex flex-col gap-1.5">
-            <ProviderApiModeSwitcher
-              modes={apiModes}
-              selectedId={selectedProvider.selectedApiModeId}
-              onChange={(modeId) => {
-                if (modeId === selectedProvider.selectedApiModeId) return;
-                const next = apiModes.find(m => m.id === modeId);
-                const current = apiModes.find(m => m.id === selectedProvider.selectedApiModeId);
-                if (!next) return;
-                // If user customized URL or key away from current mode default, ask before overwriting.
-                const urlIsCustom = !!current && (selectedProvider.api_base_url || '') !== current.baseUrl;
-                const keyIsCustom = !!current && current.apiKey !== undefined && (selectedProvider.api_key || '') !== current.apiKey;
-                if (urlIsCustom || keyIsCustom) {
-                  setPendingModeSwitch(modeId);
-                } else {
-                  void onSelectApiMode(modeId);
-                }
-              }}
-            />
-            {(() => {
-              const active = apiModes.find(m => m.id === selectedProvider.selectedApiModeId);
-              if (!active?.note) return null;
-              return <p className="text-[11px] text-muted-foreground">{t(active.note) || active.note}</p>;
-            })()}
-            {(() => {
-              const active = apiModes.find(m => m.id === selectedProvider.selectedApiModeId);
-              if (!active?.apiKeyPrefix) return null;
-              return (
-                <p className="text-[11px] text-muted-foreground">
-                  {t('apiMode.apiKeyPrefixHint', { prefix: active.apiKeyPrefix })}
-                </p>
-              );
-            })()}
-          </div>
-        </FormField>
+          <FormField label={t('apiMode.label')}>
+            <div className="flex flex-col gap-1.5">
+              <ProviderApiModeSwitcher
+                modes={apiModes}
+                selectedId={selectedProvider.selectedApiModeId}
+                onChange={(modeId) => {
+                  if (modeId === selectedProvider.selectedApiModeId) return;
+                  const next = apiModes.find((m) => m.id === modeId);
+                  const current = apiModes.find((m) => m.id === selectedProvider.selectedApiModeId);
+                  if (!next) return;
+                  // If user customized URL or key away from current mode default, ask before overwriting.
+                  const urlIsCustom =
+                    !!current && (selectedProvider.api_base_url || '') !== current.baseUrl;
+                  const keyIsCustom =
+                    !!current &&
+                    current.apiKey !== undefined &&
+                    (selectedProvider.api_key || '') !== current.apiKey;
+                  if (urlIsCustom || keyIsCustom) {
+                    setPendingModeSwitch(modeId);
+                  } else {
+                    void onSelectApiMode(modeId);
+                  }
+                }}
+              />
+              {(() => {
+                const active = apiModes.find((m) => m.id === selectedProvider.selectedApiModeId);
+                if (!active?.note) return null;
+                return (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(active.note) || active.note}
+                  </p>
+                );
+              })()}
+              {(() => {
+                const active = apiModes.find((m) => m.id === selectedProvider.selectedApiModeId);
+                if (!active?.apiKeyPrefix) return null;
+                return (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('apiMode.apiKeyPrefixHint', { prefix: active.apiKeyPrefix })}
+                  </p>
+                );
+              })()}
+            </div>
+          </FormField>
         );
       })()}
 
       <Dialog
         open={pendingModeSwitch !== null}
-        onOpenChange={(open) => { if (!open) setPendingModeSwitch(null); }}
+        onOpenChange={(open) => {
+          if (!open) setPendingModeSwitch(null);
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -352,20 +417,24 @@ export function ProviderDetails({
       {/* API URL - Inline Editable */}
       <FormField
         label={t('providerSettings.credentials.apiBaseUrl')}
-        labelAction={selectedProvider.website ? (
-          <a
-            href={selectedProvider.website}
-            target="_blank"
-            rel="noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            title={t('mediaSettings.common.learnMore')}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        ) : undefined}
+        labelAction={
+          selectedProvider.website ? (
+            <a
+              href={selectedProvider.website}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title={t('mediaSettings.common.learnMore')}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          ) : undefined
+        }
       >
         <Input
-          placeholder={selectedProvider.api_base_url || t('providerSettings.form.apiUrlPlaceholder')}
+          placeholder={
+            selectedProvider.api_base_url || t('providerSettings.form.apiUrlPlaceholder')
+          }
           value={inlineApiUrl}
           onChange={(e) => setInlineApiUrl(e.target.value)}
           onBlur={() => {
@@ -397,7 +466,10 @@ export function ProviderDetails({
 
       {/* Max Concurrent Requests — `-1` means unlimited (matches runtime check
           in AgentProxyServer: `> 0` creates a semaphore, anything else doesn't). */}
-      <FormField label={t('providerSettings.form.maxConcurrency')} description={t('providerSettings.form.maxConcurrencyHelper')}>
+      <FormField
+        label={t('providerSettings.form.maxConcurrency')}
+        description={t('providerSettings.form.maxConcurrencyHelper')}
+      >
         <Input
           type="number"
           min={-1}
@@ -406,7 +478,10 @@ export function ProviderDetails({
           value={inlineMaxConcurrency}
           onChange={(e) => setInlineMaxConcurrency(e.target.value)}
           onBlur={() => {
-            const current = selectedProvider.maxConcurrency != null ? String(selectedProvider.maxConcurrency) : '';
+            const current =
+              selectedProvider.maxConcurrency != null
+                ? String(selectedProvider.maxConcurrency)
+                : '';
             if (inlineMaxConcurrency !== current) {
               void onInlineUpdate('maxConcurrency', inlineMaxConcurrency);
             }
@@ -419,7 +494,8 @@ export function ProviderDetails({
         />
       </FormField>
 
-      {modelStatus ? <div
+      {modelStatus ? (
+        <div
           className={`text-xs px-3 py-2 rounded border ${
             modelStatus.type === 'success'
               ? 'border-success/30 bg-success/10 text-success'
@@ -427,7 +503,8 @@ export function ProviderDetails({
           }`}
         >
           {modelStatus.message}
-        </div> : null}
+        </div>
+      ) : null}
 
       {/* Model management section */}
       <div className="space-y-3">
@@ -440,37 +517,32 @@ export function ProviderDetails({
               onChange={(e) => setModelSearch(e.target.value)}
               className="pr-8"
             />
-            {modelSearch ? <button
+            {modelSearch ? (
+              <button
                 type="button"
                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                 onClick={() => setModelSearch('')}
               >
                 <X className="h-4 w-4" />
-              </button> : null}
+              </button>
+            ) : null}
           </div>
           {/* Manage button */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onShowManageModels}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={onShowManageModels}>
             <Settings2 className="h-4 w-4 mr-1" />
             {t('providerSettings.modelsManager.manage')}
           </Button>
           {/* Add model button */}
-          <Button
-            type="button"
-            size="sm"
-            onClick={onShowAddModelDialog}
-          >
+          <Button type="button" size="sm" onClick={onShowAddModelDialog}>
             <Plus className="h-4 w-4 mr-1" />
             {t('providerSettings.modelsManager.add')}
           </Button>
         </div>
         {/* Models endpoint */}
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t('providerSettings.details.modelsEndpoint')}</label>
+          <label className="text-xs font-medium">
+            {t('providerSettings.details.modelsEndpoint')}
+          </label>
           <Input
             value={inlineModelsEndpoint}
             placeholder={`${selectedProvider.api_base_url?.replace(/\/chat\/completions$/, '/models') || ''}`}
@@ -494,7 +566,7 @@ export function ProviderDetails({
             {t('providerSettings.modelsManager.empty')}
           </div>
         ) : (
-          visibleModelGroups.map(group => (
+          visibleModelGroups.map((group) => (
             <div key={group.id} className="border rounded-md overflow-hidden">
               <button
                 type="button"
@@ -515,7 +587,7 @@ export function ProviderDetails({
               </button>
               {!collapsedGroups[group.id] && (
                 <div className="divide-y">
-                  {group.models.map(model => {
+                  {group.models.map((model) => {
                     const isEditing = editingModel?.id === model.id;
                     const enabled = model.enabled !== false;
                     return (
@@ -526,7 +598,7 @@ export function ProviderDetails({
                               <Input
                                 value={editingModel?.name || ''}
                                 onChange={(e) =>
-                                  setEditingModel(prev =>
+                                  setEditingModel((prev) =>
                                     prev ? { ...prev, name: e.target.value } : prev
                                   )
                                 }
@@ -543,17 +615,39 @@ export function ProviderDetails({
                               <Button size="sm" onClick={() => void onApplyModelEdit()}>
                                 <Check className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingModel(null)}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingModel(null)}
+                              >
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
                           ) : (
                             <>
-                              <div className="font-medium text-sm truncate">{model.name || model.id}</div>
+                              <div className="font-medium text-sm truncate">
+                                {model.name || model.id}
+                              </div>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground truncate">{model.id}</span>
-                                {model.vision ? <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">{t('providerSettings.modelsManager.filters.vision')}</Badge> : null}
-                                {model.reasoning ? <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">{t('providerSettings.modelsManager.filters.reasoning')}</Badge> : null}
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {model.id}
+                                </span>
+                                {model.vision ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] px-1.5 py-0 h-4 shrink-0"
+                                  >
+                                    {t('providerSettings.modelsManager.filters.vision')}
+                                  </Badge>
+                                ) : null}
+                                {model.reasoning ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] px-1.5 py-0 h-4 shrink-0"
+                                  >
+                                    {t('providerSettings.modelsManager.filters.reasoning')}
+                                  </Badge>
+                                ) : null}
                               </div>
                             </>
                           )}
@@ -580,7 +674,9 @@ export function ProviderDetails({
                               variant="ghost"
                               size="icon"
                               title={t('providerSettings.modelsManager.testDialog.testButton')}
-                              onClick={() => setTestingModel({ id: model.id, name: model.name || model.id })}
+                              onClick={() =>
+                                setTestingModel({ id: model.id, name: model.name || model.id })
+                              }
                             >
                               <TestTube className="h-4 w-4" />
                             </Button>
@@ -615,14 +711,18 @@ export function ProviderDetails({
 
       {/* Model Test Dialog (P2b-2 `byo-p2-llm-2`) — auto-runs the connectivity
           probe over `llm.testModel`; no secret crosses. */}
-      {selectedProvider && testingModel ? <ModelTestDialog
+      {selectedProvider && testingModel ? (
+        <ModelTestDialog
           open={!!testingModel}
-          onOpenChange={(open) => { if (!open) setTestingModel(null); }}
+          onOpenChange={(open) => {
+            if (!open) setTestingModel(null);
+          }}
           providerId={selectedProvider.id}
           providerName={getProviderDisplayName(t, selectedProvider)}
           modelId={testingModel.id}
           modelName={testingModel.name}
-        /> : null}
+        />
+      ) : null}
 
       {/* Reset-to-default confirmation (provider-storage-overlay) */}
       <ConfirmDialog

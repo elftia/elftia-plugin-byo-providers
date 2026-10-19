@@ -17,8 +17,18 @@ import type {
 } from '@omnicross/contracts/llm-config';
 import type {
   CodingPlanConfig,
-  PresetProviderTemplate,
+  PresetProviderTemplate as ContractsPresetProviderTemplate,
 } from '@omnicross/contracts/provider-presets';
+
+/**
+ * Contracts preset plus the catalog grouping the published `0.6.8` type
+ * predates: `category: 'other'` marks decision-engine presets (Jev / LogJev /
+ * OpenRouter Decisions) that render under their own 决策模型 section and
+ * materialize as non-chat key-storage rows.
+ */
+export type PresetProviderTemplate = ContractsPresetProviderTemplate & {
+  category?: string;
+};
 
 export type {
   ApiFormat,
@@ -33,7 +43,6 @@ export type {
   OpenRouterProviderRouting,
   OpenRouterProviderSort,
   OpenRouterQuantization,
-  PresetProviderTemplate,
   ProviderApiType,
   ProviderTemplate,
   TransformerConfig,

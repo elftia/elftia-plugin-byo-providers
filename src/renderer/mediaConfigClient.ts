@@ -44,6 +44,7 @@ import type { TtsProviderState, TtsProviderUpdatePayload } from '@byo/domain/tts
 import type { CustomVideoProviderInput, VideoProviderState, VideoProviderUpdatePayload } from '@byo/domain/video-types';
 
 import { getHost } from './host/hostBridge';
+import { requestKeyViewing } from './shared/keyViewingRequest';
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
@@ -52,9 +53,7 @@ function invoke<T>(method: string, payload?: unknown): Promise<T> {
 /** Ask the host renderer to invalidate the matching chat-facing provider cache. */
 function notifyProviderConfigChanged(mediaType: HostMediaType): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(
-    new CustomEvent('media-provider-config-changed', { detail: { mediaType } }),
-  );
+  window.dispatchEvent(new CustomEvent('media-provider-config-changed', { detail: { mediaType } }));
 }
 
 function mutationSucceeded(result: unknown): boolean {
@@ -92,12 +91,15 @@ interface MediaTypeClient<State, UpdatePayload, CustomInput> {
   revealProviderKey(id: string): Promise<RevealResult>;
 }
 
-interface VideoMediaTypeClient
-  extends MediaTypeClient<VideoProviderState, VideoProviderUpdatePayload, CustomVideoProviderInput> {
+interface VideoMediaTypeClient extends MediaTypeClient<
+  VideoProviderState,
+  VideoProviderUpdatePayload,
+  CustomVideoProviderInput
+> {
   setProviderSecret(
     id: string,
     field: HostMediaProviderSecretField,
-    value: string,
+    value: string
   ): Promise<OpResult>;
   /** Reveal a stored BytePlus secret field (v1.50) — display only. */
   revealProviderSecret(id: string, field: HostMediaProviderSecretField): Promise<RevealResult>;
@@ -109,7 +111,7 @@ interface VideoMediaTypeClient
  * to the canonical shape the panels consume.
  */
 function makeTypeClient<State, UpdatePayload, CustomInput>(
-  mediaType: HostMediaType,
+  mediaType: HostMediaType
 ): MediaTypeClient<State, UpdatePayload, CustomInput> {
   return {
     list: () => invoke('media.listProviders', { mediaType }),
@@ -139,7 +141,10 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
       return result;
     },
     refreshUpstreamModels: async (id) => {
-      const result = await invoke<RefreshResult<State>>('media.refreshUpstreamModels', { mediaType, id });
+      const result = await invoke<RefreshResult<State>>('media.refreshUpstreamModels', {
+        mediaType,
+        id,
+      });
       if (mutationSucceeded(result)) notifyProviderConfigChanged(mediaType);
       return result;
     },
@@ -149,14 +154,16 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
       return result;
     },
     revealProviderKey: (id) =>
-      invoke<RevealResult>('media.revealProviderKey', { mediaType, id }),
+      requestKeyViewing((password) =>
+        invoke<RevealResult>('media.revealProviderKey', { mediaType, id, password })
+      ),
   };
 }
 
 function makeVideoTypeClient(): VideoMediaTypeClient {
   return {
     ...makeTypeClient<VideoProviderState, VideoProviderUpdatePayload, CustomVideoProviderInput>(
-      'video',
+      'video'
     ),
     setProviderSecret: async (id, field, value) => {
       const result = await invoke<OpResult>('media.setProviderSecret', {
@@ -169,11 +176,14 @@ function makeVideoTypeClient(): VideoMediaTypeClient {
       return result;
     },
     revealProviderSecret: (id, field) =>
-      invoke<RevealResult>('media.revealProviderSecret', {
-        mediaType: 'video',
-        id,
-        field,
-      }),
+      requestKeyViewing((password) =>
+        invoke<RevealResult>('media.revealProviderSecret', {
+          mediaType: 'video',
+          id,
+          field,
+          password,
+        })
+      ),
   };
 }
 

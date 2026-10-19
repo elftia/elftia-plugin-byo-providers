@@ -15,6 +15,7 @@
 import { getHost, getHostOrNull } from '../hostBridge';
 
 import { cliI18nSeed } from './cliI18nSeed';
+import { keyViewingI18nSeed } from './keyViewingI18nSeed';
 import { llmI18nSeed } from './llmI18nSeed';
 import { mediaI18nSeed } from './mediaI18nSeed';
 import { modelServicesI18nSeed } from './modelServicesI18nSeed';
@@ -37,7 +38,7 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  */
 function deepMerge(
   a: Record<string, unknown>,
-  b: Record<string, unknown>,
+  b: Record<string, unknown>
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { ...a };
   for (const [k, bv] of Object.entries(b)) {
@@ -78,6 +79,7 @@ function buildMergedSeed(): Record<string, Record<string, unknown>> {
     acc = deepMerge(acc, cliI18nSeed[lang] ?? {});
     acc = deepMerge(acc, navigationI18nSeed[lang] ?? {});
     acc = deepMerge(acc, modelServicesI18nSeed[lang] ?? {});
+    acc = deepMerge(acc, keyViewingI18nSeed[lang] ?? {});
     merged[lang] = acc;
   }
   return merged;

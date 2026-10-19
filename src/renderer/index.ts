@@ -31,6 +31,7 @@
 import type { AgentUiHostApi } from '@byo/domain/plugin-types';
 
 import { setHost } from './host/hostBridge';
+import { KeyViewingPrompt } from './shared/KeyViewingPrompt';
 import { ImperativeConfirmProvider } from './host/vendored/useImperativeConfirm';
 import { readLocale, registerLlmI18n, useTranslation } from './host/vendored/useTranslation';
 
@@ -77,7 +78,7 @@ export function activate(host: AgentUiHostApi): void {
   // The unified model-services page is lazy so the activate path stays small
   // (DS precedent) — the provider tree + subscription cards split off `activate`.
   const LazyModelServicesPage = React.lazy(() =>
-    import('./llm/ModelServicesPage').then((m) => ({ default: m.ModelServicesPage })),
+    import('./llm/ModelServicesPage').then((m) => ({ default: m.ModelServicesPage }))
   );
 
   // The media dispatch container (renders the per-type panel) is lazy too; each
@@ -92,14 +93,14 @@ export function activate(host: AgentUiHostApi): void {
   // card tree splits off `activate`). The subscription/OAuth UI itself moved
   // INTO the unified model-services section above.
   const LazyCodeCliTab = React.lazy(() =>
-    import('./cli/CodeCliTab').then((m) => ({ default: m.CodeCliTab })),
+    import('./cli/CodeCliTab').then((m) => ({ default: m.CodeCliTab }))
   );
 
   function ModelServicesSection() {
     return h(
       React.Suspense,
       { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-      h(LazyModelServicesPage),
+      h(LazyModelServicesPage)
     );
   }
 
@@ -118,6 +119,7 @@ export function activate(host: AgentUiHostApi): void {
           'data-testid': 'byo-providers-model-services-section',
         },
         h(ModelServicesSection),
+        h(KeyViewingPrompt)
       ),
   });
 
@@ -145,8 +147,9 @@ export function activate(host: AgentUiHostApi): void {
               ImperativeConfirmProvider,
               null,
               h(LazyMediaProviderSettings, { mediaType }),
-            ),
-          ),
+              h(KeyViewingPrompt)
+            )
+          )
         ),
     });
   });
@@ -172,7 +175,8 @@ export function activate(host: AgentUiHostApi): void {
           React.Suspense,
           { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
           h(LazySearchProviderSettings),
-        ),
+          h(KeyViewingPrompt)
+        )
       ),
   });
 
@@ -191,8 +195,8 @@ export function activate(host: AgentUiHostApi): void {
         h(
           React.Suspense,
           { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-          h(LazyObjectStorageSettings),
-        ),
+          h(LazyObjectStorageSettings)
+        )
       ),
   });
 
@@ -224,8 +228,8 @@ export function activate(host: AgentUiHostApi): void {
         h(
           React.Suspense,
           { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-          h(CodeCliSectionPanel),
-        ),
+          h(CodeCliSectionPanel)
+        )
       ),
   });
 }

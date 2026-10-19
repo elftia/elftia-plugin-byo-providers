@@ -112,6 +112,17 @@ README.
 
 ## Host contract
 
+Saved LLM/media key viewing supports the host-managed viewing password. Every
+reveal, copy (including copying a revealed field), and credential-pack export
+performs a fresh host verification. Passwords are never cached. Revealed fields
+are discarded after 30 seconds, selection changes, or host-window blur; each
+video secret has its own expiry. Normal provider calls remain host-side.
+
+The authentication dialog uses projected host UI primitives, and copy uses the
+optional write-only `host.clipboard.writeText` bridge (host API 1.112). A host
+without that bridge reports copy unavailable. Password setup/change/disable and
+destructive forgotten-password recovery belong to host Privacy settings.
+
 The project locks the newest released public SDK,
 `@elftia/plugin-types@1.25.0`, and records `builtAgainst: "1.25.0"` in both
 manifest contributions. The public 1.25 SDK covers the base UI/backend API and

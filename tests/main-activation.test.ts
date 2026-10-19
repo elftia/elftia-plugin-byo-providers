@@ -81,8 +81,8 @@ const RELAY_CASES: RelayCase[] = [
     ipc: 'llm.revealProviderKey',
     service: 'llmConfig',
     method: 'revealProviderKey',
-    payload: { id: 111 },
-    args: ['111'],
+    payload: { id: 111, password: 'fixture-view-password' },
+    args: ['111', 'fixture-view-password'],
   },
   {
     ipc: 'llm.getProviderPresets',
@@ -253,8 +253,8 @@ const RELAY_CASES: RelayCase[] = [
     ipc: 'media.revealProviderKey',
     service: 'mediaConfig',
     method: 'revealProviderKey',
-    payload: { mediaType: 'image', id: 210 },
-    args: ['image', '210'],
+    payload: { mediaType: 'image', id: 210, password: 'fixture-view-password' },
+    args: ['image', '210', 'fixture-view-password'],
   },
   {
     ipc: 'media.revealProviderSecret',
@@ -264,8 +264,9 @@ const RELAY_CASES: RelayCase[] = [
       mediaType: 'video',
       id: 'video-seedance-vod',
       field: 'byteplusSk',
+      password: 'fixture-view-password',
     },
-    args: ['video', 'video-seedance-vod', 'byteplusSk'],
+    args: ['video', 'video-seedance-vod', 'byteplusSk', 'fixture-view-password'],
   },
 
   {
@@ -714,8 +715,8 @@ const RELAY_CASES: RelayCase[] = [
     ipc: 'secretsPack.export',
     service: 'secretsPack',
     method: 'export',
-    payload: { passphrase: 601 },
-    args: [{ passphrase: '601' }],
+    payload: { passphrase: 601, password: 'fixture-view-password' },
+    args: [{ passphrase: '601', password: 'fixture-view-password' }],
   },
   {
     ipc: 'secretsPack.import',

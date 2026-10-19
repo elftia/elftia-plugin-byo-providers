@@ -24,6 +24,7 @@ vi.mock('../src/renderer/host/vendored/useTranslation', () => ({
       'modelServices.presets.customDescription': 'No template needed.',
       'modelServices.presets.searchPlaceholder': 'Search presets…',
       'modelServices.presets.empty': 'No presets match your search.',
+      'modelServices.presets.categoryOther': 'Decision Models',
     })[key] ?? key,
 }));
 
@@ -161,6 +162,29 @@ describe('ProviderTemplatePicker catalog', () => {
       openaiButtons[0]?.props.onClick();
     });
     expect(onSelectPreset).toHaveBeenCalledWith('openai');
+  });
+
+  it('renders decision presets under their own section, outside the chat grid', async () => {
+    getProviderPresets.mockResolvedValueOnce([
+      preset('openai'),
+      preset('jev', { category: 'other' }),
+      preset('openrouter-decisions', { category: 'other' }),
+    ]);
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(renderPicker());
+    });
+
+    // Both grids render their cards, but the 'other' presets sit under the
+    // 决策模型 heading instead of mixing into the chat catalog grid.
+    expect(renderer.root.findByProps({ 'data-testid': 'preset-card-openai' })).toBeDefined();
+    expect(renderer.root.findByProps({ 'data-testid': 'preset-card-jev' })).toBeDefined();
+    expect(
+      renderer.root.findByProps({ 'data-testid': 'preset-card-openrouter-decisions' }),
+    ).toBeDefined();
+    const headings = renderer.root.findAllByType('h4');
+    expect(headings.map((h) => h.children.join(''))).toContain('Decision Models');
   });
 
   it('narrows the grid to presets matching the search query', async () => {

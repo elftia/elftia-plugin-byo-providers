@@ -9,8 +9,8 @@
  * types (mirroring the host component signatures) so call-site event handlers
  * still infer — the moved files swap only the import PATH.
  *
- * `Dialog`/`DialogContent` + the dialog sub-parts come from the vendored
- * `./vendored/dialog` (the frozen host.ui doesn't expose the sub-parts).
+ * The viewing-password dialog uses projected host Dialog/Content/Title.
+ * Other existing dialog sub-parts remain in `./vendored/dialog`.
  *
  * @module byo-providers/renderer/host/ui
  */
@@ -84,6 +84,9 @@ export interface ConfirmDialogProps {
 
 function makeWrapper<P>(name: keyof ReturnType<typeof ui>): React.ComponentType<P> {
   const Wrapped = React.forwardRef<unknown, P>((props, ref) => {
+    if (name === 'DialogTitle' && !ui().DialogTitle) {
+      return React.createElement('h2', props as React.HTMLAttributes<HTMLHeadingElement>);
+    }
     const Comp = ui()[name] as unknown as React.ComponentType<
       P & { ref?: React.Ref<unknown> }
     >;
@@ -99,3 +102,12 @@ export const Select = makeWrapper<SelectProps>('Select');
 export const Switch = makeWrapper<SwitchProps>('Switch');
 export const Badge = makeWrapper<BadgeProps>('Badge');
 export const ConfirmDialog = makeWrapper<ConfirmDialogProps>('ConfirmDialog');
+
+// Host-projected dialogs remain visible when the plugin runs in an opaque frame.
+export const Dialog = makeWrapper<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}>('Dialog');
+export const DialogContent = makeWrapper<React.HTMLAttributes<HTMLDivElement>>('DialogContent');
+export const DialogTitle = makeWrapper<React.HTMLAttributes<HTMLHeadingElement>>('DialogTitle');

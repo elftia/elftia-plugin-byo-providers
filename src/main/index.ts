@@ -165,7 +165,8 @@ export function activate(host: AgentBackendHostApi): void {
     'llm.getProvider': async (p) => (await llm()?.getProvider(String(asRecord(p).id))) ?? null,
     'llm.addProvider': async (p) => (await llm()?.addProvider(asRecord(p))) ?? missing(),
     'llm.updateProvider': async (p) => (await llm()?.updateProvider(asRecord(p))) ?? missing(),
-    'llm.deleteProvider': async (p) => (await llm()?.deleteProvider(String(asRecord(p).id))) ?? missing(),
+    'llm.deleteProvider': async (p) =>
+      (await llm()?.deleteProvider(String(asRecord(p).id))) ?? missing(),
     'llm.toggleProvider': async (p) => {
       const { id, enabled } = asRecord(p);
       return (await llm()?.toggleProvider(String(id), Boolean(enabled))) ?? missing();
@@ -174,10 +175,14 @@ export function activate(host: AgentBackendHostApi): void {
       const { orderedIds } = asRecord(p);
       return (await llm()?.reorderProviders((orderedIds as string[]) ?? [])) ?? missing();
     },
-    'llm.resetProvider': async (p) => (await llm()?.resetProvider(String(asRecord(p).id))) ?? missing(),
+    'llm.resetProvider': async (p) =>
+      (await llm()?.resetProvider(String(asRecord(p).id))) ?? missing(),
     'llm.discoverModels': async (p) => {
       const { id, options } = asRecord(p);
-      return (await llm()?.discoverModels(String(id), options as { forceRefresh?: boolean })) ?? missing();
+      return (
+        (await llm()?.discoverModels(String(id), options as { forceRefresh?: boolean })) ??
+        missing()
+      );
     },
     // P2b-2 (`byo-p2-llm-2`) — the model connectivity probe over the EXISTING
     // `host.services.llmConfig` port (host-API 1.27, `host:llm-config` — NO new
@@ -191,20 +196,26 @@ export function activate(host: AgentBackendHostApi): void {
     // user-initiated display only (the settings eye icon). The value rides a
     // dedicated `{success, value?, error?}` result, never a provider row.
     'llm.revealProviderKey': async (p) =>
-      (await llm()?.revealProviderKey?.(String(asRecord(p).id))) ?? missing(),
+      (await llm()?.revealProviderKey?.(
+        String(asRecord(p).id),
+        asRecord(p).password as string | undefined
+      )) ?? missing(),
 
     // ── Presets ──────────────────────────────────────────────────────────────
     'llm.getProviderPresets': async () => (await llm()?.getProviderPresets()) ?? [],
     'llm.addFromPreset': async (p) => {
       const { presetId, apiKey } = asRecord(p);
-      return (await llm()?.addFromPreset(String(presetId), apiKey as string | undefined)) ?? missing();
+      return (
+        (await llm()?.addFromPreset(String(presetId), apiKey as string | undefined)) ?? missing()
+      );
     },
 
     // ── Key pool ─────────────────────────────────────────────────────────────
     'llm.getApiKeys': async (p) => (await llm()?.getApiKeys(String(asRecord(p).providerId))) ?? [],
     'llm.addApiKey': async (p) => (await llm()?.addApiKey(asRecord(p))) ?? missing(),
     'llm.updateApiKey': async (p) => (await llm()?.updateApiKey(asRecord(p))) ?? missing(),
-    'llm.deleteApiKey': async (p) => (await llm()?.deleteApiKey(String(asRecord(p).id))) ?? missing(),
+    'llm.deleteApiKey': async (p) =>
+      (await llm()?.deleteApiKey(String(asRecord(p).id))) ?? missing(),
     'llm.toggleApiKey': async (p) => (await llm()?.toggleApiKey(asRecord(p))) ?? missing(),
     // v1.64 — provider pool-key plan quota (feature-detected; unsupported
     // providers degrade to supported:false — never fabricated numbers).
@@ -223,7 +234,8 @@ export function activate(host: AgentBackendHostApi): void {
       }
       return handle.getProviderKeyQuota(String(providerId), String(keyId), Boolean(force));
     },
-    'llm.getKeyHealth': async (p) => (await llm()?.getKeyHealth(String(asRecord(p).providerId))) ?? {},
+    'llm.getKeyHealth': async (p) =>
+      (await llm()?.getKeyHealth(String(asRecord(p).providerId))) ?? {},
 
     // ── Default model (router config) ─────────────────────────────────────────
     'llm.getRouterConfig': async () => (await llm()?.getRouterConfig()) ?? null,
@@ -258,7 +270,7 @@ export function activate(host: AgentBackendHostApi): void {
       return (
         (await media()?.createCustomProvider(
           asMediaType(mediaType),
-          asRecord(input) as { baseProviderId: string; name: string },
+          asRecord(input) as { baseProviderId: string; name: string }
         )) ?? mediaMissing()
       );
     },
@@ -307,7 +319,7 @@ export function activate(host: AgentBackendHostApi): void {
           String(mediaType) as 'video',
           String(id),
           String(field) as HostMediaProviderSecretField,
-          String(value ?? ''),
+          String(value ?? '')
         )) ?? mediaMissing()
       );
     },
@@ -315,18 +327,23 @@ export function activate(host: AgentBackendHostApi): void {
     // user-initiated display only (the settings eye icon). Secrets-first read
     // with a hydrated-config fallback; `{success: true, value: ''}` when unset.
     'media.revealProviderKey': async (p) => {
-      const { mediaType, id } = asRecord(p);
+      const { mediaType, id, password } = asRecord(p);
       return (
-        (await media()?.revealProviderKey?.(asMediaType(mediaType), String(id))) ?? mediaMissing()
+        (await media()?.revealProviderKey?.(
+          asMediaType(mediaType),
+          String(id),
+          password as string | undefined
+        )) ?? mediaMissing()
       );
     },
     'media.revealProviderSecret': async (p) => {
-      const { mediaType, id, field } = asRecord(p);
+      const { mediaType, id, field, password } = asRecord(p);
       return (
         (await media()?.revealProviderSecret?.(
           String(mediaType) as 'video',
           String(id),
           String(field) as HostMediaProviderSecretField,
+          password as string | undefined
         )) ?? mediaMissing()
       );
     },
@@ -399,42 +416,33 @@ export function activate(host: AgentBackendHostApi): void {
     'subAuth.startKimiDeviceFlow': async () =>
       (await subAuth()?.startKimiDeviceFlow?.()) ?? subAuthMissing(),
     'subAuth.pollKimiDeviceFlow': async (p) =>
-      (
-        await subAuth()?.pollKimiDeviceFlow?.(String(asRecord(p).sessionId))
-      ) ?? subAuthMissing(),
+      (await subAuth()?.pollKimiDeviceFlow?.(String(asRecord(p).sessionId))) ?? subAuthMissing(),
     'subAuth.cancelKimiDeviceFlow': async (p) => {
       await subAuth()?.cancelKimiDeviceFlow?.(String(asRecord(p).sessionId));
     },
-    'subAuth.refreshKimiToken': async () =>
-      (await subAuth()?.refreshKimiToken?.()) ?? false,
+    'subAuth.refreshKimiToken': async () => (await subAuth()?.refreshKimiToken?.()) ?? false,
     // v1.65 — Grok / Copilot RFC 8628 device flows. Feature-detected like the
     // Kimi verbs; the deviceCode and tokens stay HOST-side — only display
     // views cross. Copilot's optional enterpriseUrl rides the start payload.
     'subAuth.startGrokDeviceFlow': async () =>
       (await subAuth()?.startGrokDeviceFlow?.()) ?? subAuthMissing(),
     'subAuth.pollGrokDeviceFlow': async (p) =>
-      (
-        await subAuth()?.pollGrokDeviceFlow?.(String(asRecord(p).sessionId))
-      ) ?? subAuthMissing(),
+      (await subAuth()?.pollGrokDeviceFlow?.(String(asRecord(p).sessionId))) ?? subAuthMissing(),
     'subAuth.cancelGrokDeviceFlow': async (p) => {
       await subAuth()?.cancelGrokDeviceFlow?.(String(asRecord(p).sessionId));
     },
-    'subAuth.refreshGrokToken': async () =>
-      (await subAuth()?.refreshGrokToken?.()) ?? false,
+    'subAuth.refreshGrokToken': async () => (await subAuth()?.refreshGrokToken?.()) ?? false,
     'subAuth.startCopilotDeviceFlow': async (p) => {
       const raw = asRecord(p).enterpriseUrl;
       const enterpriseUrl = typeof raw === 'string' && raw.trim() ? raw : undefined;
       return (await subAuth()?.startCopilotDeviceFlow?.(enterpriseUrl)) ?? subAuthMissing();
     },
     'subAuth.pollCopilotDeviceFlow': async (p) =>
-      (
-        await subAuth()?.pollCopilotDeviceFlow?.(String(asRecord(p).sessionId))
-      ) ?? subAuthMissing(),
+      (await subAuth()?.pollCopilotDeviceFlow?.(String(asRecord(p).sessionId))) ?? subAuthMissing(),
     'subAuth.cancelCopilotDeviceFlow': async (p) => {
       await subAuth()?.cancelCopilotDeviceFlow?.(String(asRecord(p).sessionId));
     },
-    'subAuth.refreshCopilotToken': async () =>
-      (await subAuth()?.refreshCopilotToken?.()) ?? false,
+    'subAuth.refreshCopilotToken': async () => (await subAuth()?.refreshCopilotToken?.()) ?? false,
     // v1.67 — codex loopback sign-in (auto-complete; no code paste). The host
     // binds 127.0.0.1:1455, captures the browser callback, exchanges, and
     // appends the account — the renderer opens authUrl and POLLS the
@@ -442,9 +450,8 @@ export function activate(host: AgentBackendHostApi): void {
     'subAuth.startCodexLoopbackLogin': async () =>
       (await subAuth()?.startCodexLoopbackLogin?.()) ?? subAuthMissing(),
     'subAuth.pollCodexLoopbackLogin': async (p) =>
-      (
-        await subAuth()?.pollCodexLoopbackLogin?.(String(asRecord(p).sessionId))
-      ) ?? subAuthMissing(),
+      (await subAuth()?.pollCodexLoopbackLogin?.(String(asRecord(p).sessionId))) ??
+      subAuthMissing(),
     'subAuth.cancelCodexLoopbackLogin': async (p) => {
       await subAuth()?.cancelCodexLoopbackLogin?.(String(asRecord(p).sessionId));
     },
@@ -512,7 +519,7 @@ export function activate(host: AgentBackendHostApi): void {
       }
       return handle.setSubscriptionExtraModels(
         String(providerId),
-        (models as HostSubscriptionModelInfo[]) ?? [],
+        (models as HostSubscriptionModelInfo[]) ?? []
       );
     },
     'subAuth.setSubscriptionModelEnabled': async (p) => {
@@ -535,8 +542,7 @@ export function activate(host: AgentBackendHostApi): void {
     'subAuth.addOpenCodeGoAccount': async (p) =>
       (await subAuth()?.addOpenCodeGoAccount(asRecord(p).request as Record<string, unknown>)) ??
       subAuthMissing(),
-    'subAuth.clearOpenCodeGo': async () =>
-      (await subAuth()?.clearOpenCodeGo()) ?? subAuthMissing(),
+    'subAuth.clearOpenCodeGo': async () => (await subAuth()?.clearOpenCodeGo()) ?? subAuthMissing(),
     'subAuth.refreshCredential': async (p) =>
       (await subAuth()?.refreshCredential(String(asRecord(p).providerId))) ?? subAuthMissing(),
     // Manual-token paste (INWARD-only; status-only return, no token echoed
@@ -559,7 +565,7 @@ export function activate(host: AgentBackendHostApi): void {
           String(accessToken ?? ''),
           subscriptionLevel as string | undefined,
           label as string | undefined,
-          toVerifyOptions(verify),
+          toVerifyOptions(verify)
         )) ?? subAuthMissing()
       );
     },
@@ -569,7 +575,7 @@ export function activate(host: AgentBackendHostApi): void {
         (await subAuth()?.setCodexManualToken(
           String(accessToken ?? ''),
           label as string | undefined,
-          toVerifyOptions(verify),
+          toVerifyOptions(verify)
         )) ?? subAuthMissing()
       );
     },
@@ -579,7 +585,7 @@ export function activate(host: AgentBackendHostApi): void {
         (await subAuth()?.setGeminiManualToken(
           String(accessToken ?? ''),
           refreshToken as string | undefined,
-          toVerifyOptions(verify),
+          toVerifyOptions(verify)
         )) ?? subAuthMissing()
       );
     },
@@ -590,8 +596,7 @@ export function activate(host: AgentBackendHostApi): void {
     // ══ AGENT-CONFIG (P2e) — cli sub-settings get/set over host.services.agentConfig ══
     // ONLY the 5 cli keys; the general `agentBackend` engine field is NOT exposed
     // (the port + adapter reject it). Guarded 3-line delegations.
-    'agentCfg.getCliBackendConfig': async () =>
-      (await agentCfg()?.getCliBackendConfig()) ?? {},
+    'agentCfg.getCliBackendConfig': async () => (await agentCfg()?.getCliBackendConfig()) ?? {},
     'agentCfg.setCliBackendConfig': async (p) =>
       (await agentCfg()?.setCliBackendConfig(asRecord(p) as never)) ?? agentCfgMissing(),
 
@@ -648,12 +653,20 @@ export function activate(host: AgentBackendHostApi): void {
     // OUTWARD (no return field can carry them). DISTINCT from `host:secrets-write`
     // (this plugin never requests it). Guarded 3-line delegations.
     'secretsPack.export': async (p) => {
-      const { passphrase } = asRecord(p);
-      return (await secretsPack()?.export({ passphrase: String(passphrase ?? '') })) ?? secretsPackMissing();
+      const { passphrase, password } = asRecord(p);
+      return (
+        (await secretsPack()?.export({
+          passphrase: String(passphrase ?? ''),
+          password: password as string | undefined,
+        })) ?? secretsPackMissing()
+      );
     },
     'secretsPack.import': async (p) => {
       const { passphrase } = asRecord(p);
-      return (await secretsPack()?.import({ passphrase: String(passphrase ?? '') })) ?? secretsPackMissing();
+      return (
+        (await secretsPack()?.import({ passphrase: String(passphrase ?? '') })) ??
+        secretsPackMissing()
+      );
     },
 
     // ══ EXTERNAL LINKS (v1.66) — system-browser URL opener over host.services.externalLinks ══
