@@ -86,9 +86,10 @@ export function KeyViewingPrompt() {
             ? 'locked'
             : result.error === 'view-password-length'
               ? 'length'
-            : result.error === 'view-password-invalid' || result.error === 'view-password-required'
-              ? 'invalid'
-              : 'unavailable'
+              : result.error === 'view-password-invalid' ||
+                  result.error === 'view-password-required'
+                ? 'invalid'
+                : 'unavailable'
         );
     } catch {
       if (active.current === request) {
@@ -99,6 +100,14 @@ export function KeyViewingPrompt() {
     } finally {
       if (active.current === request) setPending(false);
     }
+  };
+
+  // Native forms are outside the host's remote-DOM policy. Submit through
+  // projected input/button events so this dialog also works in an opaque frame.
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    void submit();
   };
 
   return (
@@ -112,25 +121,24 @@ export function KeyViewingPrompt() {
         data-testid="dialog-panel-key-viewing-auth"
         aria-describedby="key-viewing-auth-description"
       >
-        <DialogTitle>{t(request?.mode === 'set' ? 'keyViewing.setTitle' : 'keyViewing.title')}</DialogTitle>
+        <DialogTitle>
+          {t(request?.mode === 'set' ? 'keyViewing.setTitle' : 'keyViewing.title')}
+        </DialogTitle>
         <p id="key-viewing-auth-description" className="text-sm text-muted-foreground">
           {t(request?.mode === 'set' ? 'keyViewing.setDescription' : 'keyViewing.description')}
         </p>
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
+        <div className="space-y-3">
           <Input
             type="password"
             autoComplete={request?.mode === 'set' ? 'new-password' : 'current-password'}
             maxLength={request?.mode === 'set' ? 8 : 128}
             value={password}
-            aria-label={t(request?.mode === 'set' ? 'keyViewing.newPassword' : 'keyViewing.password')}
+            aria-label={t(
+              request?.mode === 'set' ? 'keyViewing.newPassword' : 'keyViewing.password'
+            )}
             data-testid="dialog-input-key-viewing-password"
             onChange={(event) => setPassword(event.target.value)}
+            onKeyDown={handleKeyDown}
           />
           {request?.mode === 'set' ? (
             <Input
@@ -141,6 +149,7 @@ export function KeyViewingPrompt() {
               aria-label={t('keyViewing.confirmation')}
               data-testid="dialog-input-key-viewing-confirmation"
               onChange={(event) => setConfirmation(event.target.value)}
+              onKeyDown={handleKeyDown}
             />
           ) : null}
           {error ? (
@@ -158,14 +167,15 @@ export function KeyViewingPrompt() {
               {t('keyViewing.cancel')}
             </Button>
             <Button
-              type="submit"
+              type="button"
               disabled={pending || !password}
               data-testid="dialog-button-key-viewing-confirm"
+              onClick={() => void submit()}
             >
               {t(request?.mode === 'set' ? 'keyViewing.save' : 'keyViewing.confirm')}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

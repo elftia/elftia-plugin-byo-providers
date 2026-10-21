@@ -85,14 +85,10 @@ export function useProviderForm(
         setRevealedApiKey(null);
         return;
       }
-      // Showing with an EMPTY field (the masked port blanks a stored literal;
-      // a `$ENV` ref prefills and needs no fetch) → fetch for display-only.
-      if (
-        revealedApiKey === null &&
-        inlineApiKey.length === 0 &&
-        selectedProvider?.hasKey &&
-        selectedProviderId
-      ) {
+      // The host is authoritative even if hasKey metadata is missing/stale.
+      // Always use the protected read for an empty draft so first-time setup
+      // is not silently skipped. `$ENV` refs and new drafts need no fetch.
+      if (revealedApiKey === null && inlineApiKey.length === 0 && selectedProviderId) {
         const pid = selectedProviderId;
         llmConfigClient
           .revealProviderKey?.(pid)
@@ -109,7 +105,7 @@ export function useProviderForm(
           });
       }
     },
-    [showApiKey, revealedApiKey, inlineApiKey, selectedProvider, selectedProviderId]
+    [showApiKey, revealedApiKey, inlineApiKey, selectedProviderId]
   );
 
   /** Clear the display-only reveal (called when the user starts editing). */

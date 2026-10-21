@@ -118,6 +118,17 @@ performs a fresh host verification. Passwords are never cached. Revealed fields
 are discarded after 30 seconds, selection changes, or host-window blur; each
 video secret has its own expiry. Normal provider calls remain host-side.
 
+Version 0.3.5 carries the first-reveal 4–8 character password setup and explicit
+key-save controls in a new artifact version. Hosts seed strictly newer versions;
+rebuilding 0.3.3 alone does not replace an existing 0.3.3 installation. An empty
+key field always uses the protected host read, even when its `hasKey` metadata
+is stale or missing.
+
+The viewing dialog uses projected input/button events for click and Enter
+submission. Native `<form>` is outside the host compartment's remote-DOM policy
+and would revoke the entire provider settings surface, even while the dialog is
+closed.
+
 The authentication dialog uses projected host UI primitives, and copy uses the
 optional write-only `host.clipboard.writeText` bridge (host API 1.112). A host
 without that bridge reports copy unavailable. Password setup/change/disable and

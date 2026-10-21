@@ -40,7 +40,7 @@ describe('per-operation viewing verification', () => {
     act(() =>
       control('dialog-input-key-viewing-password').props.onChange({ target: { value: password } })
     );
-    await act(async () => renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    await act(async () => control('dialog-button-key-viewing-confirm').props.onClick());
   };
   const submitSetup = async (password: string, confirmation = password) => {
     act(() =>
@@ -51,7 +51,12 @@ describe('per-operation viewing verification', () => {
         target: { value: confirmation },
       })
     );
-    await act(async () => renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    await act(async () =>
+      control('dialog-input-key-viewing-confirmation').props.onKeyDown({
+        key: 'Enter',
+        preventDefault() {},
+      })
+    );
   };
 
   it('sets a 4–8 character password on first reveal and continues the same read', async () => {
@@ -66,6 +71,7 @@ describe('per-operation viewing verification', () => {
     });
     expect(renderer.root.findByType('h2').children).toContain('keyViewing.setTitle');
     expect(control('dialog-input-key-viewing-password').props.maxLength).toBe(8);
+    expect(renderer.root.findAllByType('form')).toHaveLength(0);
     await submitSetup('1234');
     expect(await result).toEqual({ success: true, value: 'fixture-key' });
     expect(read.mock.calls.map(([password]) => password)).toEqual([undefined, '1234']);

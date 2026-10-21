@@ -127,6 +127,18 @@ describe('provider credential selection', () => {
     expect(form.showApiKey).toBe(false);
   });
 
+  it('requests protected viewing even when stored-key metadata is missing', async () => {
+    select(provider('legacy', { hasKey: false }));
+
+    await act(async () => {
+      form.handleToggleShowApiKey(true);
+    });
+
+    expect(client.revealProviderKey).toHaveBeenCalledWith('legacy');
+    expect(form.revealedApiKey).toBe('stored-alpha');
+    expect(client.updateProvider).not.toHaveBeenCalled();
+  });
+
   it('resets the draft and visibility when switching providers and switching back', () => {
     act(() => {
       form.handleApiKeyInputChange('replacement-alpha');
