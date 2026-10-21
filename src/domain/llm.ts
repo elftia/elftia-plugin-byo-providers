@@ -30,7 +30,8 @@ export type PresetProviderTemplate = ContractsPresetProviderTemplate & {
   category?: string;
 };
 
-export type LLMProvider = ContractsLLMProvider & { category?: string; logjev?: LogJevSettings };
+export type LLMProvider = ContractsLLMProvider & { category?: string; logjev?: LogJevSettings;
+  sharedKey?: { shared: boolean; owner: boolean } };
 
 export type {
   ApiFormat,

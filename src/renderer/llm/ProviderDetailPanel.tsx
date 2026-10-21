@@ -84,6 +84,9 @@ export function ProviderDetailPanel({ s }: { s: ProviderSettingsBag }) {
         ) : null}
 
         <div className="flex-1 min-h-0 overflow-y-auto">
+          {s.selectedProvider?.sharedKey?.shared && <p className="px-5 py-3 text-xs text-muted-foreground" data-testid="shared-provider-key-note">
+            {t(s.selectedProvider.sharedKey.owner ? 'sharedKeys.owner' : 'sharedKeys.borrowed')}
+          </p>}
           {s.isAddingNew ? (
             <ProviderForm
               isEditing={false}

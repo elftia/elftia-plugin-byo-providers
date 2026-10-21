@@ -106,6 +106,7 @@ export interface ProviderDetailsPanelProps {
    * eye-on reveal is worth fetching.
    */
   hasStoredKey?: boolean;
+  sharedKey?: { shared: boolean; owner: boolean };
   /**
    * provider-key-reveal: fetch the stored secret for display. Returns the
    * plaintext (or `''` when nothing is stored), or `null` on failure. The
@@ -169,6 +170,7 @@ export function ProviderDetailsPanel({
   beforeFooterSlot,
   docsUrl,
   hasStoredKey,
+  sharedKey,
   onRevealSecret,
   revealScopeKey,
   t,
@@ -452,6 +454,9 @@ export function ProviderDetailsPanel({
           </div>
         );
       })}
+      {sharedKey?.shared && <p className="text-xs text-muted-foreground" data-testid="shared-provider-key-note">
+        {t(sharedKey.owner ? 'sharedKeys.owner' : 'sharedKeys.borrowed')}
+      </p>}
 
       {/* 凭证字段之后的自定义内容 */}
       {afterCredentialsSlot}

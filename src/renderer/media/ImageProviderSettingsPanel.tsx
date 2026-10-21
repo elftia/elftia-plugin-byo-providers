@@ -654,6 +654,7 @@ export function ImageProviderSettingsPanel() {
                 }
                 docsUrl={selectedProvider.docsUrl ?? selectedProvider.website}
                 hasStoredKey={(selectedProvider as { hasKey?: boolean }).hasKey === true}
+                sharedKey={(selectedProvider as { sharedKey?: { shared: boolean; owner: boolean } }).sharedKey}
                 revealScopeKey={selectedProvider.id}
                 onRevealSecret={async () => {
                   const r = await mediaConfigClient.image.revealProviderKey(selectedProvider.id);

@@ -12,6 +12,10 @@
  */
 export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
   en: {
+    sharedKeys: {
+      owner: 'This key is shared with other supported model types. Updating it here updates those configurations.',
+      borrowed: 'Using a shared provider key. Entering a key here creates an independent configuration for this type.',
+    },
     logjev: {
       upstream: 'Language model provider', upstreamModel: 'Model',
       upstreamNote: 'Choose an enabled OpenAI-compatible provider from Language Models. LogJev reuses its URL and API key; the selected model must support logprobs.',
@@ -71,6 +75,10 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
     },
   },
   zh: {
+    sharedKeys: {
+      owner: '此 Key 已与其他支持的模型类型共用。在这里修改后，共用配置会一起更新。',
+      borrowed: '正在共用同一服务商的 Key。在这里单独填写 Key，将改为此类型的独立配置。',
+    },
     logjev: {
       upstream: '大语言模型 Provider', upstreamModel: '模型',
       upstreamNote: '从大语言模型中选择已启用的 OpenAI 兼容 Provider，复用其地址与 API Key。所选模型需支持 logprobs。',
@@ -127,6 +135,10 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
     },
   },
   ja: {
+    sharedKeys: {
+      owner: 'このキーは対応する他のモデル種別と共有されています。ここで変更すると共有先にも反映されます。',
+      borrowed: '同じプロバイダーのキーを共有しています。ここでキーを入力すると、この種別専用の設定になります。',
+    },
     logjev: {
       upstream: '言語モデルのプロバイダー', upstreamModel: 'モデル',
       upstreamNote: '言語モデルで有効な OpenAI 互換プロバイダーを選択すると、URL と API キーを再利用します。モデルは logprobs をサポートする必要があります。',

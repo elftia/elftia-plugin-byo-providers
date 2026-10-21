@@ -19,7 +19,7 @@ describe('media saved-key viewing', () => {
   let renderer: ReactTestRenderer;
   const reveal = vi.fn<(field: string) => Promise<string | null>>();
   const change = vi.fn();
-  const element = (scope = 'alpha') => (
+  const element = (scope = 'alpha', sharedKey?: { shared: boolean; owner: boolean }) => (
     <ProviderDetailsPanel
       name={scope}
       type="video"
@@ -35,6 +35,7 @@ describe('media saved-key viewing', () => {
       onRevealSecret={reveal}
       revealScopeKey={scope}
       hasStoredKey
+      sharedKey={sharedKey}
       t={(key) => key}
     />
   );
@@ -55,6 +56,17 @@ describe('media saved-key viewing', () => {
     act(() => renderer.unmount());
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('explains shared ownership without putting the key into the editable form', () => {
+    act(() => renderer.update(element('alpha', { shared: true, owner: false })));
+    expect(renderer.root.findByProps({ 'data-testid': 'shared-provider-key-note' }).children).toEqual(['sharedKeys.borrowed']);
+    expect(input(0).props.value).toBe('');
+    expect(reveal).not.toHaveBeenCalled();
+    act(() => renderer.update(element('alpha', { shared: true, owner: true })));
+    expect(renderer.root.findByProps({ 'data-testid': 'shared-provider-key-note' }).children).toEqual(['sharedKeys.owner']);
+    act(() => renderer.update(element('beta')));
+    expect(renderer.root.findAllByProps({ 'data-testid': 'shared-provider-key-note' })).toHaveLength(0);
   });
 
   it('expires each field independently without extending an earlier reveal', async () => {
