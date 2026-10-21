@@ -199,9 +199,9 @@ export function ProviderList({
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {provider.models?.length
+                      {provider.logjev?.upstream?.model || (provider.models?.length
                         ? t('providerSettings.listStatus', { count: provider.models.length })
-                        : t('providerSettings.noModels')}
+                        : t('providerSettings.noModels'))}
                     </p>
                   </button>
                   {dragEnabled ? (

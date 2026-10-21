@@ -18,7 +18,7 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
       selectProvider: 'Select a provider', unavailable: 'unavailable',
       noProviders: 'Enable an OpenAI Chat Completions provider in Language Models first.',
       modelPlaceholder: 'Enter a model ID', prompt: 'Prompt mode', full: 'Full', minimal: 'Minimal',
-      topk: 'Top logprobs (1–100)', saved: 'Saved',
+      topk: 'Top logprobs (1–100)', save: 'Save', saved: 'Saved',
     },
     decisionModels: {
       title: 'Decision Models',
@@ -77,7 +77,7 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
       selectProvider: '请选择 Provider', unavailable: '不可用',
       noProviders: '请先在大语言模型中启用一个 OpenAI Chat Completions Provider。',
       modelPlaceholder: '输入模型 ID', prompt: '提示词模式', full: '完整', minimal: '精简',
-      topk: 'Top logprobs（1–100）', saved: '已保存',
+      topk: 'Top logprobs（1–100）', save: '保存', saved: '已保存',
     },
     decisionModels: {
       title: '决策模型',
@@ -133,7 +133,7 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
       selectProvider: 'プロバイダーを選択', unavailable: '利用不可',
       noProviders: '言語モデルで OpenAI Chat Completions プロバイダーを有効にしてください。',
       modelPlaceholder: 'モデル ID を入力', prompt: 'プロンプトモード', full: '完全', minimal: '最小',
-      topk: 'Top logprobs（1–100）', saved: '保存しました',
+      topk: 'Top logprobs（1–100）', save: '保存', saved: '保存しました',
     },
     decisionModels: {
       title: '意思決定モデル',

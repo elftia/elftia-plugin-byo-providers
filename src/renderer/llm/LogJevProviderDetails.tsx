@@ -110,7 +110,7 @@ export function LogJevProviderDetails({ provider, providers, refresh, onDelete }
         }} />
     </FormField>
     <div className="flex items-center gap-3">
-      <Button disabled={!ready || saving} onClick={() => void save()} data-testid="logjev-save">{t('common.save')}</Button>
+      <Button disabled={!ready || saving} onClick={() => void save()} data-testid="logjev-save">{t('logjev.save')}</Button>
       {status && <span role={status === 'error' ? 'alert' : 'status'} className="text-sm">
         {t(status === 'error' ? 'providerSettings.errors.saveFailed' : 'logjev.saved')}
       </span>}

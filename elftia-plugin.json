@@ -1,6 +1,6 @@
 {
   "name": "byo-providers",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
