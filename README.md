@@ -112,6 +112,14 @@ README.
 
 ## Host contract
 
+Version 0.3.6 adds a standalone **Decision Models** (`decision-models`) settings
+section next to Language Models. Saved `category: 'other'` providers and decision
+templates (Jev, LogJev and OpenRouter Decisions) appear only on that page. The
+Language Models page continues to manage chat providers and subscription
+accounts. LogJev (OpenRouter) is retired from new-template choices in favor of
+OpenRouter Decisions; existing legacy rows remain editable on the decision page.
+The independent page retains protected key viewing and the in-tree dialog portal.
+
 Saved LLM/media key viewing supports the host-managed viewing password. Every
 reveal, copy (including copying a revealed field), and credential-pack export
 performs a fresh host verification. Passwords are never cached. Revealed fields

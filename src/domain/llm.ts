@@ -2,7 +2,7 @@ import type {
   ApiFormat,
   ChatApiFormat,
   CompletionSettings,
-  LLMProvider,
+  LLMProvider as ContractsLLMProvider,
   ModelConfig,
   ModelGroup,
   OpenRouterDataCollection,
@@ -21,21 +21,20 @@ import type {
 } from '@omnicross/contracts/provider-presets';
 
 /**
- * Contracts preset plus the catalog grouping the published `0.6.8` type
- * predates: `category: 'other'` marks decision-engine presets (Jev / LogJev /
- * OpenRouter Decisions) that render under their own 决策模型 section and
- * materialize as non-chat key-storage rows.
+ * The host supplies category on presets and saved rows; the pinned contracts
+ * version predates it. Decision services belong to their own settings page.
  */
 export type PresetProviderTemplate = ContractsPresetProviderTemplate & {
   category?: string;
 };
+
+export type LLMProvider = ContractsLLMProvider & { category?: string };
 
 export type {
   ApiFormat,
   ChatApiFormat,
   CodingPlanConfig,
   CompletionSettings,
-  LLMProvider,
   ModelConfig,
   ModelGroup,
   OpenRouterDataCollection,

@@ -12,8 +12,14 @@
  */
 export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
   en: {
+    decisionModels: {
+      title: 'Decision Models',
+      description: 'Manage Jev, LogJev and OpenRouter Decisions providers, API keys and models.',
+      add: 'Add Decision Provider',
+      empty: 'Add a decision provider to configure its API key and models.',
+    },
     modelServices: {
-      title: 'Model Services',
+      title: 'Language Models',
       addAccount: 'Add Account',
       addProvider: 'Add Provider',
       addProviderDescription:
@@ -53,13 +59,18 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
           'No template needed — opens a blank provider form prefilled with that wire format’s defaults.',
         searchPlaceholder: 'Search presets…',
         empty: 'No presets match your search.',
-        categoryOther: 'Decision Models',
       },
     },
   },
   zh: {
+    decisionModels: {
+      title: '决策模型',
+      description: '管理 Jev、LogJev 和 OpenRouter Decisions 的提供商、API 密钥与模型。',
+      add: '添加决策提供商',
+      empty: '添加一个决策提供商，配置其 API 密钥与模型。',
+    },
     modelServices: {
-      title: '模型服务',
+      title: '大语言模型',
       addAccount: '添加账号',
       addProvider: '添加提供商',
       addProviderDescription: '从目录中选择提供商模板，或从 API 类型开始。',
@@ -96,13 +107,18 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
         customDescription: '无需模板——打开预填该线格式默认值的空白提供商表单。',
         searchPlaceholder: '搜索预设…',
         empty: '没有匹配搜索的预设。',
-        categoryOther: '决策模型',
       },
     },
   },
   ja: {
+    decisionModels: {
+      title: '意思決定モデル',
+      description: 'Jev、LogJev、OpenRouter Decisions のプロバイダー、API キー、モデルを管理します。',
+      add: '意思決定プロバイダーを追加',
+      empty: '意思決定プロバイダーを追加して API キーとモデルを設定します。',
+    },
     modelServices: {
-      title: 'モデルサービス',
+      title: '大規模言語モデル',
       addAccount: 'アカウントを追加',
       addProvider: 'プロバイダーを追加',
       addProviderDescription:
@@ -142,7 +158,6 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
           'テンプレート不要 — そのワイヤー形式のデフォルトを事前入力した空のフォームを開きます。',
         searchPlaceholder: 'プリセットを検索…',
         empty: '検索に一致するプリセットはありません。',
-        categoryOther: '決定モデル',
       },
     },
   },

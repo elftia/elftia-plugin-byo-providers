@@ -24,7 +24,6 @@ vi.mock('../src/renderer/host/vendored/useTranslation', () => ({
       'modelServices.presets.customDescription': 'No template needed.',
       'modelServices.presets.searchPlaceholder': 'Search presets…',
       'modelServices.presets.empty': 'No presets match your search.',
-      'modelServices.presets.categoryOther': 'Decision Models',
     })[key] ?? key,
 }));
 
@@ -83,12 +82,14 @@ function preset(id: string, overrides: Record<string, unknown> = {}) {
 function renderPicker(
   addedPresetIds: Set<string> = new Set(),
   handlers: {
+    category?: 'chat' | 'decision';
     onSelectPreset?: (id: string) => void;
     onStartCustom?: (apiFormat: string) => void;
   } = {},
 ): React.ReactElement {
   return (
     <ProviderTemplatePicker
+      category={handlers.category}
       addedPresetIds={addedPresetIds}
       onSelectPreset={handlers.onSelectPreset ?? vi.fn()}
       onStartCustom={handlers.onStartCustom ?? vi.fn()}
@@ -164,7 +165,7 @@ describe('ProviderTemplatePicker catalog', () => {
     expect(onSelectPreset).toHaveBeenCalledWith('openai');
   });
 
-  it('renders decision presets under their own section, outside the chat grid', async () => {
+  it('excludes decision presets from the language model picker', async () => {
     getProviderPresets.mockResolvedValueOnce([
       preset('openai'),
       preset('jev', { category: 'other' }),
@@ -176,15 +177,33 @@ describe('ProviderTemplatePicker catalog', () => {
       renderer = create(renderPicker());
     });
 
-    // Both grids render their cards, but the 'other' presets sit under the
-    // 决策模型 heading instead of mixing into the chat catalog grid.
     expect(renderer.root.findByProps({ 'data-testid': 'preset-card-openai' })).toBeDefined();
-    expect(renderer.root.findByProps({ 'data-testid': 'preset-card-jev' })).toBeDefined();
+    expect(renderer.root.findAllByProps({ 'data-testid': 'preset-card-jev' })).toHaveLength(0);
     expect(
-      renderer.root.findByProps({ 'data-testid': 'preset-card-openrouter-decisions' }),
-    ).toBeDefined();
-    const headings = renderer.root.findAllByType('h4');
-    expect(headings.map((h) => h.children.join(''))).toContain('Decision Models');
+      renderer.root.findAllByProps({ 'data-testid': 'preset-card-openrouter-decisions' }),
+    ).toHaveLength(0);
+  });
+
+  it('offers only decision presets on the decision page and retires LogJev OpenRouter', async () => {
+    getProviderPresets.mockResolvedValueOnce([
+      preset('openai'),
+      preset('jev', { category: 'other' }),
+      preset('logjev-openrouter', { category: 'other' }),
+      preset('openrouter-decisions', { category: 'other' }),
+    ]);
+    const onSelectPreset = vi.fn();
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(renderPicker(new Set(), { category: 'decision', onSelectPreset }));
+    });
+    expect(renderer.root.findAllByProps({ 'data-testid': 'preset-card-openai' })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ 'data-testid': 'preset-card-logjev-openrouter' })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ 'data-testid': 'custom-type-openai' })).toHaveLength(0);
+    expect(renderer.root.findByProps({ 'data-testid': 'preset-card-jev' })).toBeDefined();
+    await act(async () => {
+      renderer.root.findByProps({ 'data-testid': 'preset-card-openrouter-decisions' }).findByType('button').props.onClick();
+    });
+    expect(onSelectPreset).toHaveBeenCalledWith('openrouter-decisions');
   });
 
   it('narrows the grid to presets matching the search query', async () => {

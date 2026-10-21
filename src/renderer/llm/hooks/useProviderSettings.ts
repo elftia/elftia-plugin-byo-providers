@@ -9,20 +9,29 @@ import { useProviderForm } from './useProviderForm';
 /**
  * Composition hook that assembles provider form, model management, and catalog browser.
  */
-export function useProviderSettings() {
+export function useProviderSettings(category: 'chat' | 'decision' = 'chat') {
   const {
-    providers,
+    providers: allProviders,
     loading: providersLoading,
     error: providersError,
     refresh: refreshProviders,
     updateProvider: updateProviderInCache,
   } = useLlmProviders();
 
+  const providers = useMemo(
+    () => allProviders.filter(provider =>
+      category === 'decision' ? provider.category === 'other' : provider.category !== 'other',
+    ),
+    [allProviders, category],
+  );
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
   // Auto-select first provider when none is explicitly selected
-  const effectiveSelectedProviderId = selectedProviderId ?? (providers.length > 0 ? providers[0].id : null);
+  const effectiveSelectedProviderId = providers.some(provider => provider.id === selectedProviderId)
+    ? selectedProviderId
+    : providers[0]?.id ?? null;
 
   const selectedProvider = useMemo(() => {
     return providers.find(p => p.id === effectiveSelectedProviderId) || null;

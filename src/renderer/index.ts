@@ -9,6 +9,7 @@
  *     omnicross UpstreamsPage shape) — subscription account pools + BYO
  *     providers in ONE sidebar, replacing the former separate `llm-providers`
  *     and `subscriptions` sections, AND
+ *   - ONE independent "Decision Models" section for decision providers, AND
  *   - FIVE media sections — Image / Video / Music / TTS / ASR Providers (P2c) —
  *     each rendering `MediaProviderSettings` with its `mediaType`, wrapped in the
  *     vendored `ImperativeConfirmProvider` (the panels use the host uiStore's
@@ -53,8 +54,8 @@ export function activate(host: AgentUiHostApi): void {
   const h = React.createElement;
 
   // The shared "提供商" (Providers) collapsible-parent descriptor
-  // (`settings-section-groups`, host-API v1.28). Attached to the 8 provider-config
-  // sections (LLM + 5 media + Search + Object Storage) under ONE parent;
+  // (`settings-section-groups`, host-API v1.28). Shared by language, decision,
+  // media, search, storage and Code CLI settings under ONE parent;
   // `order: 0` slots the parent at the very top of the pinned block. The label is
   // a thunk resolved per render from the plugin's OWN i18n (locale-following).
   // The sibling `opaqueFrame.label` is its data-only projection for the
@@ -79,6 +80,9 @@ export function activate(host: AgentUiHostApi): void {
   // (DS precedent) — the provider tree + subscription cards split off `activate`.
   const LazyModelServicesPage = React.lazy(() =>
     import('./llm/ModelServicesPage').then((m) => ({ default: m.ModelServicesPage }))
+  );
+  const LazyDecisionModelsPage = React.lazy(() =>
+    import('./llm/DecisionModelsPage').then((m) => ({ default: m.DecisionModelsPage }))
   );
 
   // The media dispatch container (renders the per-type panel) is lazy too; each
@@ -121,6 +125,23 @@ export function activate(host: AgentUiHostApi): void {
         h(ModelServicesSection),
         h(KeyViewingPrompt)
       ),
+  });
+
+  host.settings.registerSection({
+    id: 'decision-models',
+    label: readDecisionModelsSectionLabel(),
+    order: 105,
+    group: providersGroup,
+    pinToTop: true,
+    render: () => h(
+      'div',
+      { className: 'h-full', 'data-testid': 'byo-providers-decision-models-section' },
+      h(React.Suspense,
+        { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
+        h(LazyDecisionModelsPage)
+      ),
+      h(KeyViewingPrompt)
+    ),
   });
 
   // ── Five media sections (P2c), ordered AFTER the LLM section ───────────────
@@ -248,6 +269,14 @@ function readModelServicesSectionLabel(): string {
       return '大規模言語モデル';
     default:
       return 'Language Models';
+  }
+}
+
+function readDecisionModelsSectionLabel(): string {
+  switch (readLocale()) {
+    case 'zh': return '决策模型';
+    case 'ja': return '意思決定モデル';
+    default: return 'Decision Models';
   }
 }
 

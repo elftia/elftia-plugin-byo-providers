@@ -8,7 +8,7 @@
  * creates the provider through `addFromPreset` on click. Presets already added
  * are shown disabled + badged rather than hidden, so the catalog reads as a
  * stable, complete list — `commandcode` and its wire variants flow through here
- * like every other preset (the host filters `category: 'other'` upstream).
+ * like every other preset. Each settings page requests its own category.
  *
  * Above the grid sits the escape hatch: pick a bare API type and go straight to
  * the BLANK provider form prefilled from the plugin's `PROVIDER_TEMPLATES`
@@ -28,6 +28,7 @@ import { llmConfigClient } from '../llmConfigClient';
 import { getProviderIcon } from './utils';
 
 interface ProviderTemplatePickerProps {
+  category?: 'chat' | 'decision';
   /** Set of preset `id` values already added (use preset.id, not presetId — the
    *  same presetId may appear on multiple variants like Xiaomi MiMo OpenAI/Anthropic). */
   addedPresetIds: Set<string>;
@@ -35,7 +36,7 @@ interface ProviderTemplatePickerProps {
    *  `addFromPreset` accepts either, but `id` disambiguates variants. */
   onSelectPreset: (presetId: string) => void;
   /** Escape hatch: start the blank provider form from a bare API type. */
-  onStartCustom: (apiFormat: ApiFormat) => void;
+  onStartCustom?: (apiFormat: ApiFormat) => void;
 }
 
 /** The API types a hand-rolled provider can start from (no template needed). */
@@ -142,6 +143,7 @@ function PresetCard({
 }
 
 export function ProviderTemplatePicker({
+  category = 'chat',
   addedPresetIds,
   onSelectPreset,
   onStartCustom,
@@ -177,8 +179,12 @@ export function ProviderTemplatePicker({
 
   const visiblePresets = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return presets;
     return presets.filter((preset) => {
+      // Retired by OpenRouter Decisions; keep saved legacy rows editable.
+      if (preset.id === 'logjev-openrouter') return false;
+      const isDecision = preset.category === 'other';
+      if (isDecision !== (category === 'decision')) return false;
+      if (!needle) return true;
       const haystack = [
         preset.name,
         preset.id,
@@ -191,46 +197,37 @@ export function ProviderTemplatePicker({
         .toLowerCase();
       return haystack.includes(needle);
     });
-  }, [presets, query]);
-
-  // Decision presets (category 'other' — Jev / LogJev / OpenRouter Decisions)
-  // render under their own labeled section instead of mixing into the chat grid.
-  const mainPresets = useMemo(
-    () => visiblePresets.filter((preset) => preset.category !== 'other'),
-    [visiblePresets],
-  );
-  const otherPresets = useMemo(
-    () => visiblePresets.filter((preset) => preset.category === 'other'),
-    [visiblePresets],
-  );
+  }, [presets, query, category]);
 
   return (
     <div className="space-y-5 p-4" aria-busy={loadState === 'loading'} data-testid="provider-template-picker">
       {/* Start from an API type — the no-template path, kept above the fold. */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-foreground">
-            {t('modelServices.presets.customTitle')}
-          </h3>
+      {category === 'chat' && onStartCustom ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">
+              {t('modelServices.presets.customTitle')}
+            </h3>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t('modelServices.presets.customDescription')}
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {CUSTOM_TYPE_OPTIONS.map((option) => (
+              <button
+                key={option.apiFormat}
+                type="button"
+                data-testid={`custom-type-${option.apiFormat}`}
+                className="rounded-lg border border-border/60 bg-surface-1 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => onStartCustom(option.apiFormat)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {t('modelServices.presets.customDescription')}
-        </p>
-        <div className="flex flex-wrap gap-2 pt-1">
-          {CUSTOM_TYPE_OPTIONS.map((option) => (
-            <button
-              key={option.apiFormat}
-              type="button"
-              data-testid={`custom-type-${option.apiFormat}`}
-              className="rounded-lg border border-border/60 bg-surface-1 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => onStartCustom(option.apiFormat)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      ) : null}
 
       {/* Host preset catalog */}
       <div className="space-y-3">
@@ -284,37 +281,17 @@ export function ProviderTemplatePicker({
               : t('modelServices.presets.empty')}
           </p>
         ) : (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {mainPresets.map((preset) => (
-                <PresetCard
-                  key={preset.id}
-                  preset={preset}
-                  isAdded={addedPresetIds.has(preset.id)}
-                  onSelect={() => onSelectPreset(preset.id)}
-                  t={t}
-                />
-              ))}
-            </div>
-            {otherPresets.length > 0 ? (
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t('modelServices.presets.categoryOther')}
-                </h4>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                  {otherPresets.map((preset) => (
-                    <PresetCard
-                      key={preset.id}
-                      preset={preset}
-                      isAdded={addedPresetIds.has(preset.id)}
-                      onSelect={() => onSelectPreset(preset.id)}
-                      t={t}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {visiblePresets.map((preset) => (
+              <PresetCard
+                key={preset.id}
+                preset={preset}
+                isAdded={addedPresetIds.has(preset.id)}
+                onSelect={() => onSelectPreset(preset.id)}
+                t={t}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>

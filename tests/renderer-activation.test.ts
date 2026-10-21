@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe('renderer activation', () => {
-  it('registers nine canonical settings sections with preserved order/grouping/pinning', () => {
+  it('registers an independent decision page alongside the language and media sections', () => {
     const sections: Array<Record<string, unknown>> = [];
     const registerNamespace = vi.fn();
 
@@ -28,6 +28,7 @@ describe('renderer activation', () => {
     // `llm-providers` + `subscriptions` sections (omnicross parity).
     expect(sections.map(({ id }) => id)).toEqual([
       'model-services',
+      'decision-models',
       'media-image',
       'media-video',
       'media-music',
@@ -38,7 +39,7 @@ describe('renderer activation', () => {
       'code-cli',
     ]);
     expect(sections.map(({ order }) => order)).toEqual([
-      100, 110, 111, 112, 113, 114, 120, 125, 131,
+      100, 105, 110, 111, 112, 113, 114, 120, 125, 131,
     ]);
     expect(sections.every(({ pinToTop }) => pinToTop === true)).toBe(true);
 
@@ -48,7 +49,7 @@ describe('renderer activation', () => {
 
     // The unified section keeps the former LLM section's slot: pinned, inside
     // the 提供商 group, order 100 — the media/search/storage siblings unchanged.
-    for (const section of sections.slice(0, 8)) {
+    for (const section of sections) {
       expect(section.group).toMatchObject({ id: 'model-providers', order: 0 });
     }
     const providersGroup = sections[0]?.group as {
@@ -65,7 +66,8 @@ describe('renderer activation', () => {
       fallback: 'Model Services',
     });
     // code-cli joined the providers group (bottom slot, owner direction).
-    expect(sections[8]?.group).toMatchObject({ id: 'model-providers', order: 0 });
+    expect(sections[9]?.group).toMatchObject({ id: 'model-providers', order: 0 });
+    expect(sections[1]?.label).toBe('Decision Models');
 
     expect(registerNamespace).toHaveBeenCalledTimes(1);
     const [namespace, locales] = registerNamespace.mock.calls[0] as [
@@ -81,9 +83,9 @@ describe('renderer activation', () => {
     });
     // The plugin-owned model-services copy is registered for every locale.
     expect(locales).toMatchObject({
-      en: { modelServices: { title: 'Model Services' } },
-      ja: { modelServices: { title: 'モデルサービス' } },
-      zh: { modelServices: { title: '模型服务' } },
+      en: { modelServices: { title: 'Language Models' }, decisionModels: { title: 'Decision Models' } },
+      ja: { modelServices: { title: '大規模言語モデル' }, decisionModels: { title: '意思決定モデル' } },
+      zh: { modelServices: { title: '大语言模型' }, decisionModels: { title: '决策模型' } },
     });
   });
 
