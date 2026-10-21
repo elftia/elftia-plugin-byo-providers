@@ -1,5 +1,11 @@
 # Elftia BYO Providers
 
+Version 0.3.7 configures LogJev by selecting an enabled OpenAI-compatible
+language provider and model. It saves an upstream reference and reuses the
+host's credentials; native Jev retains its own endpoint/key controls. The main
+half requires host API 1.113 for persistence. Without an explicit API-server
+decision configuration, the first enabled LogJev reference supplies the reader.
+
 Standalone first-party BYO Providers plugin for Elftia. It is a canonical
 `app-extension` with separate renderer and utility-process main entries.
 

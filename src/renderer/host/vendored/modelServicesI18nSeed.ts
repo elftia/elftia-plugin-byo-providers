@@ -12,6 +12,14 @@
  */
 export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
   en: {
+    logjev: {
+      upstream: 'Language model provider', upstreamModel: 'Model',
+      upstreamNote: 'Choose an enabled OpenAI-compatible provider from Language Models. LogJev reuses its URL and API key; the selected model must support logprobs.',
+      selectProvider: 'Select a provider', unavailable: 'unavailable',
+      noProviders: 'Enable an OpenAI Chat Completions provider in Language Models first.',
+      modelPlaceholder: 'Enter a model ID', prompt: 'Prompt mode', full: 'Full', minimal: 'Minimal',
+      topk: 'Top logprobs (1–100)', saved: 'Saved',
+    },
     decisionModels: {
       title: 'Decision Models',
       description: 'Manage Jev, LogJev and OpenRouter Decisions providers, API keys and models.',
@@ -63,6 +71,14 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
     },
   },
   zh: {
+    logjev: {
+      upstream: '大语言模型 Provider', upstreamModel: '模型',
+      upstreamNote: '从大语言模型中选择已启用的 OpenAI 兼容 Provider，复用其地址与 API Key。所选模型需支持 logprobs。',
+      selectProvider: '请选择 Provider', unavailable: '不可用',
+      noProviders: '请先在大语言模型中启用一个 OpenAI Chat Completions Provider。',
+      modelPlaceholder: '输入模型 ID', prompt: '提示词模式', full: '完整', minimal: '精简',
+      topk: 'Top logprobs（1–100）', saved: '已保存',
+    },
     decisionModels: {
       title: '决策模型',
       description: '管理 Jev、LogJev 和 OpenRouter Decisions 的提供商、API 密钥与模型。',
@@ -111,6 +127,14 @@ export const modelServicesI18nSeed: Record<string, Record<string, unknown>> = {
     },
   },
   ja: {
+    logjev: {
+      upstream: '言語モデルのプロバイダー', upstreamModel: 'モデル',
+      upstreamNote: '言語モデルで有効な OpenAI 互換プロバイダーを選択すると、URL と API キーを再利用します。モデルは logprobs をサポートする必要があります。',
+      selectProvider: 'プロバイダーを選択', unavailable: '利用不可',
+      noProviders: '言語モデルで OpenAI Chat Completions プロバイダーを有効にしてください。',
+      modelPlaceholder: 'モデル ID を入力', prompt: 'プロンプトモード', full: '完全', minimal: '最小',
+      topk: 'Top logprobs（1–100）', saved: '保存しました',
+    },
     decisionModels: {
       title: '意思決定モデル',
       description: 'Jev、LogJev、OpenRouter Decisions のプロバイダー、API キー、モデルを管理します。',

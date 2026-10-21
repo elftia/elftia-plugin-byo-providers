@@ -15,6 +15,7 @@ import { useProviderSettings } from './hooks/useProviderSettings';
 import { ProviderTemplatePicker } from './PresetProviderGrid';
 import { ProviderDetailPanel } from './ProviderDetailPanel';
 import { ProviderList } from './ProviderList';
+import { isLogJevProvider, LogJevProviderDetails } from './LogJevProviderDetails';
 
 /** Decision credentials and models use the existing masked provider ports. */
 export function DecisionModelsPage() {
@@ -68,7 +69,13 @@ export function DecisionModelsPage() {
         />
         <div className="flex-1 min-w-0 h-full overflow-hidden bg-surface-1/60">
           {settings.selectedProvider ? (
-            <ProviderDetailPanel s={settings} />
+            isLogJevProvider(settings.selectedProvider) ? <LogJevProviderDetails
+              key={settings.selectedProvider.id}
+              provider={settings.selectedProvider}
+              providers={settings.allProviders}
+              refresh={settings.refreshProviders}
+              onDelete={settings.handleDeleteProvider}
+            /> : <ProviderDetailPanel s={settings} />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm text-muted-foreground">{t('decisionModels.empty')}</p>

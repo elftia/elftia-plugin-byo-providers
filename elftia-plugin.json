@@ -1,6 +1,6 @@
 {
   "name": "byo-providers",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
@@ -21,13 +21,13 @@
       "execution": "opaque-frame-v1",
       "requiredMajor": 1,
       "requiredMinor": 20,
-      "builtAgainst": "1.50.0"
+      "builtAgainst": "1.113.0"
     },
     "main": {
       "entry": "index.cjs",
       "requiredMajor": 1,
-      "requiredMinor": 50,
-      "builtAgainst": "1.50.0"
+      "requiredMinor": 113,
+      "builtAgainst": "1.113.0"
     }
   },
   "minElftiaVersion": "0.2.8"

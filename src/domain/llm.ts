@@ -20,6 +20,8 @@ import type {
   PresetProviderTemplate as ContractsPresetProviderTemplate,
 } from '@omnicross/contracts/provider-presets';
 
+import type { LogJevSettings } from './logjev';
+
 /**
  * The host supplies category on presets and saved rows; the pinned contracts
  * version predates it. Decision services belong to their own settings page.
@@ -28,7 +30,7 @@ export type PresetProviderTemplate = ContractsPresetProviderTemplate & {
   category?: string;
 };
 
-export type LLMProvider = ContractsLLMProvider & { category?: string };
+export type LLMProvider = ContractsLLMProvider & { category?: string; logjev?: LogJevSettings };
 
 export type {
   ApiFormat,

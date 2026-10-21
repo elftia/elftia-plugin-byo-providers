@@ -59,6 +59,8 @@ export function useProviderSettings(category: 'chat' | 'decision' = 'chat') {
   );
 
   return {
+    allProviders,
+    refreshProviders,
     providers,
     providersLoading,
     providersError,
