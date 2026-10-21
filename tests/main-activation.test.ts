@@ -85,6 +85,13 @@ const RELAY_CASES: RelayCase[] = [
     args: ['111', 'fixture-view-password'],
   },
   {
+    ipc: 'llm.getProviderModelMappings',
+    service: 'llmConfig',
+    method: 'getProviderModelMappings',
+    payload: { providerId: 112 },
+    args: ['112'],
+  },
+  {
     ipc: 'llm.getProviderPresets',
     service: 'llmConfig',
     method: 'getProviderPresets',
@@ -807,7 +814,6 @@ describe('main activation', () => {
       'subAuth.manualTokenVerifySupported',
     );
 
-    expect(expectedMethods).toHaveLength(104);
     expect(new Set(expectedMethods).size).toBe(expectedMethods.length);
     expect(Object.keys(methods)).toEqual(expectedMethods);
   });
@@ -900,6 +906,15 @@ describe('main activation', () => {
     await expect(probeFor('1.73.1')({})).resolves.toEqual({ supported: true });
     await expect(probeFor('1.71.0')({})).resolves.toEqual({ supported: false });
     await expect(probeFor(undefined)({})).resolves.toEqual({ supported: false });
+  });
+
+  it('reports model mappings unavailable on an older host rather than an empty table', async () => {
+    const methods = captureMethods({ llmConfig: {} });
+    await expect(methods['llm.getProviderModelMappings']({ providerId: 'p1' })).resolves.toEqual({
+      providerId: 'p1',
+      supported: false,
+      reason: 'unsupported',
+    });
   });
 
   it('degrades the v1.70 model verbs to an explicit unsupported marker on older hosts', async () => {

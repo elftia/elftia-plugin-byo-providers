@@ -44,7 +44,7 @@ function toFormProvider(
     id,
     name: id,
     type: 'api',
-    enabled,
+    enabled: typeof config?.enabled === 'boolean' ? config.enabled : enabled,
     apiHost: str(config?.apiHost),
     basicAuthUsername: str(config?.basicAuthUsername),
     basicAuthPassword: str(config?.basicAuthPassword),
@@ -143,6 +143,15 @@ export function SearchProviderSettings() {
     [],
   );
 
+  const onClearKey = React_.useCallback((id: WebSearchProviderId) => {
+    const timer = keyTimers.current.get(id);
+    clearTimeout(timer);
+    keyTimers.current.delete(id);
+    void searchConfigClient.setProviderKey(id, '').then(refresh).catch((error: unknown) => {
+      console.warn('[byo-providers] clear search key failed:', error);
+    });
+  }, [refresh]);
+
   return (
     <>
       <React.Suspense fallback={null}>
@@ -174,6 +183,7 @@ export function SearchProviderSettings() {
             configured={isConfigured(selectedId)}
             onUpdate={onUpdate}
             onWriteKey={onWriteKey}
+            onClearKey={onClearKey}
             onValidate={onValidate}
           />
         </div>

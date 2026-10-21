@@ -26,6 +26,7 @@ import { copySavedKey, KeyCopyButton } from '../shared/KeyCopyButton';
 import { ApiKeyPoolSection } from './ApiKeyPoolSection';
 import { ModelTestDialog } from './ModelTestDialog';
 import { ProviderApiModeSwitcher } from './ProviderApiModeSwitcher';
+import { ProviderModelMappingsSection } from './ProviderModelMappingsSection';
 import { getProviderDisplayName } from './utils';
 
 interface ProviderDetailsProps {
@@ -245,6 +246,8 @@ export function ProviderDetails({
           )}
         </div>
       </div>
+
+      <ProviderModelMappingsSection providerId={selectedProvider.id} />
 
       {/* API Key - Inline Editable. The masked plugin port BLANKS `api_key` and
           never returns a stored plaintext key, so the field starts EMPTY for a

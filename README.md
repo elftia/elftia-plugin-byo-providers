@@ -1,5 +1,11 @@
 # Elftia BYO Providers
 
+Version 0.3.11 adds an inline, read-only outbound model-mapping preview to provider
+details (host API 1.115; unavailable on older hosts), plus opt-in DeepSeek search
+and page fetching. DeepSeek can reuse an enabled official LLM provider's key on
+the host; an independent search key takes precedence, and custom hosts require
+their own key. No reused key is returned to the plugin.
+
 Version 0.3.10 persists the LogJev enable switch immediately, with the same
 right-aligned switch and delete icon as other providers. Saving LogJev options
 preserves its current enable state. It shares provider keys across compatible
@@ -89,10 +95,10 @@ Some optional chunk/asset directories may be absent when empty. Consumers must
 copy the complete `dist/byo-providers/` directory and must not import this
 repository's source or build configuration.
 
-For standalone distribution, the current `0.2.14` producer emits:
+For standalone distribution, the current `0.3.11` producer emits:
 
 ```text
-release/0.2.14/
+release/0.3.11/
   byo-providers.epkg
   byo-providers.json
 ```

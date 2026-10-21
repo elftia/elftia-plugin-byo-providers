@@ -65,6 +65,24 @@ export interface HostMediaConfigLike extends SdkHostMediaConfigLike {
   ): Promise<HostKeyRevealResult>;
 }
 
+/** Structural mirror: the pinned SDK may predate the optional preview port. */
+export type HostProviderModelMappings =
+  | {
+      readonly providerId: string;
+      readonly supported: true;
+      readonly mappings: readonly {
+        readonly source: string;
+        readonly target: string;
+        readonly effort?: string;
+      }[];
+      readonly force: boolean;
+    }
+  | {
+      readonly providerId: string;
+      readonly supported: false;
+      readonly reason: 'unsupported' | 'provider-not-found';
+    };
+
 export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
   /** v1.50 — reveal the stored provider key (user-initiated display only). */
   revealProviderKey?(providerId: string, password?: string): Promise<HostKeyRevealResult>;
@@ -74,6 +92,7 @@ export interface HostLlmConfigLike extends SdkHostLlmConfigLike {
     keyId: string,
     force?: boolean
   ): Promise<HostProviderKeyQuota>;
+  getProviderModelMappings?(providerId: string): Promise<HostProviderModelMappings>;
 }
 
 export interface HostCliBackendConfig {

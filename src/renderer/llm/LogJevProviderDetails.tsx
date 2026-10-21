@@ -2,7 +2,7 @@ import { Trash2 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
 import type { LLMProvider } from '@byo/domain/llm';
-import type { LogJevSettings } from '@byo/domain/logjev';
+import type { LogJevSettings } from '@omnicross/contracts/logjev';
 
 import { Button, Input, Select, Switch } from '../host/ui';
 import { FormField } from '../host/vendored/form-field';
@@ -37,7 +37,7 @@ export function LogJevProviderDetails({ provider, providers, refresh, onDelete }
   const [status, setStatus] = useState<'saved' | 'error' | null>(null);
   const candidates = providers.filter(p => p.id !== provider.id && p.enabled !== false &&
     p.category !== 'other' && (p.apiFormat || 'openai') === 'openai');
-  const upstream = settings.upstream;
+  const upstream = settings.upstream?.kind === 'provider' ? settings.upstream : undefined;
   const selected = candidates.find(p => p.id === upstream?.id);
   const models = modelIds(selected);
   const update = (patch: Partial<LogJevSettings>) => {

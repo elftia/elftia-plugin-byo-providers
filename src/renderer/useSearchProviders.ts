@@ -8,20 +8,10 @@
  * MASKED config (`getProviderConfig(id)`) + enabled flag, refetching after a
  * mutation.
  *
- * NOTE (review M1): the displayed set is `metaApiIds` DIRECTLY, NOT an
- * intersection with the port's `getProviders().api`. That host list is a
- * hardcoded subset that OMITS `grok` (a fully-wired host provider the host tab
- * DOES show), so intersecting would silently drop grok from the plugin section.
- * The per-provider verbs (`getProviderConfig`/`isProviderEnabled`/`configureProvider`/
- * `setProviderKey`/`validate`) all work per-id regardless of that incomplete
- * list, so the meta is the only correct SSOT for which providers to render.
- *
- * ── OPTION-A "configured" SIGNAL (design D4, OQ1-resolved) ──
- * The masked port NEVER returns a plaintext key (`getProviderConfig` →
- * `apiKey?: never`), so "已配置" is derived from `getProviderConfig(id) !== null`
- * (a non-null masked config means configured) — and for searxng additionally
- * from `apiHost` presence (it is key-OPTIONAL, configured by its base URL). The
- * plugin never reads a stored key to decide this.
+ * The plugin-local API metadata determines the rendered rows. The backend's
+ * masked `configured` projection is authoritative when provided (including
+ * DeepSeek's request-time official LLM key reuse). Older host configs keep the
+ * existing non-null fallback; SearXNG is configured by its API host.
  *
  * @module byo-providers/renderer/useSearchProviders
  */
@@ -61,10 +51,7 @@ function configApiHost(config: HostMaskedSearchProviderConfig | null): string | 
 
 export function useSearchProviders(): SearchProvidersBag {
   const React = getHost().react.instance;
-  // The plugin's own api-provider meta is the SOLE SSOT for which providers the
-  // section renders (and their order) — the 7 `type:'api'` ids. NOT gated on the
-  // port's `getProviders().api` (that hardcoded list omits grok → would silently
-  // drop a wired provider; review M1). Per-provider verbs work per-id regardless.
+  // Metadata determines rows; backend projections determine credential availability.
   const providerIds = React.useMemo<WebSearchProviderId[]>(() => getApiProviders(), []);
 
   const [entries, setEntries] = React.useState<Record<string, SearchProviderEntry>>({});
@@ -101,7 +88,7 @@ export function useSearchProviders(): SearchProvidersBag {
       const entry = entries[id];
       if (!entry) return false;
       if (id === 'searxng') return Boolean(configApiHost(entry.config)?.trim());
-      return entry.config !== null;
+      return typeof entry.config?.configured === 'boolean' ? entry.config.configured : entry.config !== null;
     },
     [entries],
   );

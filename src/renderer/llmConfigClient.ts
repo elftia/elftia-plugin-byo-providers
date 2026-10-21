@@ -20,7 +20,11 @@
  *
  * @module byo-providers/renderer/llmConfigClient
  */
-import type { HostModelTestResult, HostProviderKeyQuota } from '@byo/domain/plugin-types';
+import type {
+  HostModelTestResult,
+  HostProviderKeyQuota,
+  HostProviderModelMappings,
+} from '@byo/domain/plugin-types';
 
 import type {
   ApiKeyEntry,
@@ -118,6 +122,8 @@ export const llmConfigClient = {
    */
   revealProviderKey: (id: string): Promise<{ success: boolean; value?: string; error?: string }> =>
     requestKeyViewing((password) => invoke('llm.revealProviderKey', { id, password })),
+  getProviderModelMappings: (providerId: string): Promise<HostProviderModelMappings> =>
+    invoke('llm.getProviderModelMappings', { providerId }),
 
   // ── Presets ──────────────────────────────────────────────────────────────
   getProviderPresets: (): Promise<unknown> => invoke('llm.getProviderPresets'),

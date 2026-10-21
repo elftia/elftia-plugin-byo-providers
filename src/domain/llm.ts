@@ -15,23 +15,16 @@ import type {
   TransformerConfig,
   TransformerEntry,
 } from '@omnicross/contracts/llm-config';
-import type {
-  CodingPlanConfig,
-  PresetProviderTemplate as ContractsPresetProviderTemplate,
-} from '@omnicross/contracts/provider-presets';
+import type { CodingPlanConfig } from '@omnicross/contracts/provider-presets';
 
-import type { LogJevSettings } from './logjev';
 
-/**
- * The host supplies category on presets and saved rows; the pinned contracts
- * version predates it. Decision services belong to their own settings page.
- */
-export type PresetProviderTemplate = ContractsPresetProviderTemplate & {
+export type { PresetProviderTemplate } from '@omnicross/contracts/provider-presets';
+
+/** Host-only grouping and shared-credential state extend the canonical provider. */
+export type LLMProvider = ContractsLLMProvider & {
   category?: string;
+  sharedKey?: { shared: boolean; owner: boolean };
 };
-
-export type LLMProvider = ContractsLLMProvider & { category?: string; logjev?: LogJevSettings;
-  sharedKey?: { shared: boolean; owner: boolean } };
 
 export type {
   ApiFormat,

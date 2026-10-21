@@ -200,6 +200,13 @@ export function activate(host: AgentBackendHostApi): void {
         String(asRecord(p).id),
         asRecord(p).password as string | undefined
       )) ?? missing(),
+    'llm.getProviderModelMappings': async (p) => {
+      const providerId = String(asRecord(p).providerId);
+      const handle = llm();
+      return handle.getProviderModelMappings
+        ? handle.getProviderModelMappings(providerId)
+        : { providerId, supported: false, reason: 'unsupported' };
+    },
 
     // ── Presets ──────────────────────────────────────────────────────────────
     'llm.getProviderPresets': async () => (await llm()?.getProviderPresets()) ?? [],

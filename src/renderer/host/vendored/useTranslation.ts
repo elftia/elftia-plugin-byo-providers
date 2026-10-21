@@ -20,6 +20,7 @@ import { llmI18nSeed } from './llmI18nSeed';
 import { mediaI18nSeed } from './mediaI18nSeed';
 import { modelServicesI18nSeed } from './modelServicesI18nSeed';
 import { navigationI18nSeed } from './navigationI18nSeed';
+import { providerMappingsI18nSeed } from './providerMappingsI18nSeed';
 import { searchI18nSeed } from './searchI18nSeed';
 import { subscriptionI18nSeed } from './subscriptionI18nSeed';
 
@@ -67,6 +68,7 @@ function buildMergedSeed(): Record<string, Record<string, unknown>> {
     ...Object.keys(cliI18nSeed),
     ...Object.keys(navigationI18nSeed),
     ...Object.keys(modelServicesI18nSeed),
+    ...Object.keys(providerMappingsI18nSeed),
   ]);
   for (const lang of langs) {
     // All five halves SHARE the `settings` root (media `settings.status`, search
@@ -80,6 +82,7 @@ function buildMergedSeed(): Record<string, Record<string, unknown>> {
     acc = deepMerge(acc, navigationI18nSeed[lang] ?? {});
     acc = deepMerge(acc, modelServicesI18nSeed[lang] ?? {});
     acc = deepMerge(acc, keyViewingI18nSeed[lang] ?? {});
+    acc = deepMerge(acc, providerMappingsI18nSeed[lang] ?? {});
     merged[lang] = acc;
   }
   return merged;

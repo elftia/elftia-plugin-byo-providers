@@ -53,6 +53,7 @@ interface ProviderPanelProps {
    * because the key never rides the non-secret config push.
    */
   onWriteKey: (id: WebSearchProviderId, apiKey: string) => void;
+  onClearKey: (id: WebSearchProviderId) => void;
   onValidate: (id: WebSearchProviderId) => Promise<{ valid: boolean; error?: string }>;
 }
 
@@ -62,6 +63,7 @@ export function ProviderPanel({
   configured,
   onUpdate,
   onWriteKey,
+  onClearKey,
   onValidate,
 }: ProviderPanelProps) {
   const t = useTranslation();
@@ -115,19 +117,23 @@ export function ProviderPanel({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium text-foreground">{providerMeta.name}</h3>
-          <p className="text-sm text-muted-foreground">{providerMeta.description}</p>
+          <p className="text-sm text-muted-foreground">
+            {providerId === 'deepseek' ? t('settings.webSearch.deepseekDescription') : providerMeta.description}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {providerMeta.website ? (
             <Button
               variant="ghost"
               size="sm"
+              aria-label={t('settings.webSearch.openWebsite', { provider: providerMeta.name })}
               onClick={() => void openExternal(providerMeta.website ?? '')}
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
           ) : null}
           <Switch
+            aria-label={providerMeta.name}
             checked={currentProvider.enabled}
             onCheckedChange={(checked) => onUpdate(providerId, { enabled: checked })}
           />
@@ -141,6 +147,7 @@ export function ProviderPanel({
           <div className="space-y-2">
             <Label className="text-sm">{t('settings.webSearch.apiKey')}</Label>
             <RevealableInput
+              aria-label={t('settings.webSearch.apiKey')}
               revealed={showApiKey}
               onRevealedChange={setShowApiKey}
               value={apiKeyDraft}
@@ -156,7 +163,18 @@ export function ProviderPanel({
             />
             <p className="text-xs text-muted-foreground">
               {t('settings.webSearch.apiKeyMultiple')}
+              {providerId === 'deepseek' ? t('settings.webSearch.deepseekKeyReuse') : null}
             </p>
+          {providerId === 'deepseek' ? (
+            <>
+              <p data-testid="deepseek-key-status" className="text-xs text-muted-foreground">
+                {t(configured ? 'settings.webSearch.credentialAvailable' : 'settings.webSearch.credentialMissing')}
+              </p>
+              <Button data-testid="settings-button-clear-search-key" variant="outline" size="sm" onClick={() => { setApiKeyDraft(''); onClearKey(providerId); }}>
+                {t('settings.webSearch.clearOverride')}
+              </Button>
+            </>
+          ) : null}
           </div>
         ) : null}
 

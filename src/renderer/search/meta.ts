@@ -3,7 +3,7 @@
  * from the host `web-search-tab/meta.ts`, P2d design D1/D6).
  *
  * Plugin-local UI metadata for the API-key web-search providers
- * (tavily/jina/zhipu/grok/exa/bocha/searxng). The host's `local-*` +
+ * (tavily/jina/zhipu/deepseek/exa/bocha/searxng). The host's `local-*` +
  * `native` entries are DELIBERATELY NOT copied — those providers stay host-only
  * (they are not on the searchConfig port). `WebSearchProviderId` is therefore
  * narrowed to the api ids only; `WebSearchProvider` carries the form-state shape
@@ -20,7 +20,7 @@ export type WebSearchProviderId =
   | 'exa'
   | 'searxng'
   | 'bocha'
-  | 'grok';
+  | 'deepseek';
 
 /** Provider type classification (api-only in the plugin). */
 export type WebSearchProviderType = 'api';
@@ -106,13 +106,13 @@ export const WEB_SEARCH_PROVIDER_META: Record<WebSearchProviderId, WebSearchProv
     description: 'Chinese search API',
     requiresApiKey: true,
   },
-  grok: {
-    id: 'grok',
-    name: 'Grok',
+  deepseek: {
+    id: 'deepseek',
+    name: 'DeepSeek',
     type: 'api',
-    icon: 'Zap',
-    description: 'xAI Grok web search',
-    website: 'https://x.ai',
+    icon: 'Search',
+    description: 'DeepSeek search and page fetch',
+    website: 'https://platform.deepseek.com',
     requiresApiKey: true,
   },
 };
