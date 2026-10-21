@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
 
 import type { LLMProvider } from '@byo/domain/llm';
 import type { LogJevSettings } from '@byo/domain/logjev';
@@ -30,8 +31,9 @@ export function LogJevProviderDetails({ provider, providers, refresh, onDelete }
   const t = useTranslation();
   const [settings, setSettings] = useState<LogJevSettings>(provider.logjev ?? { kind: 'chat' });
   const [name, setName] = useState(provider.name);
-  const [enabled, setEnabled] = useState(provider.enabled);
   const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const writing = useRef(false);
   const [status, setStatus] = useState<'saved' | 'error' | null>(null);
   const candidates = providers.filter(p => p.id !== provider.id && p.enabled !== false &&
     p.category !== 'other' && (p.apiFormat || 'openai') === 'openai');
@@ -44,13 +46,31 @@ export function LogJevProviderDetails({ provider, providers, refresh, onDelete }
   };
   const ready = Boolean(selected && upstream?.model.trim() && name.trim());
 
+  const toggle = async (enabled: boolean) => {
+    if (writing.current) return;
+    writing.current = true;
+    setToggling(true);
+    setStatus(null);
+    try {
+      const result = await llmConfigClient.toggleProvider(provider.id, enabled);
+      if (!result.success) throw new Error('toggle failed');
+      await refresh();
+    } catch {
+      setStatus('error');
+    } finally {
+      writing.current = false;
+      setToggling(false);
+    }
+  };
+
   const save = async () => {
-    if (!ready || saving) return;
+    if (!ready || writing.current) return;
+    writing.current = true;
     setSaving(true);
     setStatus(null);
     try {
       const result = await llmConfigClient.updateProvider({
-        id: provider.id, name: name.trim(), enabled,
+        id: provider.id, name: name.trim(),
         logjev: { ...settings, kind: 'chat', upstream: { ...upstream!, model: upstream!.model.trim() } },
       });
       if (!result.success) throw new Error('save failed');
@@ -59,15 +79,23 @@ export function LogJevProviderDetails({ provider, providers, refresh, onDelete }
     } catch {
       setStatus('error');
     } finally {
+      writing.current = false;
       setSaving(false);
     }
   };
 
-  return <div className="space-y-5 p-6" data-testid="logjev-provider-details">
-    <div className="flex items-center gap-3">
-      <h2 className="text-lg font-semibold">LogJev</h2>
-      <Switch checked={enabled} onCheckedChange={value => { setEnabled(value); setStatus(null); }} />
-      {!provider.isSystem && <Button variant="ghost" onClick={() => void onDelete()}>{t('common.delete')}</Button>}
+  return <div className="space-y-5 p-4 md:p-6" data-testid="logjev-provider-details">
+    <div className="flex items-center justify-between">
+      <h2 className="h-9 text-lg font-semibold flex items-center">LogJev</h2>
+      <div className="flex items-center gap-2">
+        <Switch checked={provider.enabled} disabled={saving || toggling} onCheckedChange={toggle}
+          aria-label={t('providerSettings.form.enabled')} data-testid="logjev-enabled" />
+        {!provider.isSystem && <Button variant="ghost" size="sm" disabled={saving || toggling}
+          className="text-destructive hover:text-destructive" onClick={() => void onDelete()}
+          title={t('common.delete')} aria-label={t('common.delete')} data-testid="logjev-delete">
+          <Trash2 className="h-4 w-4" />
+        </Button>}
+      </div>
     </div>
     <p className="text-sm text-muted-foreground">{t('logjev.upstreamNote')}</p>
     <FormField label={t('providerSettings.form.name')}>
@@ -110,7 +138,7 @@ export function LogJevProviderDetails({ provider, providers, refresh, onDelete }
         }} />
     </FormField>
     <div className="flex items-center gap-3">
-      <Button disabled={!ready || saving} onClick={() => void save()} data-testid="logjev-save">{t('logjev.save')}</Button>
+      <Button disabled={!ready || saving || toggling} onClick={() => void save()} data-testid="logjev-save">{t('logjev.save')}</Button>
       {status && <span role={status === 'error' ? 'alert' : 'status'} className="text-sm">
         {t(status === 'error' ? 'providerSettings.errors.saveFailed' : 'logjev.saved')}
       </span>}

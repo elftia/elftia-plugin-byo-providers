@@ -1,6 +1,9 @@
 # Elftia BYO Providers
 
-Version 0.3.9 shares provider keys across compatible model types and configures LogJev by selecting an enabled OpenAI-compatible
+Version 0.3.10 persists the LogJev enable switch immediately, with the same
+right-aligned switch and delete icon as other providers. Saving LogJev options
+preserves its current enable state. It shares provider keys across compatible
+model types and configures LogJev by selecting an enabled OpenAI-compatible
 language provider and model. It saves an upstream reference and reuses the
 host's credentials; native Jev retains its own endpoint/key controls. The main
 half requires host API 1.114 for shared credentials and LogJev persistence. Without an explicit API-server

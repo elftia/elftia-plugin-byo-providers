@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LLMProvider } from '../src/domain/llm';
 
-const { save } = vi.hoisted(() => ({ save: vi.fn() }));
-vi.mock('../src/renderer/llmConfigClient', () => ({ llmConfigClient: { updateProvider: save } }));
+const { save, toggle } = vi.hoisted(() => ({ save: vi.fn(), toggle: vi.fn() }));
+vi.mock('../src/renderer/llmConfigClient', () => ({
+  llmConfigClient: { updateProvider: save, toggleProvider: toggle },
+}));
 vi.mock('../src/renderer/host/vendored/useTranslation', () => ({
   useTranslation: () => (key: string) => key,
 }));
@@ -33,14 +35,22 @@ const providers = [
   row('decision', { category: 'other' }),
   row('anthropic', { apiFormat: 'anthropic' }),
 ];
-beforeEach(() => save.mockReset().mockResolvedValue({ success: true }));
+beforeEach(() => {
+  save.mockReset().mockResolvedValue({ success: true });
+  toggle.mockReset().mockResolvedValue({ success: true });
+});
 
 async function render(provider = reader) {
   let renderer!: ReactTestRenderer;
   const refresh = vi.fn(async () => {});
-  await act(async () => { renderer = create(<LogJevProviderDetails provider={provider}
-    providers={providers} refresh={refresh} onDelete={vi.fn()} />); });
-  return { renderer, refresh, field: (id: string) => renderer.root.findByProps({ id }) };
+  const onDelete = vi.fn();
+  const panel = (value: LLMProvider) => <LogJevProviderDetails provider={value}
+    providers={providers} refresh={refresh} onDelete={onDelete} />;
+  await act(async () => { renderer = create(panel(provider)); });
+  return { renderer, refresh, field: (id: string) => renderer.root.findByProps({ id }),
+    updateProvider: (value: LLMProvider) => renderer.update(panel(value)),
+    switchControl: () => renderer.root.find(node => node.type === 'input' && typeof node.props.onCheckedChange === 'function'),
+  };
 }
 
 describe('LogJev provider and model references', () => {
@@ -54,10 +64,66 @@ describe('LogJev provider and model references', () => {
     await act(async () => field('logjev-upstream-provider').props.onChange('beta'));
     expect(field('logjev-upstream-model').props.value).toBe('b1');
     await act(async () => renderer.root.findByProps({ 'data-testid': 'logjev-save' }).props.onClick());
-    expect(save).toHaveBeenCalledWith({ id: 'logjev', name: 'logjev', enabled: true,
+    expect(save).toHaveBeenCalledWith({ id: 'logjev', name: 'logjev',
       logjev: { kind: 'chat', upstream: { kind: 'provider', id: 'beta', model: 'b1' } } });
     expect(refresh).toHaveBeenCalledOnce();
     expect(renderer.root.findByProps({ role: 'status' }).children).toEqual(['logjev.saved']);
+    await act(async () => renderer.unmount());
+  });
+
+  it('persists the first toggle without saving or selecting an upstream and follows refreshed state', async () => {
+    const disabled = { ...reader, enabled: false };
+    const { renderer, refresh, switchControl, updateProvider } = await render(disabled);
+    refresh.mockImplementation(async () => updateProvider({ ...disabled, enabled: toggle.mock.calls.at(-1)![1] }));
+    expect(switchControl().props.checked).toBe(false);
+    await act(async () => switchControl().props.onCheckedChange(true));
+    expect(toggle).toHaveBeenNthCalledWith(1, 'logjev', true);
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(switchControl().props.checked).toBe(true);
+    expect(save).not.toHaveBeenCalled();
+    await act(async () => switchControl().props.onCheckedChange(false));
+    expect(toggle).toHaveBeenNthCalledWith(2, 'logjev', false);
+    expect(switchControl().props.checked).toBe(false);
+    await act(async () => updateProvider({ ...disabled, enabled: true }));
+    expect(switchControl().props.checked).toBe(true);
+    await act(async () => renderer.unmount());
+  });
+
+  it.each(['rejected', 'unsuccessful'])('retains the persisted state and reports a %s toggle', async failure => {
+    const { renderer, refresh, switchControl } = await render({ ...reader, enabled: false });
+    if (failure === 'rejected') toggle.mockRejectedValueOnce(new Error('unavailable'));
+    else toggle.mockResolvedValueOnce({ success: false });
+    await act(async () => switchControl().props.onCheckedChange(true));
+    expect(switchControl().props.checked).toBe(false);
+    expect(switchControl().props.disabled).toBe(false);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(renderer.root.findByProps({ role: 'alert' }).children).toEqual(['providerSettings.errors.saveFailed']);
+    await act(async () => renderer.unmount());
+  });
+
+  it('keeps draft settings through a toggle and prevents overlapping writes', async () => {
+    const disabled = { ...reader, enabled: false };
+    const { renderer, refresh, field, switchControl, updateProvider } = await render(disabled);
+    await act(async () => field('logjev-upstream-provider').props.onChange('beta'));
+    let finish!: (result: { success: boolean }) => void;
+    toggle.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    refresh.mockImplementation(async () => updateProvider({ ...disabled, enabled: true }));
+    let pending!: Promise<void>;
+    await act(async () => {
+      const change = switchControl().props.onCheckedChange;
+      pending = change(true);
+      await change(false);
+    });
+    expect(toggle).toHaveBeenCalledOnce();
+    expect(switchControl().props.disabled).toBe(true);
+    expect(renderer.root.findByProps({ 'data-testid': 'logjev-save' }).props.disabled).toBe(true);
+    await act(async () => { finish({ success: true }); await pending; });
+    expect(field('logjev-upstream-provider').props.value).toBe('beta');
+    expect(field('logjev-upstream-model').props.value).toBe('b1');
+    await act(async () => renderer.root.findByProps({ 'data-testid': 'logjev-save' }).props.onClick());
+    expect(save).toHaveBeenCalledWith({ id: 'logjev', name: 'logjev',
+      logjev: { kind: 'chat', upstream: { kind: 'provider', id: 'beta', model: 'b1' } } });
+    expect(switchControl().props.checked).toBe(true);
     await act(async () => renderer.unmount());
   });
 
