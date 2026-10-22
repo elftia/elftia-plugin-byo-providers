@@ -582,6 +582,7 @@ export function VideoProviderSettingsPanel() {
             </div>
           ) : (
             <ProviderDetailsPanel
+              key={selectedProvider.id}
               type="video"
               name={selectedProvider.name}
               typeBadge={getTypeBadge()}

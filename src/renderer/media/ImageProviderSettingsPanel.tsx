@@ -613,6 +613,7 @@ export function ImageProviderSettingsPanel() {
               </div>
             ) : (
               <ProviderDetailsPanel
+                key={selectedProvider.id}
                 type="image"
                 name={selectedProvider.name}
                 typeBadge={getTypeBadge()}

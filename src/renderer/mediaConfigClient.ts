@@ -65,6 +65,22 @@ function mutationSucceeded(result: unknown): boolean {
   );
 }
 
+/** Reject failed or mismatched writes before replacing a provider in the UI. */
+function updatedProvider<State>(result: unknown, id: string): State {
+  if (typeof result !== 'object' || result === null) {
+    throw new Error('Failed to update provider');
+  }
+  if ('success' in result && result.success === false) {
+    const message = 'message' in result ? result.message : 'error' in result ? result.error : null;
+    throw new Error(typeof message === 'string' ? message : 'Failed to update provider');
+  }
+  const provider = 'provider' in result ? result.provider : result;
+  if (typeof provider !== 'object' || provider === null || !('id' in provider) || provider.id !== id) {
+    throw new Error('Provider update returned an invalid provider');
+  }
+  return provider as State;
+}
+
 type OpResult = { success: boolean; error?: string };
 type RefreshResult<S> = { success: boolean; provider?: S; message?: string };
 
@@ -119,13 +135,14 @@ function makeTypeClient<State, UpdatePayload, CustomInput>(
     // unwraps it to a bare state. Unwrap here so the panels keep the bare-state
     // contract (`const updated = await mediaConfigClient.image.update(...)`).
     update: async (id, payload) => {
-      const r = await invoke<{ success: boolean; provider?: State }>('media.updateProvider', {
+      const r = await invoke<unknown>('media.updateProvider', {
         mediaType,
         id,
         patch: payload,
       });
-      if (mutationSucceeded(r)) notifyProviderConfigChanged(mediaType);
-      return (r?.provider ?? r) as State;
+      const provider = updatedProvider<State>(r, id);
+      notifyProviderConfigChanged(mediaType);
+      return provider;
     },
     createCustom: async (input) => {
       const r = await invoke<{ success: boolean; provider?: State }>('media.createCustomProvider', {

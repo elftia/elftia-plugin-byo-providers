@@ -581,6 +581,7 @@ export function TtsProviderSettingsPanel() {
             </div>
           ) : (
             <ProviderDetailsPanel
+              key={selectedProvider.id}
               type="tts"
               name={selectedProvider.name}
               typeBadge={getTypeBadge()}

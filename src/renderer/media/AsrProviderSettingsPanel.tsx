@@ -579,6 +579,7 @@ export function AsrProviderSettingsPanel() {
             </div>
           ) : (
             <ProviderDetailsPanel
+              key={selectedProvider.id}
               type="asr"
               name={selectedProvider.name}
               typeBadge={getTypeBadge()}

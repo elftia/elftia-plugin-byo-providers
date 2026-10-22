@@ -115,6 +115,7 @@ export function ProviderDetailPanel({ s }: { s: ProviderSettingsBag }) {
             />
           ) : (
             <ProviderDetails
+              key={s.selectedProvider?.id}
               selectedProvider={s.selectedProvider}
               visibleModelGroups={s.visibleModelGroups}
               inlineName={s.inlineName}

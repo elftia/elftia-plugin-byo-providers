@@ -12,9 +12,9 @@ const onChanged = (event: Event) => {
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   received.length = 0;
-  invoke.mockReset().mockImplementation(async (method: string) => {
+  invoke.mockReset().mockImplementation(async (method: string, payload: { id?: string }) => {
     if (method === 'media.updateProvider' || method === 'media.createCustomProvider') {
-      return { success: true, provider: { id: 'provider' } };
+      return { success: true, provider: { id: payload.id ?? 'provider' } };
     }
     return { success: true, provider: { id: 'provider' } };
   });
@@ -29,6 +29,32 @@ afterEach(() => {
 });
 
 describe('mediaConfigClient host cache notifications', () => {
+  it.each(['image', 'video', 'music', 'tts', 'asr'] as const)(
+    'rejects failed %s saves without notifying the host',
+    async (mediaType) => {
+      invoke.mockResolvedValueOnce({ success: false, message: 'Preference write failed' });
+      await expect(mediaConfigClient[mediaType].update('official', { enabled: false }))
+        .rejects.toThrow('Preference write failed');
+      expect(received).toEqual([]);
+    },
+  );
+
+  it.each([undefined, null, { success: true }, { success: true, provider: { id: 'codex' } }])(
+    'rejects an invalid saved provider: %j',
+    async (result) => {
+      invoke.mockResolvedValueOnce(result);
+      await expect(mediaConfigClient.image.update('official', { enabled: false })).rejects.toThrow();
+      expect(received).toEqual([]);
+    },
+  );
+
+  it('accepts a bare provider returned by a compatible host facade', async () => {
+    invoke.mockResolvedValueOnce({ id: 'official', enabled: false });
+    expect(await mediaConfigClient.image.update('official', { enabled: false }))
+      .toEqual({ id: 'official', enabled: false });
+    expect(received).toEqual(['image']);
+  });
+
   it('notifies the host after successful provider updates for all media types', async () => {
     await mediaConfigClient.image.update('image', { enabled: true });
     await mediaConfigClient.video.update('video', { enabled: true });

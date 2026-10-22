@@ -1,5 +1,9 @@
 # Elftia BYO Providers
 
+Version 0.3.12 reports failed media-provider saves and isolates provider detail
+controls when switching providers. The matching Elftia host fix persists official
+and subscription provider switches independently across reloads.
+
 Version 0.3.11 adds an inline, read-only outbound model-mapping preview to provider
 details (host API 1.115; unavailable on older hosts), plus opt-in DeepSeek search
 and page fetching. DeepSeek can reuse an enabled official LLM provider's key on
@@ -95,10 +99,10 @@ Some optional chunk/asset directories may be absent when empty. Consumers must
 copy the complete `dist/byo-providers/` directory and must not import this
 repository's source or build configuration.
 
-For standalone distribution, the current `0.3.11` producer emits:
+For standalone distribution, the current `0.3.12` producer emits:
 
 ```text
-release/0.3.11/
+release/0.3.12/
   byo-providers.epkg
   byo-providers.json
 ```

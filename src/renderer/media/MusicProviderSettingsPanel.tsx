@@ -604,6 +604,7 @@ export function MusicProviderSettingsPanel() {
             </div>
           ) : (
             <ProviderDetailsPanel
+              key={selectedProvider.id}
               type="music"
               name={selectedProvider.name}
               typeBadge={getTypeBadge()}
