@@ -54,6 +54,7 @@ export interface SelectProps {
   className?: string;
   id?: string;
   size?: 'sm' | 'default';
+  'data-testid'?: string;
 }
 
 export type SwitchProps = Omit<

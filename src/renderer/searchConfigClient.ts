@@ -3,22 +3,21 @@
  * relay (P2d design D3).
  *
  * `host.services.searchConfig` is MAIN-side; the renderer reaches it only through
- * `host.ipc.invoke` → the plugin's main relay. Targets the API-KEY web-search
- * providers (tavily/jina/zhipu/grok/exa/bocha/searxng); the keyless `local-*`
- * providers and `webSearch.search` query execution are NOT on the port (host-only).
+ * relay (P2d design D3). Targets the plugin's API/public/self-hosted search
+ * settings; HTTP/local search execution remains host-owned.
  *
  * The relocated `ProviderPanel` previously consumed the host `webSearchStore`
  * (`updateProvider` / `writeProviderKey` / `validateProvider`). To keep that swap
  * mechanical, this client's verbs map 1:1 onto those props (D3):
- *   - `onUpdate(id, updates)`  → `configureProvider({ id, enabled, apiHost, basicAuth* })`
- *     (NON-secret config; the port input carries NO apiKey)
+ *   - `onUpdate(id, updates)` → config (enabled/host/authMode/model/basic-auth)
+ *     (the port input carries NO apiKey)
  *   - `onWriteKey(id, apiKey)` → `setProviderKey(id, apiKey)` (the ONLY key-write path)
  *   - `onValidate(id)`         → `validate(id)`
  *
  * ── KEY BOUNDARY (Option-A, design D4) ──
- * `getProviderConfig` returns `HostMaskedSearchProviderConfig` with `apiKey?: never`
- * (structurally absent) or `null` when unconfigured — the plugin NEVER reads a
- * plaintext stored search key. The key crosses INWARD only via `setProviderKey`
+ * `getProviderConfig` returns `HostMaskedSearchProviderConfig` with `apiKey` and
+ * `basicAuthPassword` structurally absent, or `null` when unconfigured. The plugin
+ * never reads stored search credentials. API keys cross inward only via `setProviderKey`
  * (→ `search.setProviderKey` → `host.services.searchConfig.setProviderKey` →
  * `SecretsService` under `search-provider:<id>:apiKey` + cache reconfigure).
  *
@@ -48,11 +47,11 @@ export const searchConfigClient = {
   getProviders(): Promise<HostSearchProvidersList> {
     return invoke('search.getProviders');
   },
-  /** A provider's MASKED non-secret config, or `null` when unconfigured. */
+  /** A provider's masked config and readiness/presence flags; never stored credentials. */
   getProviderConfig(providerId: string): Promise<HostMaskedSearchProviderConfig | null> {
     return invoke('search.getProviderConfig', { providerId });
   },
-  /** Write a provider's NON-SECRET config (enabled/apiHost/basic-auth — NO apiKey). */
+  /** Configure fields; a SearXNG password is write-only and omitted unless explicitly edited. */
   configureProvider(config: HostSearchProviderConfigInput): Promise<HostSearchKeyWriteResult> {
     return invoke('search.configureProvider', { config });
   },

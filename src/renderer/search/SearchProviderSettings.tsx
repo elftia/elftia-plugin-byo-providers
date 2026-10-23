@@ -8,7 +8,7 @@
  * The data layer is the masked `searchConfigClient` + `useSearchProviders` hook
  * (NOT the host `webSearchStore`). It maps the panel props onto the relay (D3):
  *   - `onUpdate`   → `configureProvider(full non-secret config)` + refetch
- *   - `onWriteKey` → debounced `setProviderKey` (empty-skip; Option-A D4) + refetch
+ *   - `onWriteKey` → debounced `setProviderKey` + pending config save + refetch
  *   - `onValidate` → `validate`
  *
  * @module byo-providers/renderer/search/SearchProviderSettings
@@ -16,10 +16,12 @@
 import * as React from 'react';
 
 import { getHost } from '../host/hostBridge';
+import { useTranslation } from '../host/vendored/useTranslation';
 import { searchConfigClient } from '../searchConfigClient';
 import { useSearchProviders } from '../useSearchProviders';
 
 import type { WebSearchProvider, WebSearchProviderId } from './meta';
+import { WEB_SEARCH_PROVIDER_META } from './meta';
 import { ProviderPanel } from './ProviderPanel';
 import { SearchProviderSidebar } from './SearchProviderSidebar';
 
@@ -47,145 +49,138 @@ function toFormProvider(
     enabled: typeof config?.enabled === 'boolean' ? config.enabled : enabled,
     apiHost: str(config?.apiHost),
     basicAuthUsername: str(config?.basicAuthUsername),
-    basicAuthPassword: str(config?.basicAuthPassword),
+    authMode: WEB_SEARCH_PROVIDER_META[id].supportsPublic
+      ? config?.authMode === 'api' || (config?.authMode !== 'public' && config?.hasApiKey === true)
+        ? 'api' : 'public' : undefined,
+    model: id === 'claude' ? str(config?.model) : undefined,
   };
+}
+
+function configureForm(provider: WebSearchProvider, basicAuthPassword?: string) {
+  return searchConfigClient.configureProvider({
+    id: provider.id,
+    enabled: provider.enabled,
+    apiHost: provider.apiHost,
+    authMode: provider.authMode,
+    ...(provider.id === 'claude' ? { model: provider.model } : {}),
+    basicAuthUsername: provider.id === 'searxng' ? provider.basicAuthUsername : undefined,
+    ...(basicAuthPassword !== undefined ? { basicAuthPassword } : {}),
+  });
 }
 
 export function SearchProviderSettings() {
   const React_ = getHost().react.instance;
-  const { providerIds, entries, refresh, isConfigured } = useSearchProviders();
+  const t = useTranslation();
+  const saveFailed = t('settings.webSearch.saveFailed');
+  const { providerIds, entries, loading, error, refresh, isConfigured } = useSearchProviders();
+  const [selectedId, setSelectedId] = React_.useState<WebSearchProviderId>(providerIds[0] ?? 'tavily');
+  const [drafts, setDrafts] = React_.useState<Partial<Record<WebSearchProviderId, WebSearchProvider>>>({});
+  const draftsRef = React_.useRef(drafts);
+  const [saveErrors, setSaveErrors] = React_.useState<Partial<Record<WebSearchProviderId, string>>>({});
+  const writes = React_.useRef(new Map<WebSearchProviderId, Promise<void>>());
+  const keyTimers = React_.useRef(new Map<WebSearchProviderId, ReturnType<typeof setTimeout>>());
+  const pendingKeys = React_.useRef(new Map<WebSearchProviderId, string>());
 
-  const [selectedId, setSelectedId] = React_.useState<WebSearchProviderId>(
-    providerIds[0] ?? 'tavily',
-  );
+  const enqueue = React_.useCallback((id: WebSearchProviderId, write: () => Promise<{ success: boolean; error?: string }>) => {
+    const previous = writes.current.get(id) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(async () => {
+      const result = await write();
+      if (!result.success) throw new Error(result.error ?? saveFailed);
+      await refresh();
+      setSaveErrors((current) => ({ ...current, [id]: undefined }));
+    });
+    writes.current.set(id, next);
+    void next.catch((caught: unknown) => setSaveErrors((current) => ({
+      ...current, [id]: caught instanceof Error ? caught.message : String(caught),
+    })));
+    return next;
+  }, [refresh, saveFailed]);
 
-  // Keep the selection valid as the provider list resolves.
-  React_.useEffect(() => {
-    if (providerIds.length > 0 && !providerIds.includes(selectedId)) {
-      setSelectedId(providerIds[0]);
+  const flushKey = React_.useCallback((id: WebSearchProviderId) => {
+    clearTimeout(keyTimers.current.get(id));
+    keyTimers.current.delete(id);
+    const key = pendingKeys.current.get(id);
+    if (key === undefined) return false;
+    pendingKeys.current.delete(id);
+    void enqueue(id, async () => {
+      const result = await searchConfigClient.setProviderKey(id, key);
+      if (!result.success) return result;
+      const draft = draftsRef.current[id];
+      return draft ? configureForm(draft) : result;
+    });
+    return true;
+  }, [enqueue]);
+
+  React_.useEffect(() => () => {
+    for (const id of pendingKeys.current.keys()) flushKey(id);
+  }, [flushKey]);
+
+  const onUpdate = React_.useCallback((id: WebSearchProviderId, updates: Partial<WebSearchProvider>) => {
+    const entry = entries[id];
+    if (!entry) return;
+    const current = draftsRef.current[id] ?? toFormProvider(
+      id, entry.config, entry.enabled,
+    );
+    const { basicAuthPassword, ...nonSecretUpdates } = updates;
+    const next = { ...current, ...nonSecretUpdates };
+    draftsRef.current = { ...draftsRef.current, [id]: next };
+    setDrafts(draftsRef.current);
+    // A newly entered credential must land before an API-mode configuration.
+    const keyFlushed = flushKey(id);
+    if (!keyFlushed || basicAuthPassword !== undefined) {
+      void enqueue(id, () => configureForm(next, basicAuthPassword));
     }
-  }, [providerIds, selectedId]);
+  }, [entries, enqueue, flushKey]);
 
-  const keyTimers = React_.useRef<Map<WebSearchProviderId, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
+  const onWriteKey = React_.useCallback((id: WebSearchProviderId, apiKey: string) => {
+    clearTimeout(keyTimers.current.get(id));
+    keyTimers.current.delete(id);
+    pendingKeys.current.delete(id);
+    // Empty draft never deletes a stored credential. Clearing is explicit.
+    if (!apiKey.trim()) return;
+    pendingKeys.current.set(id, apiKey);
+    keyTimers.current.set(id, setTimeout(() => flushKey(id), KEY_WRITE_DEBOUNCE_MS));
+  }, [flushKey]);
 
-  const selectedEntry = entries[selectedId];
-  const selectedProvider = toFormProvider(
-    selectedId,
-    (selectedEntry?.config ?? null) as Record<string, unknown> | null,
-    selectedEntry?.enabled ?? true,
-  );
-
-  // Non-secret config write: merge the delta over the current masked config and
-  // push the FULL non-secret config (the port's `configureProvider` is a full
-  // configure; no apiKey rides it). Refetch to reflect enabled/configured changes.
-  const onUpdate = React_.useCallback(
-    (id: WebSearchProviderId, updates: Partial<WebSearchProvider>) => {
-      // Guard (review m1): never push a full configure for a provider whose entry
-      // hasn't loaded yet — `toFormProvider` defaults `enabled` to true, so an
-      // edit before load would silently RESURRECT a host-disabled provider. The
-      // panel only renders post-load in practice; this closes the latent foot-gun.
-      const loadedEntry = entries[id];
-      if (!loadedEntry) return;
-      const current = toFormProvider(
-        id,
-        (loadedEntry.config ?? null) as Record<string, unknown> | null,
-        loadedEntry.enabled,
-      );
-      const next = { ...current, ...updates };
-      void searchConfigClient
-        .configureProvider({
-          id,
-          enabled: next.enabled,
-          apiHost: next.apiHost,
-          basicAuthUsername: next.basicAuthUsername,
-          basicAuthPassword: next.basicAuthPassword,
-        })
-        .then(() => refresh())
-        .catch((e: unknown) => {
-          console.warn('[byo-providers] configureProvider failed:', e);
-        });
-    },
-    [entries, refresh],
-  );
-
-  // Option-A key write: debounce, and SKIP an empty value (an empty key field on
-  // save must NOT call setProviderKey — that would clear the stored key on an
-  // unrelated edit). A non-empty value writes through the one-way relay.
-  const onWriteKey = React_.useCallback(
-    (id: WebSearchProviderId, apiKey: string) => {
-      const timers = keyTimers.current;
-      const existing = timers.get(id);
-      if (existing) clearTimeout(existing);
-      if (apiKey.trim().length === 0) {
-        // Empty draft → leave the stored key untouched (no write).
-        return;
-      }
-      timers.set(
-        id,
-        setTimeout(() => {
-          timers.delete(id);
-          void searchConfigClient
-            .setProviderKey(id, apiKey)
-            .then(() => refresh())
-            .catch((e: unknown) => {
-              console.warn('[byo-providers] setProviderKey failed:', e);
-            });
-        }, KEY_WRITE_DEBOUNCE_MS),
-      );
-    },
-    [refresh],
-  );
-
-  const onValidate = React_.useCallback(
-    (id: WebSearchProviderId) => searchConfigClient.validate(id),
-    [],
-  );
+  const onValidate = React_.useCallback(async (id: WebSearchProviderId) => {
+    // Validation must observe the just-entered key/mode/endpoint, not stale state.
+    flushKey(id);
+    await writes.current.get(id);
+    return searchConfigClient.validate(id);
+  }, [flushKey]);
 
   const onClearKey = React_.useCallback((id: WebSearchProviderId) => {
-    const timer = keyTimers.current.get(id);
-    clearTimeout(timer);
+    clearTimeout(keyTimers.current.get(id));
     keyTimers.current.delete(id);
-    void searchConfigClient.setProviderKey(id, '').then(refresh).catch((error: unknown) => {
-      console.warn('[byo-providers] clear search key failed:', error);
-    });
-  }, [refresh]);
+    pendingKeys.current.delete(id);
+    void enqueue(id, () => searchConfigClient.setProviderKey(id, ''));
+  }, [enqueue]);
+
+  const selectedEntry = entries[selectedId];
+  const selectedProvider = drafts[selectedId] ?? toFormProvider(
+    selectedId, selectedEntry?.config ?? null,
+    selectedEntry?.enabled ?? false,
+  );
+  const saveError = saveErrors[selectedId];
 
   return (
     <>
-      <React.Suspense fallback={null}>
-        <MigrationPackDialogs />
-      </React.Suspense>
-      <div
-        data-testid="byo-search-layout"
-        className="flex gap-6 h-[calc(100vh-200px)] min-h-[400px]"
-      >
-        <div
-          data-testid="byo-search-sidebar"
-          className="w-[220px] shrink-0 rounded-lg border border-border/50 bg-surface-1/50 wallpaper-blur p-3 overflow-y-auto"
-        >
-          <SearchProviderSidebar
-            providerIds={providerIds}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            isEnabled={(id) => entries[id]?.enabled ?? true}
-          />
+      <React.Suspense fallback={null}><MigrationPackDialogs /></React.Suspense>
+      {saveError || error ? <p role="alert" className="text-sm text-destructive">{saveError ?? error}</p> : null}
+      <div data-testid="byo-search-layout" className="flex gap-6 h-[calc(100vh-200px)] min-h-[400px]">
+        <div data-testid="byo-search-sidebar"
+          className="w-[220px] shrink-0 rounded-lg border border-border/50 bg-surface-1/50 wallpaper-blur p-3 overflow-y-auto">
+          <SearchProviderSidebar providerIds={providerIds} selectedId={selectedId} onSelect={setSelectedId}
+            isEnabled={(id) => drafts[id]?.enabled ?? (entries[id]?.config?.enabled === true)} />
         </div>
-
-        <div
-          data-testid="byo-search-content"
-          className="flex-1 min-w-0 overflow-y-auto rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4 md:p-5"
-        >
-          <ProviderPanel
-            providerId={selectedId}
-            provider={selectedProvider}
-            configured={isConfigured(selectedId)}
-            onUpdate={onUpdate}
-            onWriteKey={onWriteKey}
-            onClearKey={onClearKey}
-            onValidate={onValidate}
-          />
+        <div data-testid="byo-search-content"
+          className="flex-1 min-w-0 overflow-y-auto rounded-xl border border-border/70 bg-surface-1/60 wallpaper-blur p-4 md:p-5">
+          {selectedEntry ? (
+            <ProviderPanel providerId={selectedId} provider={selectedProvider}
+              configured={selectedProvider.authMode === 'api' && selectedEntry.config?.authMode !== 'api'
+                ? selectedEntry.config?.hasApiKey === true : isConfigured(selectedId)}
+              onUpdate={onUpdate} onWriteKey={onWriteKey} onClearKey={onClearKey} onValidate={onValidate} />
+          ) : loading ? <span role="status" aria-busy="true">…</span> : null}
         </div>
       </div>
     </>

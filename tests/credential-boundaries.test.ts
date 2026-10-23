@@ -71,6 +71,19 @@ describe('credential boundaries', () => {
     expectNotReturned(searchResult, searchKey);
   });
 
+  it('never turns an omitted search key into an implicit credential clear', async () => {
+    const setProviderKey = vi.fn(async () => ({ success: true }));
+    const methods = methodsFor({ searchConfig: { setProviderKey } });
+    await expect(methods['search.setProviderKey']({ providerId: 'exa' }))
+      .resolves.toMatchObject({ success: false });
+    await expect(methods['search.setProviderKey']({ providerId: 'exa', apiKey: null }))
+      .resolves.toMatchObject({ success: false });
+    expect(setProviderKey).not.toHaveBeenCalled();
+    await expect(methods['search.setProviderKey']({ providerId: 'exa', apiKey: '' }))
+      .resolves.toEqual({ success: true });
+    expect(setProviderKey).toHaveBeenCalledWith('exa', '');
+  });
+
   // provider-key-reveal (host-API v1.50): the three reveal verbs are the ONE
   // deliberate outward secret exception — they DO return the stored key, but
   // ONLY on their dedicated `{success, value?}` result (never embedded in a

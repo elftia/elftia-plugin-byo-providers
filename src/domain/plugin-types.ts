@@ -4,6 +4,8 @@ import type {
   HostLlmConfigLike as SdkHostLlmConfigLike,
   HostMediaConfigLike as SdkHostMediaConfigLike,
   HostMediaType,
+  HostMaskedSearchProviderConfig as SdkHostMaskedSearchProviderConfig,
+  HostSearchProviderConfigInput as SdkHostSearchProviderConfigInput,
   HostSubscriptionAuthLike as SdkHostSubscriptionAuthLike,
 } from '@elftia/plugin-types';
 
@@ -11,12 +13,10 @@ export type {
   AgentUiHostApi,
   HostAccountTokensSanitized,
   HostMaskedMediaProvider,
-  HostMaskedSearchProviderConfig,
   HostMediaType,
   HostOAuthExchangeRequest,
   HostOAuthInitParams,
   HostSearchKeyWriteResult,
-  HostSearchProviderConfigInput,
   HostSearchProvidersList,
   HostSearchValidateResult,
   HostSubscriptionAccountSanitized,
@@ -24,6 +24,21 @@ export type {
   HostSubscriptionOpResult,
   HostSubscriptionRefreshResult,
 } from '@elftia/plugin-types';
+
+/** Non-secret search metadata supported by the live host (the pinned SDK predates it). */
+export interface HostSearchProviderConfigInput extends SdkHostSearchProviderConfigInput {
+  readonly authMode?: 'public' | 'api';
+  readonly model?: string;
+}
+
+export interface HostMaskedSearchProviderConfig extends SdkHostMaskedSearchProviderConfig {
+  readonly authMode?: 'public' | 'api';
+  readonly model?: string;
+  readonly basicAuthPassword?: never;
+  readonly configured?: boolean;
+  readonly hasApiKey?: boolean;
+  readonly hasBasicAuthPassword?: boolean;
+}
 
 export type HostCliBackendId = 'claude-code' | 'codex-cli' | 'gemini-cli';
 

@@ -1,21 +1,6 @@
 /**
- * searchI18nSeed.ts — harvested byte-identical from the host `@/locales`
- * (`settings/webSearch.json`, the API-provider key subset the relocated
- * `ProviderPanel` reads) for en/zh/ja. DEEP-MERGED into the existing
- * `byo-providers` i18n namespace alongside the LLM + media seeds.
- *
- * The root is `settings.webSearch.*` — it SHARES the `settings` root with the
- * media seed's `settings.status.*` slice, so the merge MUST be a recursive
- * deepMerge (not a shallow spread) for both sub-keys to survive (the vendored
- * `useTranslation` already deepMerges — this seed is added to that merge). The
- * LLM seed's roots (`providerSettings`/`apiMode`/`presetName`/`common`) are
- * disjoint from `settings`.
- *
- * Only the keys the API-key panel actually renders are harvested (the sidebar /
- * general-settings / local-search keys stay host-only — those pieces did NOT
- * migrate). Missing key → key fallback in the resolver.
- *
- * @module byo-providers/renderer/host/vendored/searchI18nSeed
+ * Plugin-owned search settings labels for en/zh/ja. Deep-merged under
+ * settings.webSearch so the adjacent media settings namespace is preserved.
  */
 export const searchI18nSeed: Record<string, Record<string, unknown>> = {
   en: {
@@ -23,21 +8,37 @@ export const searchI18nSeed: Record<string, Record<string, unknown>> = {
       webSearch: {
         apiProviders: 'API Providers',
         apiKey: 'API Key',
+        authMode: 'Access mode',
+        publicMode: 'Public (no key, limited)',
+        apiMode: 'API (key required)',
+        publicDescription: 'Limited public search without a key. Availability and quotas may change.',
+        keyedDescription: 'Requires a provider API key. Provider quotas and usage charges may apply.',
+        selfHostedDescription: 'Self-hosted SearXNG metasearch. Enter your instance URL; optional HTTP authentication.',
+        modeKeyRetention: 'Public mode ignores stored API keys and custom hosts. Switching modes does not delete your key or endpoint.',
+        preferenceFallback: 'Provider selection is a soft preference. Search may fall back to another enabled provider, including a billed API; keyless mode does not guarantee a free request.',
+        configurationReady: 'Backend reports this configuration ready (not a search validation).',
+        configurationMissing: 'Backend does not report this configuration ready.',
+        clearKey: 'Clear stored search key',
+        required: 'Required',
+        model: 'Search model (optional override)',
         deepseekDescription: 'DeepSeek search and page fetching',
         openWebsite: 'Open {{provider}} website',
         deepseekKeyReuse: 'Optional override. When enabled, an available key from an enabled official api.deepseek.com LLM provider is reused on the backend. Custom hosts require their own search key.',
         credentialAvailable: 'Credential available (backend only)',
         credentialMissing: 'No available credential; enable an official DeepSeek LLM provider or enter a search key.',
         clearOverride: 'Clear search key override',
-        apiKeyPlaceholder: 'Enter API key (multiple keys separated by comma)',
+        apiKeyPlaceholder: 'Enter a new API key (stored keys are never read back)',
         apiKeyMultiple: 'Supports multiple keys separated by commas for load balancing',
         apiHost: 'API Host',
         apiHostPlaceholder: 'Custom API host (optional)',
         basicAuthUsername: 'Username',
         basicAuthPassword: 'Password',
+        passwordPlaceholder: 'Enter a new password (blank preserves the stored password)',
+        clearPassword: 'Clear stored HTTP password',
+        saveFailed: 'Search configuration could not be saved',
         optional: 'Optional',
         validate: 'Validate',
-        validationSuccess: 'Configuration valid',
+        validationSuccess: 'Selected provider returned usable search results',
         validationFailed: 'Validation failed',
       },
     },
@@ -47,21 +48,37 @@ export const searchI18nSeed: Record<string, Record<string, unknown>> = {
       webSearch: {
         apiProviders: 'API 服务商',
         apiKey: 'API 密钥',
+        authMode: '访问模式',
+        publicMode: '公开模式（免密钥，有限制）',
+        apiMode: 'API 模式（需要密钥）',
+        publicDescription: '无需密钥的有限公开搜索，可用性和配额可能变化。',
+        keyedDescription: '需要服务商 API 密钥，受服务商配额限制，可能产生使用费用。',
+        selfHostedDescription: '自托管 SearXNG 聚合搜索。请输入实例地址，可选配 HTTP 认证。',
+        modeKeyRetention: '公开模式不使用已保存的 API 密钥和自定义地址，切换模式不会删除密钥或地址。',
+        preferenceFallback: '服务商选择仅为软偏好。搜索可能回退到其他已启用服务商，包括计费 API；免密钥模式不保证整次请求免费。',
+        configurationReady: '后端报告配置已就绪（不代表已验证搜索）。',
+        configurationMissing: '后端尚未报告配置就绪。',
+        clearKey: '清除已保存的搜索密钥',
+        required: '必填',
+        model: '搜索模型（可选覆盖）',
         deepseekDescription: 'DeepSeek 网络搜索与网页内容读取',
         openWebsite: '打开 {{provider}} 网站',
         deepseekKeyReuse: '可选独立密钥。启用后，后端复用已启用的官方 api.deepseek.com LLM 服务商的可用密钥；自定义地址必须使用独立搜索密钥。',
         credentialAvailable: '密钥可用（仅后端读取）',
         credentialMissing: '暂无可用密钥，请启用官方 DeepSeek LLM 服务商或输入独立搜索密钥。',
         clearOverride: '清除独立搜索密钥',
-        apiKeyPlaceholder: '输入 API 密钥（多个密钥用逗号分隔）',
+        apiKeyPlaceholder: '输入新 API 密钥（不会读回已保存的密钥）',
         apiKeyMultiple: '支持多个密钥（逗号分隔）以实现负载均衡',
         apiHost: 'API 地址',
         apiHostPlaceholder: '自定义 API 地址（可选）',
         basicAuthUsername: '用户名',
         basicAuthPassword: '密码',
+        passwordPlaceholder: '输入新密码（留空保留已保存的密码）',
+        clearPassword: '清除已保存的 HTTP 密码',
+        saveFailed: '搜索配置保存失败',
         optional: '可选',
         validate: '验证',
-        validationSuccess: '配置有效',
+        validationSuccess: '所选服务商已返回可用搜索结果',
         validationFailed: '验证失败',
       },
     },
@@ -71,21 +88,37 @@ export const searchI18nSeed: Record<string, Record<string, unknown>> = {
       webSearch: {
         apiProviders: 'APIプロバイダー',
         apiKey: 'APIキー',
+        authMode: 'アクセスモード',
+        publicMode: '公開（キー不要・制限あり）',
+        apiMode: 'API（キー必須）',
+        publicDescription: 'キー不要の制限付き公開検索です。可用性や利用枠は変更される場合があります。',
+        keyedDescription: 'プロバイダーの API キーが必要です。利用枠や使用料金が適用される場合があります。',
+        selfHostedDescription: 'セルフホスト型 SearXNG メタ検索です。インスタンス URL と任意の HTTP 認証を設定します。',
+        modeKeyRetention: '公開モードでは保存済みキーとカスタムホストを使用しません。モードを切り替えてもキーやホストは削除されません。',
+        preferenceFallback: 'プロバイダー選択は優先設定です。有料 API を含む他の有効なプロバイダーにフォールバックする場合があります。キー不要モードでもリクエスト全体の無料利用は保証されません。',
+        configurationReady: 'バックエンドが設定の準備完了を報告しています（検索の検証結果ではありません）。',
+        configurationMissing: 'バックエンドは設定の準備完了を報告していません。',
+        clearKey: '保存済み検索キーを削除',
+        required: '必須',
+        model: '検索モデル（任意の上書き）',
         deepseekDescription: 'DeepSeek のウェブ検索とページ取得',
         openWebsite: '{{provider}} のサイトを開く',
         deepseekKeyReuse: '任意の専用キー。検索を有効にすると、有効な公式 api.deepseek.com LLM プロバイダーの利用可能なキーをバックエンドで再利用します。カスタムホストには専用検索キーが必要です。',
         credentialAvailable: '認証情報を利用可能（バックエンドのみ）',
         credentialMissing: '利用可能なキーがありません。公式 DeepSeek LLM プロバイダーを有効にするか、検索キーを入力してください。',
         clearOverride: '専用検索キーを削除',
-        apiKeyPlaceholder: 'APIキーを入力（カンマ区切りで複数指定可）',
+        apiKeyPlaceholder: '新しい API キーを入力（保存済みキーは読み戻しません）',
         apiKeyMultiple: '負荷分散のために複数のキー（カンマ区切り）をサポート',
         apiHost: 'APIホスト',
         apiHostPlaceholder: 'カスタムAPIホスト（オプション）',
         basicAuthUsername: 'ユーザー名',
         basicAuthPassword: 'パスワード',
+        passwordPlaceholder: '新しいパスワードを入力（空欄は保存済みの値を維持）',
+        clearPassword: '保存済み HTTP パスワードを削除',
+        saveFailed: '検索設定を保存できませんでした',
         optional: 'オプション',
         validate: '検証',
-        validationSuccess: '設定は有効です',
+        validationSuccess: '選択したプロバイダーが利用可能な検索結果を返しました',
         validationFailed: '検証に失敗しました',
       },
     },

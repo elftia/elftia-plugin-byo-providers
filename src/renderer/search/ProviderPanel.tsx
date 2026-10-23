@@ -1,39 +1,10 @@
-/**
- * ProviderPanel.tsx — API 服务商配置面板 (relocated from the host
- * `web-search-tab/panels/ProviderPanel.tsx`, P2d design D1/D3/D4/D5).
- *
- * Displays a single API-key search provider's config form over the MASKED
- * `host.services.searchConfig` port:
- *   - provider info (name / description / website)
- *   - enabled switch                          → `configureProvider` (non-secret)
- *   - API Key input (Option-A reveal)         → `setProviderKey` (the ONLY key path)
- *   - API Host (required for searxng)         → `configureProvider` (non-secret)
- *   - searxng HTTP basic-auth                 → `configureProvider` (non-secret)
- *   - Validate button                         → `validate` (on the port)
- *
- * DEVIATIONS FROM THE HOST COPY (intentional):
- *   - imports repointed to the `host/` bridge (host.ui primitives + vendored
- *     label / cn / revealable-input / useTranslation) — NO `@/...` survives.
- *   - the SLICED Test-Search block (state + handler + UI) is REMOVED: it called
- *     host-only `window.native.webSearch.search` (query EXECUTION), which is NOT
- *     on the config port (the LLM ModelTest analog, design D5). `validate` stays.
- *   - Option-A (design D4): the masked port never returns a stored plaintext key,
- *     so the key field holds only the just-typed local value; a configured
- *     provider shows a "已配置/configured" indicator + dots. An empty key field on
- *     save does NOT call `setProviderKey` (the empty-skip guard) — the stored key
- *     is retained.
- *
- * @module byo-providers/renderer/search/ProviderPanel
- */
 import { Check, ExternalLink, Loader2, X } from 'lucide-react';
 import * as React from 'react';
 
-import { Button, Input, Switch } from '../host/ui';
-import { cn } from '../host/vendored/cn';
+import { Button, Input, Select, Switch } from '../host/ui';
 import { Label } from '../host/vendored/label';
 import { RevealableInput } from '../host/vendored/revealable-input';
 import { useTranslation } from '../host/vendored/useTranslation';
-
 import { openExternal } from '../externalLinksClient';
 
 import type { WebSearchProvider, WebSearchProviderId } from './meta';
@@ -41,210 +12,176 @@ import { WEB_SEARCH_PROVIDER_META } from './meta';
 
 interface ProviderPanelProps {
   providerId: WebSearchProviderId;
-  /** The provider's current non-secret config (enabled/apiHost/basic-auth). */
   provider: WebSearchProvider | undefined;
-  /** Option-A: whether a stored key/config exists (drives the "configured" hint). */
   configured: boolean;
-  /** Non-secret config write (enabled / apiHost / basic-auth — NEVER the key). */
   onUpdate: (id: WebSearchProviderId, updates: Partial<WebSearchProvider>) => void;
-  /**
-   * Write the API key through the dedicated one-way `setProviderKey` relay. Empty
-   * is skipped by the caller (leaves the stored key). Separate from `onUpdate`
-   * because the key never rides the non-secret config push.
-   */
   onWriteKey: (id: WebSearchProviderId, apiKey: string) => void;
   onClearKey: (id: WebSearchProviderId) => void;
   onValidate: (id: WebSearchProviderId) => Promise<{ valid: boolean; error?: string }>;
 }
 
 export function ProviderPanel({
-  providerId,
-  provider,
-  configured,
-  onUpdate,
-  onWriteKey,
-  onClearKey,
-  onValidate,
+  providerId, provider, configured, onUpdate, onWriteKey, onClearKey, onValidate,
 }: ProviderPanelProps) {
   const t = useTranslation();
   const [validating, setValidating] = React.useState(false);
-  const [validationResult, setValidationResult] = React.useState<{
-    valid: boolean;
-    error?: string;
-  } | null>(null);
+  const [validationResult, setValidationResult] = React.useState<{ valid: boolean; error?: string } | null>(null);
   const [showApiKey, setShowApiKey] = React.useState(false);
-
-  // Option-A: the key field holds ONLY the just-typed local value for this
-  // session. The masked port never hands the plugin a plaintext stored key, so
-  // this starts empty even for a configured provider (it shows the indicator
-  // instead). Reset when switching providers.
   const [apiKeyDraft, setApiKeyDraft] = React.useState('');
+  const [basicAuthPasswordDraft, setBasicAuthPasswordDraft] = React.useState('');
+  const validationRequest = React.useRef(0);
+  const revision = React.useRef(0);
   React.useEffect(() => {
+    revision.current += 1;
+    validationRequest.current += 1;
+    setBasicAuthPasswordDraft('');
     setApiKeyDraft('');
     setShowApiKey(false);
+    setValidating(false);
     setValidationResult(null);
   }, [providerId]);
 
-  const providerMeta = WEB_SEARCH_PROVIDER_META[providerId];
-
-  const currentProvider: WebSearchProvider = provider || {
-    id: providerId,
-    name: providerMeta.name,
-    type: providerMeta.type,
-    enabled: true,
-    apiHost: '',
+  const meta = WEB_SEARCH_PROVIDER_META[providerId];
+  const current: WebSearchProvider = provider ?? { id: providerId, name: meta.name, type: meta.type, enabled: false };
+  const publicMode = meta.supportsPublic && (current.authMode ?? 'public') === 'public';
+  const update = (changes: Partial<WebSearchProvider>) => {
+    revision.current += 1;
+    setValidationResult(null);
+    onUpdate(providerId, changes);
   };
-
   const handleValidate = async () => {
+    const requestRevision = revision.current;
+    const request = ++validationRequest.current;
     setValidating(true);
     setValidationResult(null);
     try {
       const result = await onValidate(providerId);
-      setValidationResult(result);
+      if (revision.current === requestRevision) setValidationResult(result);
     } catch (error) {
-      setValidationResult({
-        valid: false,
-        error: error instanceof Error ? error.message : 'Validation failed',
+      if (revision.current === requestRevision) setValidationResult({
+        valid: false, error: error instanceof Error ? error.message : t('settings.webSearch.validationFailed'),
       });
     } finally {
-      setValidating(false);
+      if (validationRequest.current === request) setValidating(false);
     }
   };
 
   return (
     <div data-testid="provider-panel" className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-medium text-foreground">{providerMeta.name}</h3>
+          <h3 className="text-lg font-medium text-foreground">{meta.name}</h3>
           <p className="text-sm text-muted-foreground">
-            {providerId === 'deepseek' ? t('settings.webSearch.deepseekDescription') : providerMeta.description}
+            {t(providerId === 'deepseek' ? 'settings.webSearch.deepseekDescription'
+              : providerId === 'searxng' ? 'settings.webSearch.selfHostedDescription'
+                : publicMode ? 'settings.webSearch.publicDescription' : 'settings.webSearch.keyedDescription')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {providerMeta.website ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={t('settings.webSearch.openWebsite', { provider: providerMeta.name })}
-              onClick={() => void openExternal(providerMeta.website ?? '')}
-            >
-              <ExternalLink className="h-4 w-4" />
+          {meta.website ? (
+            <Button data-testid={`settings-button-search-${providerId}-website`} variant="ghost" size="sm"
+              aria-label={t('settings.webSearch.openWebsite', { provider: meta.name })}
+              onClick={() => void openExternal(meta.website ?? '')}>
+              <ExternalLink aria-hidden="true" className="h-4 w-4" />
             </Button>
           ) : null}
-          <Switch
-            aria-label={providerMeta.name}
-            checked={currentProvider.enabled}
-            onCheckedChange={(checked) => onUpdate(providerId, { enabled: checked })}
-          />
+          <Switch data-testid={`settings-button-search-${providerId}-toggle`} aria-label={meta.name}
+            checked={current.enabled} onCheckedChange={(enabled) => update({ enabled })} />
         </div>
       </div>
-
-      {/* Configuration Form */}
-      <div className="rounded-lg border border-border/50 bg-surface-1/50 p-4 space-y-4">
-        {/* API Key (for providers that require it) */}
-        {providerMeta.requiresApiKey ? (
+      <div className="space-y-4 rounded-lg border border-border/50 bg-surface-1/50 p-4">
+        {meta.supportsPublic ? (
           <div className="space-y-2">
-            <Label className="text-sm">{t('settings.webSearch.apiKey')}</Label>
-            <RevealableInput
-              aria-label={t('settings.webSearch.apiKey')}
-              revealed={showApiKey}
-              onRevealedChange={setShowApiKey}
-              value={apiKeyDraft}
-              onChange={(e) => {
-                setApiKeyDraft(e.target.value);
-                onWriteKey(providerId, e.target.value);
-              }}
-              placeholder={
-                configured
-                  ? t('settings.webSearch.validationSuccess')
-                  : t('settings.webSearch.apiKeyPlaceholder')
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              {t('settings.webSearch.apiKeyMultiple')}
-              {providerId === 'deepseek' ? t('settings.webSearch.deepseekKeyReuse') : null}
-            </p>
-          {providerId === 'deepseek' ? (
-            <>
-              <p data-testid="deepseek-key-status" className="text-xs text-muted-foreground">
-                {t(configured ? 'settings.webSearch.credentialAvailable' : 'settings.webSearch.credentialMissing')}
-              </p>
-              <Button data-testid="settings-button-clear-search-key" variant="outline" size="sm" onClick={() => { setApiKeyDraft(''); onClearKey(providerId); }}>
-                {t('settings.webSearch.clearOverride')}
-              </Button>
-            </>
-          ) : null}
+            <Label htmlFor={`search-${providerId}-mode`}>{t('settings.webSearch.authMode')}</Label>
+            <Select id={`search-${providerId}-mode`} data-testid="settings-input-search-auth-mode" value={current.authMode ?? 'public'}
+              onChange={(value) => update({ authMode: value === 'api' ? 'api' : 'public' })}
+              options={[
+                { value: 'public', label: t('settings.webSearch.publicMode') },
+                { value: 'api', label: t('settings.webSearch.apiMode') },
+              ]} />
+            <p className="text-xs text-muted-foreground">{t('settings.webSearch.modeKeyRetention')}</p>
           </div>
         ) : null}
-
-        {/* API Host (optional for most, required for Searxng) */}
-        <div className="space-y-2">
-          <Label className="text-sm">
-            {t('settings.webSearch.apiHost')}
-            {providerId === 'searxng' && <span className="text-red-500 ml-1">*</span>}
-          </Label>
-          <Input
-            type="url"
-            value={currentProvider.apiHost || ''}
-            onChange={(e) => onUpdate(providerId, { apiHost: e.target.value })}
-            placeholder={
-              providerId === 'searxng'
-                ? 'https://your-searxng-instance.com'
-                : t('settings.webSearch.apiHostPlaceholder')
-            }
-          />
-        </div>
-
-        {/* Basic Auth for Searxng */}
-        {providerId === 'searxng' && (
+        {meta.requiresApiKey ? (
+          <div className="space-y-2">
+            <Label htmlFor={`search-${providerId}-key`}>
+              {t('settings.webSearch.apiKey')} ({t(publicMode || providerId === 'deepseek'
+                ? 'settings.webSearch.optional' : 'settings.webSearch.required')})
+            </Label>
+            <RevealableInput id={`search-${providerId}-key`} data-testid="settings-input-search-api-key"
+              aria-label={t('settings.webSearch.apiKey')} revealed={showApiKey} onRevealedChange={setShowApiKey}
+              value={apiKeyDraft} onChange={(event) => {
+                revision.current += 1;
+                setValidationResult(null);
+                setApiKeyDraft(event.target.value);
+                onWriteKey(providerId, event.target.value);
+              }} placeholder={t('settings.webSearch.apiKeyPlaceholder')} />
+            <p data-testid={providerId === 'deepseek' ? 'deepseek-key-status' : 'settings-container-search-readiness'}
+              className="text-xs text-muted-foreground">
+              {t(configured ? 'settings.webSearch.configurationReady' : 'settings.webSearch.configurationMissing')}
+            </p>
+            {providerId === 'deepseek' ? <p className="text-xs text-muted-foreground">{t('settings.webSearch.deepseekKeyReuse')}</p> : null}
+            <Button data-testid="settings-button-clear-search-key" variant="outline" size="sm" onClick={() => {
+              revision.current += 1;
+              setValidationResult(null);
+              setApiKeyDraft('');
+              onClearKey(providerId);
+            }}>{t(providerId === 'deepseek' ? 'settings.webSearch.clearOverride' : 'settings.webSearch.clearKey')}</Button>
+          </div>
+        ) : null}
+        {!publicMode ? (
+          <div className="space-y-2">
+            <Label htmlFor={`search-${providerId}-host`}>{t('settings.webSearch.apiHost')}
+              {providerId === 'searxng' ? ` (${t('settings.webSearch.required')})` : null}
+            </Label>
+            <Input id={`search-${providerId}-host`} data-testid="settings-input-search-api-host" type="url"
+              value={current.apiHost ?? ''} onChange={(event) => update({ apiHost: event.target.value })}
+              placeholder={providerId === 'searxng' ? 'https://your-searxng-instance.com' : t('settings.webSearch.apiHostPlaceholder')} />
+          </div>
+        ) : null}
+        {meta.modelPlaceholder ? (
+          <div className="space-y-2">
+            <Label htmlFor={`search-${providerId}-model`}>{t('settings.webSearch.model')}</Label>
+            <Input id={`search-${providerId}-model`} data-testid="settings-input-search-model"
+              value={current.model ?? ''} placeholder={meta.modelPlaceholder}
+              onChange={(event) => update({ model: event.target.value })} />
+          </div>
+        ) : null}
+        {providerId === 'searxng' ? (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-sm">{t('settings.webSearch.basicAuthUsername')}</Label>
-              <Input
-                type="text"
-                value={currentProvider.basicAuthUsername || ''}
-                onChange={(e) => onUpdate(providerId, { basicAuthUsername: e.target.value })}
-                placeholder={t('settings.webSearch.optional')}
-              />
+              <Label htmlFor="search-searxng-username">{t('settings.webSearch.basicAuthUsername')}</Label>
+              <Input id="search-searxng-username" data-testid="settings-input-search-basic-username"
+                value={current.basicAuthUsername ?? ''} onChange={(event) => update({ basicAuthUsername: event.target.value })}
+                placeholder={t('settings.webSearch.optional')} />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm">{t('settings.webSearch.basicAuthPassword')}</Label>
-              <Input
-                type="password"
-                value={currentProvider.basicAuthPassword || ''}
-                onChange={(e) => onUpdate(providerId, { basicAuthPassword: e.target.value })}
-                placeholder={t('settings.webSearch.optional')}
-              />
+              <Label htmlFor="search-searxng-password">{t('settings.webSearch.basicAuthPassword')}</Label>
+              <Input id="search-searxng-password" data-testid="settings-input-search-basic-password" type="password"
+                value={basicAuthPasswordDraft} onChange={(event) => {
+                  setBasicAuthPasswordDraft(event.target.value);
+                  if (event.target.value) update({ basicAuthPassword: event.target.value });
+                }} placeholder={t('settings.webSearch.passwordPlaceholder')} />
+              <Button data-testid="settings-button-clear-search-password" variant="outline" size="sm" onClick={() => {
+                setBasicAuthPasswordDraft('');
+                update({ basicAuthPassword: '' });
+              }}>{t('settings.webSearch.clearPassword')}</Button>
             </div>
           </div>
-        )}
-
-        {/* Validation (Test-Search query execution is sliced — host-only) */}
+        ) : null}
+        <p className="text-xs text-muted-foreground">{t('settings.webSearch.preferenceFallback')}</p>
         <div className="flex items-center gap-4 pt-2">
-          <Button variant="outline" size="sm" onClick={handleValidate} disabled={validating}>
-            {validating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+          <Button data-testid="settings-button-search-validate" variant="outline" size="sm"
+            onClick={() => void handleValidate()} disabled={validating}>
+            {validating ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
             {t('settings.webSearch.validate')}
           </Button>
-
           {validationResult ? (
-            <div
-              className={cn(
-                'flex items-center gap-2 text-sm',
-                validationResult.valid ? 'text-green-500' : 'text-red-500',
-              )}
-            >
-              {validationResult.valid ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  {t('settings.webSearch.validationSuccess')}
-                </>
-              ) : (
-                <>
-                  <X className="h-4 w-4" />
-                  {validationResult.error || t('settings.webSearch.validationFailed')}
-                </>
-              )}
+            <div role="status" data-testid="settings-container-search-validation"
+              className={`flex items-center gap-2 text-sm ${validationResult.valid ? 'text-primary' : 'text-destructive'}`}>
+              {validationResult.valid ? <Check aria-hidden="true" className="h-4 w-4" /> : <X aria-hidden="true" className="h-4 w-4" />}
+              {validationResult.valid ? t('settings.webSearch.validationSuccess')
+                : validationResult.error || t('settings.webSearch.validationFailed')}
             </div>
           ) : null}
         </div>

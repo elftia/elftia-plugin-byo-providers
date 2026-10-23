@@ -1,12 +1,8 @@
 /**
  * SearchProviderSidebar.tsx — minimal api-only sidebar (P2d design D1/D3, OQ2).
  *
- * A single flat list of the API-key search providers (tavily/jina/zhipu/grok/
- * exa/bocha/searxng), each row showing selected + ENABLED state. REBUILT in the
- * plugin rather than copying the host 3-group `Sidebar` — the host Sidebar
- * renders config + local-* groups the plugin can't service (those stay
- * host-only). The styling mirrors the host `SidebarGroup` + `SidebarItem`
- * (byte-identical class strings) so the section looks native.
+ * Lists the producer's API/public/self-hosted providers and their explicit
+ * enablement state. HTTP/local-browser configuration remains host-owned.
  *
  * The status dot mirrors the sibling LLM/media provider sidebars (the app-wide
  * convention): it is ALWAYS rendered and reflects the provider's ENABLED state —
@@ -54,6 +50,7 @@ export function SearchProviderSidebar({
             strings shared across every provider sidebar (LLM/media/search). */}
         <button
           type="button"
+          data-testid="settings-button-search-enabled-filter"
           className={cn(
             'h-6 w-6 flex items-center justify-center rounded-md border transition-colors shrink-0',
             enabledOnly

@@ -10,6 +10,23 @@ and page fetching. DeepSeek can reuse an enabled official LLM provider's key on
 the host; an independent search key takes precedence, and custom hosts require
 their own key. No reused key is returned to the plugin.
 
+Search settings support Tavily, Jina, SearXNG, Zhipu, Z.ai, DeepSeek, Exa,
+Parallel, Firecrawl, Brave, Kagi, Kimi, Synthetic, Ollama, TinyFish, Perplexity,
+Bocha, and Claude. Newly added providers are opt-in. Exa, Parallel, and Firecrawl
+offer explicit limited-public and keyed-API modes. Public mode ignores retained
+keys and custom endpoints without deleting them; entering a key does not switch
+an explicitly saved public mode. API-mode enablement requires a usable key.
+Only Claude exposes a model override; Perplexity uses its direct Search API.
+Search keys and SearXNG passwords are write-only: blank inputs preserve stored
+credentials, and clearing a credential requires its explicit clear action.
+Non-secret settings and enablement restore from the host after reopening.
+HTTP engines remain in Elftia's own search settings, with Bing and DuckDuckGo
+retaining their existing defaults and other engines requiring opt-in. Selection
+is a preference rather than a guarantee: fallback may use another enabled
+provider, including a billed API. Public access is limited, not unlimited or
+guaranteed free. Queries, credential resolution, and all upstream calls execute
+on the host, never in this plugin's renderer.
+
 Version 0.3.10 persists the LogJev enable switch immediately, with the same
 right-aligned switch and delete icon as other providers. Saving LogJev options
 preserves its current enable state. It shares provider keys across compatible
@@ -161,14 +178,19 @@ optional write-only `host.clipboard.writeText` bridge (host API 1.112). A host
 without that bridge reports copy unavailable. Password setup/change/disable and
 destructive forgotten-password recovery belong to host Privacy settings.
 
-The project locks the newest released public SDK,
-`@elftia/plugin-types@1.25.0`, and records `builtAgainst: "1.25.0"` in both
-manifest contributions. The public 1.25 SDK covers the base UI/backend API and
-the LLM, media, search, and subscription ports. The additive host 1.26–1.27
-agent-config, CLI-runtime, secrets-pack, model-test, and manual-token members
-are represented by narrow plugin-owned structural projections in
-`src/domain/plugin-types.ts`; the manifest still requires host minor 27 for the
-main contribution. No projection imports host source.
+The project locks the released public SDK `@elftia/plugin-types@1.25.0`.
+Newer optional host members use narrow plugin-owned structural projections in
+`src/domain/plugin-types.ts`; no projection imports host source. This artifact
+requires host API **1.117** for explicit search authentication modes and masked
+credential-presence metadata, and records `builtAgainst: "1.117.0"`.
+
+The current pre-release search integration uses the checked-in
+`vendor/omnicross-contracts-0.7.0.tgz`. Its source commit and SHA-512 are recorded
+in `vendor/omnicross-search-build.json`; the import-closure gate verifies both
+the archive bytes and local lock target. No sibling checkout is required.
+After Elftia testing and Omnicross publication, explicitly switch the contracts
+declaration/lock to the exact registry version and remove these two vendor
+inputs. There is no automatic local-to-registry fallback.
 
 React and React DOM are host-provided peer runtimes and remain external in the
 renderer build. The main entry is CommonJS, Node-targeted, and Electron-free.
@@ -196,10 +218,11 @@ tokens and fails on undeclared, undetected, or generic secret-write access.
 
 ## Reproducibility
 
-`npm run check:reproducible` performs two clean builds, compares the normalized
-artifact file list and SHA-256 hashes, leaves the second verified artifact in
-`dist/byo-providers/`, and records the result in
-`verification/reproducibility.json`.
+`npm run check:reproducible` performs two clean builds from the **staged Git
+tree**, comparing the artifact, EPKG and sidecar byte-for-byte. Stage new source
+and local dependency inputs first. Refresh `verification/reproducibility.json`
+with `npm run check:reproducible -- --update` when the verified output changes;
+the temporary clean build trees are removed afterwards.
 
 ## Ownership
 

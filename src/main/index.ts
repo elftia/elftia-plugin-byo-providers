@@ -29,7 +29,7 @@
  *
  * P2d (search) ADDS a parallel FLAT relay of the masked `host.services.searchConfig`
  * port (host-API 1.24, `host:search-config` ONLY) for the API-key web-search
- * providers (tavily/jina/zhipu/grok/exa/bocha/searxng). Same shape as media: the
+ * providers. Same shape as media: the
  * masked `getProviderConfig` returns `apiKey?: never` (+ `null` when unconfigured)
  * — no key OUTWARD; a key crosses INWARD ONLY via `search.setProviderKey`, which
  * the port writes host-side under `search-provider:<id>:apiKey` + reconfigures the
@@ -356,8 +356,8 @@ export function activate(host: AgentBackendHostApi): void {
     },
 
     // ══ SEARCH (P2d) — flat relay over the masked host.services.searchConfig port ══
-    // The API-KEY web-search providers (tavily/jina/zhipu/grok/exa/bocha/searxng).
-    // Each verb is a guarded 3-line delegation over the masked port (host-API 1.24,
+    // API/public/self-hosted provider configuration, never query execution.
+    // Each verb delegates to the masked port (host-API 1.24,
     // `host:search-config` ONLY). The masked `getProviderConfig` returns
     // `apiKey?: never` (structurally absent) + `null` when unconfigured — no key
     // ever flows OUTWARD. A search key crosses INWARD ONLY via
@@ -387,8 +387,11 @@ export function activate(host: AgentBackendHostApi): void {
     // renderer's empty-skip guard).
     'search.setProviderKey': async (p) => {
       const { providerId, apiKey } = asRecord(p);
+      if (typeof apiKey !== 'string') {
+        return { success: false, error: 'An explicit API key value is required; use an empty string to clear it' };
+      }
       return (
-        (await search()?.setProviderKey(String(providerId), String(apiKey ?? ''))) ??
+        (await search()?.setProviderKey(String(providerId), apiKey)) ??
         searchMissing()
       );
     },

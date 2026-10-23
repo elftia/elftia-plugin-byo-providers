@@ -1,4 +1,5 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { lstat, readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -116,12 +117,37 @@ for (const file of files) {
 }
 
 const lock = JSON.parse(await readFile(resolve(root, 'package-lock.json'), 'utf8'));
+const manifest = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
 for (const [name, expected] of [
   ['@elftia/plugin-types', '1.25.0'],
   ['@elftia/agent-spec', '1.25.0'],
-  ['@omnicross/contracts', '0.6.9'],
+  ['@omnicross/contracts', manifest.dependencies['@omnicross/contracts']],
 ]) {
   const entry = lock.packages?.[`node_modules/${name}`];
+  if (name === '@omnicross/contracts' && expected.startsWith('file:')) {
+    try {
+      const provenance = JSON.parse(await readFile(resolve(root, 'vendor/omnicross-search-build.json'), 'utf8'));
+      const pin = provenance.packages?.[name];
+      if (provenance.schemaVersion !== 1 || !pin ||
+          !/^omnicross-contracts-[\w.+-]+\.tgz$/.test(pin.file) ||
+          pin.file !== `omnicross-contracts-${pin.version}.tgz` ||
+          expected !== `file:vendor/${pin.file}`) {
+        throw new Error('invalid pinned local contracts declaration');
+      }
+      const archive = resolve(root, 'vendor', pin.file);
+      const stat = await lstat(archive);
+      if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('local contracts archive must be a regular file');
+      const integrity = `sha512-${createHash('sha512').update(await readFile(archive)).digest('base64')}`;
+      if (integrity !== pin.integrity || entry?.integrity !== integrity ||
+          entry?.version !== pin.version || entry?.resolved !== expected || entry?.link ||
+          lock.packages?.['']?.dependencies?.[name] !== expected) {
+        throw new Error('local contracts archive/lock integrity mismatch');
+      }
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+    continue;
+  }
   if (
     !entry ||
     entry.version !== expected ||
