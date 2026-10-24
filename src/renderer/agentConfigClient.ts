@@ -10,9 +10,9 @@
  *
  * @module byo-providers/renderer/agentConfigClient
  */
-import type { HostCliBackendConfig } from '@byo/domain/plugin-types';
+import type { HostCliBackendConfig } from "@elftia/plugin-types";
 
-import { getHost } from './host/hostBridge';
+import { getHost } from "./host/hostBridge";
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
@@ -22,11 +22,13 @@ function invoke<T>(method: string, payload?: unknown): Promise<T> {
 export const agentConfigClient = {
   /** Read the current cli sub-settings (the 5 cli keys only). */
   getCliBackendConfig(): Promise<HostCliBackendConfig> {
-    return invoke('agentCfg.getCliBackendConfig');
+    return invoke("agentCfg.getCliBackendConfig");
   },
   /** Patch one or more cli sub-settings; status only. */
-  setCliBackendConfig(patch: HostCliBackendConfig): Promise<{ success: boolean; error?: string }> {
-    return invoke('agentCfg.setCliBackendConfig', patch);
+  setCliBackendConfig(
+    patch: HostCliBackendConfig,
+  ): Promise<{ success: boolean; error?: string }> {
+    return invoke("agentCfg.setCliBackendConfig", patch);
   },
 };
 

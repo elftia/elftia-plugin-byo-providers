@@ -7,58 +7,58 @@
  * all 25 files): `providerSettings`, `apiMode`, `presetName` (from
  * `providers/llm.json`), `common.{cancel,close,delete,dismiss}` (from
  * `common.json`), and `mediaSettings.common.learnMore` (from
- * `providers/media.json`). We harvest the FULL `providers/llm.json` plus the
- * narrow `common`/`mediaSettings` slices, byte-identical, for en/zh/ja.
+ * `providers/media.json`). We harvest the `providers/llm.json` subtree except
+ * obsolete router copy, plus narrow `common`/`mediaSettings` slices, for en/zh/ja.
  *
  * Re-run with a standalone locale export:
  *   node scripts/harvest-i18n.mjs --locales-dir <locale-export-directory>
  *
  * @module byo-providers/scripts/harvest-i18n
  */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { resolveLocaleSourceDir } from './lib/locale-source.mjs';
+import { resolveLocaleSourceDir } from "./lib/locale-source.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localesDir = resolveLocaleSourceDir(process.argv.slice(2), {
-  command: 'node scripts/harvest-i18n.mjs',
+  command: "node scripts/harvest-i18n.mjs",
 });
 
-const LANGS = ['en', 'zh', 'ja'];
+const LANGS = ["en", "zh", "ja"];
 const PRESET_LOAD_COPY = {
   en: {
-    loadFailed: 'Unable to load provider presets.',
-    retry: 'Retry',
+    loadFailed: "Unable to load provider presets.",
+    retry: "Retry",
   },
   zh: {
-    loadFailed: '无法加载供应商预设。',
-    retry: '重试',
+    loadFailed: "无法加载供应商预设。",
+    retry: "重试",
   },
   ja: {
-    loadFailed: 'プロバイダープリセットを読み込めませんでした。',
-    retry: '再試行',
+    loadFailed: "プロバイダープリセットを読み込めませんでした。",
+    retry: "再試行",
   },
 };
 
 /** Read and parse one caller-owned locale-export JSON file (UTF-8). */
 function readJson(lang, rel) {
   const p = resolve(localesDir, lang, rel);
-  return JSON.parse(readFileSync(p, 'utf8'));
+  return JSON.parse(readFileSync(p, "utf8"));
 }
 
 /** Keep only the listed dotted paths from an object (deep prune). */
 function pick(obj, paths) {
   const out = {};
   for (const path of paths) {
-    const parts = path.split('.');
+    const parts = path.split(".");
     let src = obj;
     let dst = out;
     let ok = true;
     for (let i = 0; i < parts.length; i += 1) {
       const k = parts[i];
-      if (src == null || typeof src !== 'object' || !(k in src)) {
+      if (src == null || typeof src !== "object" || !(k in src)) {
         ok = false;
         break;
       }
@@ -78,14 +78,20 @@ function pick(obj, paths) {
   return out;
 }
 
-const COMMON_KEYS = ['common.cancel', 'common.close', 'common.delete', 'common.dismiss'];
-const MEDIA_KEYS = ['mediaSettings.common.learnMore'];
+const COMMON_KEYS = [
+  "common.cancel",
+  "common.close",
+  "common.delete",
+  "common.dismiss",
+];
+const MEDIA_KEYS = ["mediaSettings.common.learnMore"];
 
 const resources = {};
 for (const lang of LANGS) {
-  const llm = readJson(lang, 'providers/llm.json'); // providerSettings/apiMode/presetName
-  const common = pick(readJson(lang, 'common.json'), COMMON_KEYS);
-  const media = pick(readJson(lang, 'providers/media.json'), MEDIA_KEYS);
+  const llm = readJson(lang, "providers/llm.json"); // providerSettings/apiMode/presetName
+  delete llm.providerSettings.router;
+  const common = pick(readJson(lang, "common.json"), COMMON_KEYS);
+  const media = pick(readJson(lang, "providers/media.json"), MEDIA_KEYS);
   llm.providerSettings.presets = {
     ...llm.providerSettings.presets,
     ...PRESET_LOAD_COPY[lang],
@@ -107,7 +113,7 @@ const banner = `/**
 export const llmI18nSeed: Record<string, Record<string, unknown>> = `;
 
 const out = `${banner}${JSON.stringify(resources, null, 2)};\n`;
-const dest = resolve(here, '..', 'src/renderer/host/vendored/llmI18nSeed.ts');
-writeFileSync(dest, out, 'utf8');
+const dest = resolve(here, "..", "src/renderer/host/vendored/llmI18nSeed.ts");
+writeFileSync(dest, out, "utf8");
 // eslint-disable-next-line no-console
-console.log(`[harvest-i18n] wrote ${dest} (${LANGS.join('/')})`);
+console.log(`[harvest-i18n] wrote ${dest} (${LANGS.join("/")})`);

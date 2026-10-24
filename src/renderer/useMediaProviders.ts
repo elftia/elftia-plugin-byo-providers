@@ -15,10 +15,13 @@
  *
  * @module byo-providers/renderer/useMediaProviders
  */
-import type { HostMaskedMediaProvider, HostMediaType } from '@byo/domain/plugin-types';
+import type {
+  HostMaskedMediaProvider,
+  HostMediaType,
+} from "@elftia/plugin-types";
 
-import { getHost } from './host/hostBridge';
-import { mediaConfigClient } from './mediaConfigClient';
+import { getHost } from "./host/hostBridge";
+import { mediaConfigClient } from "./mediaConfigClient";
 
 export interface MediaProvidersBag {
   /**
@@ -36,7 +39,9 @@ export interface MediaProvidersBag {
 
 export function useMediaProviders(mediaType: HostMediaType): MediaProvidersBag {
   const React = getHost().react.instance;
-  const [providers, setProviders] = React.useState<HostMaskedMediaProvider[]>([]);
+  const [providers, setProviders] = React.useState<HostMaskedMediaProvider[]>(
+    [],
+  );
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -44,7 +49,9 @@ export function useMediaProviders(mediaType: HostMediaType): MediaProvidersBag {
     setLoading(true);
     setError(null);
     try {
-      const list = (await mediaConfigClient.listByType(mediaType)) as HostMaskedMediaProvider[];
+      const list = (await mediaConfigClient.listByType(
+        mediaType,
+      )) as HostMaskedMediaProvider[];
       setProviders(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

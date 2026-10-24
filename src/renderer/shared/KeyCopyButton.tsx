@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-import { getHost } from '../host/hostBridge';
-import { Button } from '../host/ui';
-import { useTranslation } from '../host/vendored/useTranslation';
+import { getHost } from "../host/hostBridge";
+import { Button } from "../host/ui";
+import { useTranslation } from "../host/vendored/useTranslation";
 
-import type { RevealResult } from './keyViewingRequest';
+import type { RevealResult } from "./keyViewingRequest";
 
-export async function copySavedKey(read: () => Promise<RevealResult>): Promise<boolean> {
+export async function copySavedKey(
+  read: () => Promise<RevealResult>,
+): Promise<boolean> {
   const result = await read();
-  if (!result.success || typeof result.value !== 'string') return false;
-  const host = getHost() as unknown as { clipboard?: { writeText(text: string): Promise<void> } };
-  if (!host.clipboard) throw new Error('Clipboard unavailable');
+  if (!result.success || typeof result.value !== "string") return false;
+  const host = getHost();
+  if (!host.clipboard) throw new Error("Clipboard unavailable");
   await host.clipboard.writeText(result.value);
   return true;
 }
@@ -31,15 +33,15 @@ export function KeyCopyButton({ read }: { read: () => Promise<RevealResult> }) {
           setPending(true);
           setStatus(null);
           try {
-            if (await copySavedKey(read)) setStatus('copied');
+            if (await copySavedKey(read)) setStatus("copied");
           } catch {
-            setStatus('copyFailed');
+            setStatus("copyFailed");
           } finally {
             setPending(false);
           }
         }}
       >
-        {t('keyViewing.copy')}
+        {t("keyViewing.copy")}
       </Button>
       {status ? (
         <span role="status" className="text-xs text-muted-foreground">

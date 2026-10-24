@@ -13,7 +13,7 @@
  *
  * @module byo-providers/renderer/host/hostBridge
  */
-import type { AgentUiHostApi } from '@byo/domain/plugin-types';
+import type { AgentUiHostApi } from "@elftia/plugin-types";
 
 let injectedHost: AgentUiHostApi | null = null;
 
@@ -34,8 +34,8 @@ export function getHostOrNull(): AgentUiHostApi | null {
 export function getHost(): AgentUiHostApi {
   if (!injectedHost) {
     throw new Error(
-      '[byo-providers] host accessed before activate(host) ran — the plugin ' +
-        'host is only available after the loader installs it.',
+      "[byo-providers] host accessed before activate(host) ran — the plugin " +
+        "host is only available after the loader installs it.",
     );
   }
   return injectedHost;

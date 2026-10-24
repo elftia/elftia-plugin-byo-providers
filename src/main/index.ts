@@ -67,10 +67,16 @@
  */
 import type {
   AgentBackendHostApi,
+  HostClaudeSubscriptionLevel,
+  HostCliBackendConfig,
+  HostCliLaunchTerminalInput,
   HostMediaProviderSecretField,
   HostMediaType,
+  HostModelRolesPatch,
+  HostOAuthExchangeRequest,
+  HostSearchProviderConfigInput,
   HostSubscriptionModelInfo,
-} from '@byo/domain/plugin-types';
+} from "@elftia/plugin-types";
 
 /** Local alias for the media discriminator union. */
 type MediaType = HostMediaType;
@@ -86,7 +92,7 @@ function asRecord(payload: unknown): Record<string, unknown> {
  * honest `false`, never a guessed `true`).
  */
 function hostSupportsManualTokenVerify(version: string | undefined): boolean {
-  if (typeof version !== 'string') return false;
+  if (typeof version !== "string") return false;
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
   if (!match) return false;
   const major = Number(match[1]);
@@ -100,28 +106,39 @@ function hostSupportsManualTokenVerify(version: string | undefined): boolean {
  */
 export function activate(host: AgentBackendHostApi): void {
   const missing = () => {
-    throw new Error('[byo-providers] host.services.llmConfig is unavailable');
+    throw new Error("[byo-providers] host.services.llmConfig is unavailable");
+  };
+  const modelRolesMissing = () => {
+    throw new Error(
+      "[byo-providers] host.services.llmConfig model roles are unavailable",
+    );
   };
   const mediaMissing = () => {
-    throw new Error('[byo-providers] host.services.mediaConfig is unavailable');
+    throw new Error("[byo-providers] host.services.mediaConfig is unavailable");
   };
   const searchMissing = () => {
-    throw new Error('[byo-providers] host.services.searchConfig is unavailable');
+    throw new Error(
+      "[byo-providers] host.services.searchConfig is unavailable",
+    );
   };
   const subAuthMissing = () => {
-    throw new Error('[byo-providers] host.services.subscriptionAuth is unavailable');
+    throw new Error(
+      "[byo-providers] host.services.subscriptionAuth is unavailable",
+    );
   };
   const agentCfgMissing = () => {
-    throw new Error('[byo-providers] host.services.agentConfig is unavailable');
+    throw new Error("[byo-providers] host.services.agentConfig is unavailable");
   };
   const cliRtMissing = () => {
-    throw new Error('[byo-providers] host.services.cliRuntime is unavailable');
+    throw new Error("[byo-providers] host.services.cliRuntime is unavailable");
   };
   const secretsPackMissing = () => {
-    throw new Error('[byo-providers] host.services.secretsPack is unavailable');
+    throw new Error("[byo-providers] host.services.secretsPack is unavailable");
   };
   const storageMissing = () => {
-    throw new Error('[byo-providers] host.services.objectStorageConfig is unavailable');
+    throw new Error(
+      "[byo-providers] host.services.objectStorageConfig is unavailable",
+    );
   };
   const llm = () => host.services.llmConfig ?? missing();
   const media = () => host.services.mediaConfig ?? mediaMissing();
@@ -132,11 +149,14 @@ export function activate(host: AgentBackendHostApi): void {
   // port throws (the renderer client catches and the URL text fallback saves
   // the flow on older hosts).
   const externalLinksMissing = () => {
-    throw new Error('[byo-providers] host.services.externalLinks is unavailable');
+    throw new Error(
+      "[byo-providers] host.services.externalLinks is unavailable",
+    );
   };
   const externalLinks = () =>
-    host.services.externalLinks?.openExternal?.bind(host.services.externalLinks) ??
-    externalLinksMissing;
+    host.services.externalLinks?.openExternal?.bind(
+      host.services.externalLinks,
+    ) ?? externalLinksMissing;
   // P2e (`byo-p2-subscription`) — the subscription/OAuth/CLI-account, cli
   // sub-settings, and CLI-runtime ports (host-API 1.26).
   const subAuth = () => host.services.subscriptionAuth ?? subAuthMissing();
@@ -154,79 +174,102 @@ export function activate(host: AgentBackendHostApi): void {
    * checkbox: on an older host the option is silently ignored, so the checkbox
    * must not appear (a checked-but-ignored verify would mislead).
    */
-  const manualTokenVerifySupported = hostSupportsManualTokenVerify(host.version);
+  const manualTokenVerifySupported = hostSupportsManualTokenVerify(
+    host.version,
+  );
   /** Map the wire `verify` flag onto the port's options (absent = legacy). */
   const toVerifyOptions = (verify: unknown): { verify: true } | undefined =>
     verify === true ? { verify: true } : undefined;
 
   host.registerIpcMethods({
     // ── Providers ────────────────────────────────────────────────────────────
-    'llm.getProviders': async () => (await llm()?.getProviders()) ?? [],
-    'llm.getProvider': async (p) => (await llm()?.getProvider(String(asRecord(p).id))) ?? null,
-    'llm.addProvider': async (p) => (await llm()?.addProvider(asRecord(p))) ?? missing(),
-    'llm.updateProvider': async (p) => (await llm()?.updateProvider(asRecord(p))) ?? missing(),
-    'llm.deleteProvider': async (p) =>
+    "llm.getProviders": async () => (await llm()?.getProviders()) ?? [],
+    "llm.getProvider": async (p) =>
+      (await llm()?.getProvider(String(asRecord(p).id))) ?? null,
+    "llm.addProvider": async (p) =>
+      (await llm()?.addProvider(asRecord(p))) ?? missing(),
+    "llm.updateProvider": async (p) =>
+      (await llm()?.updateProvider(asRecord(p))) ?? missing(),
+    "llm.deleteProvider": async (p) =>
       (await llm()?.deleteProvider(String(asRecord(p).id))) ?? missing(),
-    'llm.toggleProvider': async (p) => {
+    "llm.toggleProvider": async (p) => {
       const { id, enabled } = asRecord(p);
-      return (await llm()?.toggleProvider(String(id), Boolean(enabled))) ?? missing();
+      return (
+        (await llm()?.toggleProvider(String(id), Boolean(enabled))) ?? missing()
+      );
     },
-    'llm.reorderProviders': async (p) => {
+    "llm.reorderProviders": async (p) => {
       const { orderedIds } = asRecord(p);
-      return (await llm()?.reorderProviders((orderedIds as string[]) ?? [])) ?? missing();
+      return (
+        (await llm()?.reorderProviders((orderedIds as string[]) ?? [])) ??
+        missing()
+      );
     },
-    'llm.resetProvider': async (p) =>
+    "llm.resetProvider": async (p) =>
       (await llm()?.resetProvider(String(asRecord(p).id))) ?? missing(),
-    'llm.discoverModels': async (p) => {
+    "llm.discoverModels": async (p) => {
       const { id, options } = asRecord(p);
       return (
-        (await llm()?.discoverModels(String(id), options as { forceRefresh?: boolean })) ??
-        missing()
+        (await llm()?.discoverModels(
+          String(id),
+          options as { forceRefresh?: boolean },
+        )) ?? missing()
       );
     },
     // P2b-2 (`byo-p2-llm-2`) — the model connectivity probe over the EXISTING
     // `host.services.llmConfig` port (host-API 1.27, `host:llm-config` — NO new
     // token). NO-SECRET-IN-OR-OUT: the host sends a trivial prompt with the
     // host-resolved key; the diagnostic return carries no key/token.
-    'llm.testModel': async (p) => {
+    "llm.testModel": async (p) => {
       const { providerId, modelId } = asRecord(p);
-      return (await llm()?.testModel(String(providerId), String(modelId))) ?? missing();
+      return (
+        (await llm()?.testModel(String(providerId), String(modelId))) ??
+        missing()
+      );
     },
     // v1.50 (provider-key-reveal) — the ONE deliberate outward secret exception,
     // user-initiated display only (the settings eye icon). The value rides a
     // dedicated `{success, value?, error?}` result, never a provider row.
-    'llm.revealProviderKey': async (p) =>
+    "llm.revealProviderKey": async (p) =>
       (await llm()?.revealProviderKey?.(
         String(asRecord(p).id),
-        asRecord(p).password as string | undefined
+        asRecord(p).password as string | undefined,
       )) ?? missing(),
-    'llm.getProviderModelMappings': async (p) => {
+    "llm.getProviderModelMappings": async (p) => {
       const providerId = String(asRecord(p).providerId);
       const handle = llm();
       return handle.getProviderModelMappings
         ? handle.getProviderModelMappings(providerId)
-        : { providerId, supported: false, reason: 'unsupported' };
+        : { providerId, supported: false, reason: "unsupported" };
     },
 
     // ── Presets ──────────────────────────────────────────────────────────────
-    'llm.getProviderPresets': async () => (await llm()?.getProviderPresets()) ?? [],
-    'llm.addFromPreset': async (p) => {
+    "llm.getProviderPresets": async () =>
+      (await llm()?.getProviderPresets()) ?? [],
+    "llm.addFromPreset": async (p) => {
       const { presetId, apiKey } = asRecord(p);
       return (
-        (await llm()?.addFromPreset(String(presetId), apiKey as string | undefined)) ?? missing()
+        (await llm()?.addFromPreset(
+          String(presetId),
+          apiKey as string | undefined,
+        )) ?? missing()
       );
     },
 
     // ── Key pool ─────────────────────────────────────────────────────────────
-    'llm.getApiKeys': async (p) => (await llm()?.getApiKeys(String(asRecord(p).providerId))) ?? [],
-    'llm.addApiKey': async (p) => (await llm()?.addApiKey(asRecord(p))) ?? missing(),
-    'llm.updateApiKey': async (p) => (await llm()?.updateApiKey(asRecord(p))) ?? missing(),
-    'llm.deleteApiKey': async (p) =>
+    "llm.getApiKeys": async (p) =>
+      (await llm()?.getApiKeys(String(asRecord(p).providerId))) ?? [],
+    "llm.addApiKey": async (p) =>
+      (await llm()?.addApiKey(asRecord(p))) ?? missing(),
+    "llm.updateApiKey": async (p) =>
+      (await llm()?.updateApiKey(asRecord(p))) ?? missing(),
+    "llm.deleteApiKey": async (p) =>
       (await llm()?.deleteApiKey(String(asRecord(p).id))) ?? missing(),
-    'llm.toggleApiKey': async (p) => (await llm()?.toggleApiKey(asRecord(p))) ?? missing(),
+    "llm.toggleApiKey": async (p) =>
+      (await llm()?.toggleApiKey(asRecord(p))) ?? missing(),
     // v1.64 — provider pool-key plan quota (feature-detected; unsupported
     // providers degrade to supported:false — never fabricated numbers).
-    'llm.getKeyQuota': async (p) => {
+    "llm.getKeyQuota": async (p) => {
       const { providerId, keyId, force } = asRecord(p);
       const handle = llm();
       if (!handle?.getProviderKeyQuota) {
@@ -236,73 +279,104 @@ export function activate(host: AgentBackendHostApi): void {
           supported: false,
           observedAt: new Date().toISOString(),
           windows: [],
-          lastErrorCode: 'quota-unavailable',
+          lastErrorCode: "quota-unavailable",
         };
       }
-      return handle.getProviderKeyQuota(String(providerId), String(keyId), Boolean(force));
+      return handle.getProviderKeyQuota(
+        String(providerId),
+        String(keyId),
+        Boolean(force),
+      );
     },
-    'llm.getKeyHealth': async (p) =>
+    "llm.getKeyHealth": async (p) =>
       (await llm()?.getKeyHealth(String(asRecord(p).providerId))) ?? {},
 
-    // ── Default model (router config) ─────────────────────────────────────────
-    'llm.getRouterConfig': async () => (await llm()?.getRouterConfig()) ?? null,
-    'llm.setRouterConfig': async (p) => (await llm()?.setRouterConfig(asRecord(p))) ?? missing(),
+    // Role snapshots/previews are secret-free; revisions and thinking pass
+    // through unchanged. An unavailable capability never falls back to v1 routing.
+    "llm.getModelRoles": async () =>
+      (await llm().getModelRoles?.()) ?? modelRolesMissing(),
+    "llm.setModelRoles": async (p) =>
+      (await llm().setModelRoles?.(
+        asRecord(p) as unknown as HostModelRolesPatch,
+      )) ?? modelRolesMissing(),
+    "llm.previewModelRole": async (p) =>
+      (await llm().previewModelRole?.({
+        roleId: String(asRecord(p).roleId),
+      })) ?? modelRolesMissing(),
 
     // ══ MEDIA (P2c) — flat mediaType-discriminated relay over host.services.mediaConfig ══
     // Each verb is a guarded 3-line delegation; the masked port strips apiKey +
     // byteplusAk/Sk on every return. Media keys cross INWARD ONLY via
     // `media.setProviderKey` (the update patch has NO apiKey). NO preset verbs.
-    'media.listProviders': async (p) =>
+    "media.listProviders": async (p) =>
       (await media()?.listProviders(asMediaType(asRecord(p).mediaType))) ?? [],
-    'media.getProvider': async (p) => {
+    "media.getProvider": async (p) => {
       const { mediaType, id } = asRecord(p);
-      return (await media()?.getProvider(asMediaType(mediaType), String(id))) ?? null;
+      return (
+        (await media()?.getProvider(asMediaType(mediaType), String(id))) ?? null
+      );
     },
-    'media.updateProvider': async (p) => {
+    "media.updateProvider": async (p) => {
       const { mediaType, id, patch } = asRecord(p);
       return (
-        (await media()?.updateProvider(asMediaType(mediaType), String(id), asRecord(patch))) ??
-        mediaMissing()
+        (await media()?.updateProvider(
+          asMediaType(mediaType),
+          String(id),
+          asRecord(patch),
+        )) ?? mediaMissing()
       );
     },
-    'media.toggleProvider': async (p) => {
+    "media.toggleProvider": async (p) => {
       const { mediaType, id, enabled } = asRecord(p);
       return (
-        (await media()?.toggleProvider(asMediaType(mediaType), String(id), Boolean(enabled))) ??
-        mediaMissing()
+        (await media()?.toggleProvider(
+          asMediaType(mediaType),
+          String(id),
+          Boolean(enabled),
+        )) ?? mediaMissing()
       );
     },
-    'media.createCustomProvider': async (p) => {
+    "media.createCustomProvider": async (p) => {
       const { mediaType, input } = asRecord(p);
       return (
         (await media()?.createCustomProvider(
           asMediaType(mediaType),
-          asRecord(input) as { baseProviderId: string; name: string }
+          asRecord(input) as { baseProviderId: string; name: string },
         )) ?? mediaMissing()
       );
     },
-    'media.deleteProvider': async (p) => {
+    "media.deleteProvider": async (p) => {
       const { mediaType, id } = asRecord(p);
-      return (await media()?.deleteProvider(asMediaType(mediaType), String(id))) ?? mediaMissing();
-    },
-    'media.getGlobalSettings': async (p) =>
-      (await media()?.getGlobalSettings(asMediaType(asRecord(p).mediaType))) ?? {},
-    'media.setGlobalSettings': async (p) => {
-      const { mediaType, settings } = asRecord(p);
       return (
-        (await media()?.setGlobalSettings(asMediaType(mediaType), asRecord(settings))) ??
+        (await media()?.deleteProvider(asMediaType(mediaType), String(id))) ??
         mediaMissing()
       );
     },
-    'media.refreshUpstreamModels': async (p) => {
+    "media.getGlobalSettings": async (p) =>
+      (await media()?.getGlobalSettings(asMediaType(asRecord(p).mediaType))) ??
+      {},
+    "media.setGlobalSettings": async (p) => {
+      const { mediaType, settings } = asRecord(p);
+      return (
+        (await media()?.setGlobalSettings(
+          asMediaType(mediaType),
+          asRecord(settings),
+        )) ?? mediaMissing()
+      );
+    },
+    "media.refreshUpstreamModels": async (p) => {
       const { mediaType, id } = asRecord(p);
       return (
-        (await media()?.refreshUpstreamModels(asMediaType(mediaType), String(id))) ?? mediaMissing()
+        (await media()?.refreshUpstreamModels(
+          asMediaType(mediaType),
+          String(id),
+        )) ?? mediaMissing()
       );
     },
     // IMAGE-ONLY: the only media type with a library reset (bare `id`, no mediaType).
-    'media.resetProviderToDefaults': async (p) =>
-      (await media()?.resetProviderToDefaults(String(asRecord(p).id))) ?? mediaMissing(),
+    "media.resetProviderToDefaults": async (p) =>
+      (await media()?.resetProviderToDefaults(String(asRecord(p).id))) ??
+      mediaMissing(),
     // The ONLY media key-write avenue (host-API 1.25). Delegates to the masked
     // port's `setProviderKey`, which writes the key host-side through the guarded
     // `secretsWrite` body under the per-type `media-<type>:<id>:apiKey` ref AND
@@ -312,45 +386,48 @@ export function activate(host: AgentBackendHostApi): void {
     // TTL). Empty clears. The key crosses INWARD only; never echoed back. The
     // `collectMediaSecretWrites` empty-skip guard upstream means empty never
     // reaches here on an unrelated edit.
-    'media.setProviderKey': async (p) => {
+    "media.setProviderKey": async (p) => {
       const { mediaType, id, apiKey } = asRecord(p);
       return (
-        (await media()?.setProviderKey(asMediaType(mediaType), String(id), String(apiKey ?? ''))) ??
-        mediaMissing()
+        (await media()?.setProviderKey(
+          asMediaType(mediaType),
+          String(id),
+          String(apiKey ?? ""),
+        )) ?? mediaMissing()
       );
     },
-    'media.setProviderSecret': async (p) => {
+    "media.setProviderSecret": async (p) => {
       const { mediaType, id, field, value } = asRecord(p);
       return (
         (await media()?.setProviderSecret?.(
-          String(mediaType) as 'video',
+          String(mediaType) as "video",
           String(id),
           String(field) as HostMediaProviderSecretField,
-          String(value ?? '')
+          String(value ?? ""),
         )) ?? mediaMissing()
       );
     },
     // v1.50 (provider-key-reveal) — the ONE deliberate outward secret exception,
     // user-initiated display only (the settings eye icon). Secrets-first read
     // with a hydrated-config fallback; `{success: true, value: ''}` when unset.
-    'media.revealProviderKey': async (p) => {
+    "media.revealProviderKey": async (p) => {
       const { mediaType, id, password } = asRecord(p);
       return (
         (await media()?.revealProviderKey?.(
           asMediaType(mediaType),
           String(id),
-          password as string | undefined
+          password as string | undefined,
         )) ?? mediaMissing()
       );
     },
-    'media.revealProviderSecret': async (p) => {
+    "media.revealProviderSecret": async (p) => {
       const { mediaType, id, field, password } = asRecord(p);
       return (
         (await media()?.revealProviderSecret?.(
-          String(mediaType) as 'video',
+          String(mediaType) as "video",
           String(id),
           String(field) as HostMediaProviderSecretField,
-          password as string | undefined
+          password as string | undefined,
         )) ?? mediaMissing()
       );
     },
@@ -367,29 +444,38 @@ export function activate(host: AgentBackendHostApi): void {
     // (the Jina sync). So the plugin needs ONLY `host:search-config`, NOT
     // `host:secrets-write` (the media lesson). NO local-* config verbs, NO `search`
     // query-execution verb — those are host/execution-side, deliberately off the port.
-    'search.getProviders': async () => (await search()?.getProviders()) ?? { api: [], local: [] },
-    'search.getProviderConfig': async (p) =>
-      (await search()?.getProviderConfig(String(asRecord(p).providerId))) ?? null,
-    'search.configureProvider': async (p) =>
-      (await search()?.configureProvider(asRecord(p).config as never)) ?? searchMissing(),
-    'search.configureProviders': async (p) =>
-      (await search()?.configureProviders((asRecord(p).configs as never[]) ?? [])) ??
+    "search.getProviders": async () =>
+      (await search()?.getProviders()) ?? { api: [], local: [] },
+    "search.getProviderConfig": async (p) =>
+      (await search()?.getProviderConfig(String(asRecord(p).providerId))) ??
+      null,
+    "search.configureProvider": async (p) =>
+      (await search()?.configureProvider(
+        asRecord(p).config as HostSearchProviderConfigInput,
+      )) ?? searchMissing(),
+    "search.configureProviders": async (p) =>
+      (await search()?.configureProviders(
+        (asRecord(p).configs as HostSearchProviderConfigInput[]) ?? [],
+      )) ?? searchMissing(),
+    "search.isProviderEnabled": async (p) =>
+      (await search()?.isProviderEnabled(String(asRecord(p).providerId))) ??
+      false,
+    "search.validate": async (p) =>
+      (await search()?.validate(String(asRecord(p).providerId))) ??
       searchMissing(),
-    'search.isProviderEnabled': async (p) =>
-      (await search()?.isProviderEnabled(String(asRecord(p).providerId))) ?? false,
-    'search.validate': async (p) =>
-      (await search()?.validate(String(asRecord(p).providerId))) ?? searchMissing(),
     // The ONLY search key-write avenue. Delegates to the masked port's
     // `setProviderKey`, which writes the key host-side through the guarded secret
     // write under `search-provider:<id>:apiKey` (empty clears) AND reconfigures the
     // in-memory provider map (the Jina reader refresh). The key crosses INWARD only;
     // never echoed back. An empty key never reaches here on an unrelated edit (the
     // renderer's empty-skip guard).
-    'search.setProviderKey': async (p) => {
+    "search.setProviderKey": async (p) => {
       const { providerId, apiKey } = asRecord(p);
       return (
-        (await search()?.setProviderKey(String(providerId), String(apiKey ?? ''))) ??
-        searchMissing()
+        (await search()?.setProviderKey(
+          String(providerId),
+          String(apiKey ?? ""),
+        )) ?? searchMissing()
       );
     },
 
@@ -402,91 +488,124 @@ export function activate(host: AgentBackendHostApi): void {
     // the manual-token verbs return status only — no token/refresh/id/setup token
     // or api key ever flows OUTWARD. Manual-token + OpenCodeGo-key inputs cross
     // INWARD only (consumed host-side, never echoed). Guarded 3-line delegations.
-    'subAuth.getClaudeAuthParams': async () =>
+    "subAuth.getClaudeAuthParams": async () =>
       (await subAuth()?.getClaudeAuthParams()) ?? subAuthMissing(),
-    'subAuth.getClaudeSetupAuthParams': async () =>
+    "subAuth.getClaudeSetupAuthParams": async () =>
       (await subAuth()?.getClaudeSetupAuthParams()) ?? subAuthMissing(),
-    'subAuth.getCodexAuthParams': async () =>
+    "subAuth.getCodexAuthParams": async () =>
       (await subAuth()?.getCodexAuthParams()) ?? subAuthMissing(),
-    'subAuth.getGeminiAuthParams': async () =>
+    "subAuth.getGeminiAuthParams": async () =>
       (await subAuth()?.getGeminiAuthParams()) ?? subAuthMissing(),
-    'subAuth.exchangeClaudeToken': async (p) =>
-      (await subAuth()?.exchangeClaudeToken(asRecord(p) as never)) ?? subAuthMissing(),
-    'subAuth.exchangeClaudeSetupToken': async (p) =>
-      (await subAuth()?.exchangeClaudeSetupToken(asRecord(p) as never)) ?? subAuthMissing(),
-    'subAuth.exchangeCodexToken': async (p) =>
-      (await subAuth()?.exchangeCodexToken(asRecord(p) as never)) ?? subAuthMissing(),
-    'subAuth.exchangeGeminiToken': async (p) =>
-      (await subAuth()?.exchangeGeminiToken(asRecord(p) as never)) ?? subAuthMissing(),
+    "subAuth.exchangeClaudeToken": async (p) =>
+      (await subAuth()?.exchangeClaudeToken(
+        asRecord(p) as unknown as HostOAuthExchangeRequest,
+      )) ?? subAuthMissing(),
+    "subAuth.exchangeClaudeSetupToken": async (p) =>
+      (await subAuth()?.exchangeClaudeSetupToken(
+        asRecord(p) as unknown as HostOAuthExchangeRequest,
+      )) ?? subAuthMissing(),
+    "subAuth.exchangeCodexToken": async (p) =>
+      (await subAuth()?.exchangeCodexToken(
+        asRecord(p) as unknown as HostOAuthExchangeRequest,
+      )) ?? subAuthMissing(),
+    "subAuth.exchangeGeminiToken": async (p) =>
+      (await subAuth()?.exchangeGeminiToken(
+        asRecord(p) as unknown as HostOAuthExchangeRequest,
+      )) ?? subAuthMissing(),
     // v1.63 — Kimi RFC 8628 device flow. All verbs are feature-detected; the
     // deviceCode and tokens stay HOST-side — only display views cross.
-    'subAuth.startKimiDeviceFlow': async () =>
+    "subAuth.startKimiDeviceFlow": async () =>
       (await subAuth()?.startKimiDeviceFlow?.()) ?? subAuthMissing(),
-    'subAuth.pollKimiDeviceFlow': async (p) =>
-      (await subAuth()?.pollKimiDeviceFlow?.(String(asRecord(p).sessionId))) ?? subAuthMissing(),
-    'subAuth.cancelKimiDeviceFlow': async (p) => {
+    "subAuth.pollKimiDeviceFlow": async (p) =>
+      (await subAuth()?.pollKimiDeviceFlow?.(String(asRecord(p).sessionId))) ??
+      subAuthMissing(),
+    "subAuth.cancelKimiDeviceFlow": async (p) => {
       await subAuth()?.cancelKimiDeviceFlow?.(String(asRecord(p).sessionId));
     },
-    'subAuth.refreshKimiToken': async () => (await subAuth()?.refreshKimiToken?.()) ?? false,
+    "subAuth.refreshKimiToken": async () =>
+      (await subAuth()?.refreshKimiToken?.()) ?? false,
     // v1.65 — Grok / Copilot RFC 8628 device flows. Feature-detected like the
     // Kimi verbs; the deviceCode and tokens stay HOST-side — only display
     // views cross. Copilot's optional enterpriseUrl rides the start payload.
-    'subAuth.startGrokDeviceFlow': async () =>
+    "subAuth.startGrokDeviceFlow": async () =>
       (await subAuth()?.startGrokDeviceFlow?.()) ?? subAuthMissing(),
-    'subAuth.pollGrokDeviceFlow': async (p) =>
-      (await subAuth()?.pollGrokDeviceFlow?.(String(asRecord(p).sessionId))) ?? subAuthMissing(),
-    'subAuth.cancelGrokDeviceFlow': async (p) => {
+    "subAuth.pollGrokDeviceFlow": async (p) =>
+      (await subAuth()?.pollGrokDeviceFlow?.(String(asRecord(p).sessionId))) ??
+      subAuthMissing(),
+    "subAuth.cancelGrokDeviceFlow": async (p) => {
       await subAuth()?.cancelGrokDeviceFlow?.(String(asRecord(p).sessionId));
     },
-    'subAuth.refreshGrokToken': async () => (await subAuth()?.refreshGrokToken?.()) ?? false,
-    'subAuth.startCopilotDeviceFlow': async (p) => {
+    "subAuth.refreshGrokToken": async () =>
+      (await subAuth()?.refreshGrokToken?.()) ?? false,
+    "subAuth.startCopilotDeviceFlow": async (p) => {
       const raw = asRecord(p).enterpriseUrl;
-      const enterpriseUrl = typeof raw === 'string' && raw.trim() ? raw : undefined;
-      return (await subAuth()?.startCopilotDeviceFlow?.(enterpriseUrl)) ?? subAuthMissing();
+      const enterpriseUrl =
+        typeof raw === "string" && raw.trim() ? raw : undefined;
+      return (
+        (await subAuth()?.startCopilotDeviceFlow?.(enterpriseUrl)) ??
+        subAuthMissing()
+      );
     },
-    'subAuth.pollCopilotDeviceFlow': async (p) =>
-      (await subAuth()?.pollCopilotDeviceFlow?.(String(asRecord(p).sessionId))) ?? subAuthMissing(),
-    'subAuth.cancelCopilotDeviceFlow': async (p) => {
+    "subAuth.pollCopilotDeviceFlow": async (p) =>
+      (await subAuth()?.pollCopilotDeviceFlow?.(
+        String(asRecord(p).sessionId),
+      )) ?? subAuthMissing(),
+    "subAuth.cancelCopilotDeviceFlow": async (p) => {
       await subAuth()?.cancelCopilotDeviceFlow?.(String(asRecord(p).sessionId));
     },
-    'subAuth.refreshCopilotToken': async () => (await subAuth()?.refreshCopilotToken?.()) ?? false,
+    "subAuth.refreshCopilotToken": async () =>
+      (await subAuth()?.refreshCopilotToken?.()) ?? false,
     // v1.67 — codex loopback sign-in (auto-complete; no code paste). The host
     // binds 127.0.0.1:1455, captures the browser callback, exchanges, and
     // appends the account — the renderer opens authUrl and POLLS the
     // token-free status.
-    'subAuth.startCodexLoopbackLogin': async () =>
+    "subAuth.startCodexLoopbackLogin": async () =>
       (await subAuth()?.startCodexLoopbackLogin?.()) ?? subAuthMissing(),
-    'subAuth.pollCodexLoopbackLogin': async (p) =>
-      (await subAuth()?.pollCodexLoopbackLogin?.(String(asRecord(p).sessionId))) ??
-      subAuthMissing(),
-    'subAuth.cancelCodexLoopbackLogin': async (p) => {
-      await subAuth()?.cancelCodexLoopbackLogin?.(String(asRecord(p).sessionId));
+    "subAuth.pollCodexLoopbackLogin": async (p) =>
+      (await subAuth()?.pollCodexLoopbackLogin?.(
+        String(asRecord(p).sessionId),
+      )) ?? subAuthMissing(),
+    "subAuth.cancelCodexLoopbackLogin": async (p) => {
+      await subAuth()?.cancelCodexLoopbackLogin?.(
+        String(asRecord(p).sessionId),
+      );
     },
-    'subAuth.getSanitized': async () => (await subAuth()?.getSanitized()) ?? {},
-    'subAuth.listAccounts': async (p) =>
+    "subAuth.getSanitized": async () => (await subAuth()?.getSanitized()) ?? {},
+    "subAuth.listAccounts": async (p) =>
       (await subAuth()?.listAccounts(String(asRecord(p).provider))) ?? [],
-    'subAuth.setActiveAccount': async (p) => {
+    "subAuth.setActiveAccount": async (p) => {
       const { provider, id } = asRecord(p);
-      return (await subAuth()?.setActiveAccount(String(provider), String(id))) ?? subAuthMissing();
-    },
-    'subAuth.removeAccount': async (p) => {
-      const { provider, id } = asRecord(p);
-      return (await subAuth()?.removeAccount(String(provider), String(id))) ?? subAuthMissing();
-    },
-    'subAuth.updateAccountLabel': async (p) => {
-      const { provider, id, label } = asRecord(p);
       return (
-        (await subAuth()?.updateAccountLabel(String(provider), String(id), String(label))) ??
+        (await subAuth()?.setActiveAccount(String(provider), String(id))) ??
         subAuthMissing()
       );
     },
-    'subAuth.refreshAccount': async (p) => {
+    "subAuth.removeAccount": async (p) => {
       const { provider, id } = asRecord(p);
-      return (await subAuth()?.refreshAccount(String(provider), String(id))) ?? false;
+      return (
+        (await subAuth()?.removeAccount(String(provider), String(id))) ??
+        subAuthMissing()
+      );
+    },
+    "subAuth.updateAccountLabel": async (p) => {
+      const { provider, id, label } = asRecord(p);
+      return (
+        (await subAuth()?.updateAccountLabel(
+          String(provider),
+          String(id),
+          String(label),
+        )) ?? subAuthMissing()
+      );
+    },
+    "subAuth.refreshAccount": async (p) => {
+      const { provider, id } = asRecord(p);
+      return (
+        (await subAuth()?.refreshAccount(String(provider), String(id))) ?? false
+      );
     },
     // v1.64 — secret-free account allowance snapshot (feature-detected; older
     // hosts degrade to an explicit unavailable snapshot, never numbers).
-    'subAuth.getAccountAllowance': async (p) => {
+    "subAuth.getAccountAllowance": async (p) => {
       const { provider, id, force } = asRecord(p);
       // Resolve synchronously — awaiting the host handle directly would also
       // await any thenable-shaped shim (the unit-test proxy hangs on it).
@@ -495,69 +614,84 @@ export function activate(host: AgentBackendHostApi): void {
         return {
           providerId: String(provider),
           accountId: String(id),
-          source: 'oauth-usage-api',
+          source: "oauth-usage-api",
           observedAt: new Date().toISOString(),
           windows: [],
-          lastErrorCode: 'quota-unavailable',
+          lastErrorCode: "quota-unavailable",
         };
       }
-      return handle.getAccountAllowance(String(provider), String(id), Boolean(force));
+      return handle.getAccountAllowance(
+        String(provider),
+        String(id),
+        Boolean(force),
+      );
     },
     // v1.70 — subscription model lists (defaults + user extras; feature-detected
     // like the allowance relay). Older hosts resolve the explicit
     // `{ error: 'unsupported' }` marker and the renderer hides the model
     // sections — never a fabricated empty view.
-    'subAuth.getSubscriptionModels': async () => {
+    "subAuth.getSubscriptionModels": async () => {
       // Resolve synchronously — awaiting the host handle directly would also
       // await any thenable-shaped shim (the unit-test proxy hangs on it).
       const handle = subAuth();
       if (!handle?.getSubscriptionModels) {
-        return { error: 'unsupported' };
+        return { error: "unsupported" };
       }
       return handle.getSubscriptionModels();
     },
-    'subAuth.setSubscriptionExtraModels': async (p) => {
+    "subAuth.setSubscriptionExtraModels": async (p) => {
       const { providerId, models } = asRecord(p);
       // Resolve synchronously — awaiting the host handle directly would also
       // await any thenable-shaped shim (the unit-test proxy hangs on it).
       const handle = subAuth();
       if (!handle?.setSubscriptionExtraModels) {
-        return { error: 'unsupported' };
+        return { error: "unsupported" };
       }
       return handle.setSubscriptionExtraModels(
         String(providerId),
-        (models as HostSubscriptionModelInfo[]) ?? []
+        (models as HostSubscriptionModelInfo[]) ?? [],
       );
     },
-    'subAuth.setSubscriptionModelEnabled': async (p) => {
+    "subAuth.setSubscriptionModelEnabled": async (p) => {
       const { providerId, modelId, enabled } = asRecord(p);
       const handle = subAuth();
-      if (!handle?.setSubscriptionModelEnabled) return { error: 'unsupported' };
-      if (typeof enabled !== 'boolean') throw new TypeError('enabled must be a boolean');
-      return handle.setSubscriptionModelEnabled(String(providerId), String(modelId), enabled);
+      if (!handle?.setSubscriptionModelEnabled) return { error: "unsupported" };
+      if (typeof enabled !== "boolean")
+        throw new TypeError("enabled must be a boolean");
+      return handle.setSubscriptionModelEnabled(
+        String(providerId),
+        String(modelId),
+        enabled,
+      );
     },
-    'subAuth.clearConfig': async (p) => {
+    "subAuth.clearConfig": async (p) => {
       await subAuth()?.clearConfig(String(asRecord(p).platform));
       return { success: true };
     },
-    'subAuth.listSubscriptions': async () => (await subAuth()?.listSubscriptions()) ?? [],
-    'subAuth.subscriptionStatus': async (p) =>
-      (await subAuth()?.subscriptionStatus(String(asRecord(p).providerId))) ?? {},
-    'subAuth.setOpenCodeGoConfig': async (p) =>
-      (await subAuth()?.setOpenCodeGoConfig(asRecord(p).request as Record<string, unknown>)) ??
+    "subAuth.listSubscriptions": async () =>
+      (await subAuth()?.listSubscriptions()) ?? [],
+    "subAuth.subscriptionStatus": async (p) =>
+      (await subAuth()?.subscriptionStatus(String(asRecord(p).providerId))) ??
+      {},
+    "subAuth.setOpenCodeGoConfig": async (p) =>
+      (await subAuth()?.setOpenCodeGoConfig(
+        asRecord(p).request as Record<string, unknown>,
+      )) ?? subAuthMissing(),
+    "subAuth.addOpenCodeGoAccount": async (p) =>
+      (await subAuth()?.addOpenCodeGoAccount(
+        asRecord(p).request as Record<string, unknown>,
+      )) ?? subAuthMissing(),
+    "subAuth.clearOpenCodeGo": async () =>
+      (await subAuth()?.clearOpenCodeGo()) ?? subAuthMissing(),
+    "subAuth.refreshCredential": async (p) =>
+      (await subAuth()?.refreshCredential(String(asRecord(p).providerId))) ??
       subAuthMissing(),
-    'subAuth.addOpenCodeGoAccount': async (p) =>
-      (await subAuth()?.addOpenCodeGoAccount(asRecord(p).request as Record<string, unknown>)) ??
-      subAuthMissing(),
-    'subAuth.clearOpenCodeGo': async () => (await subAuth()?.clearOpenCodeGo()) ?? subAuthMissing(),
-    'subAuth.refreshCredential': async (p) =>
-      (await subAuth()?.refreshCredential(String(asRecord(p).providerId))) ?? subAuthMissing(),
     // Manual-token paste (INWARD-only; status-only return, no token echoed
     // back). v1.72 (`subscription-token-probe`): `verify: true` runs the
     // zero-cost host probe FIRST — a refusal carries the secret-free
     // `verifyFailure` reason and persists NOTHING. On a pre-v1.72 host the
     // extra options argument is ignored (legacy persist-always semantics).
-    'subAuth.manualTokenVerifySupported': async () => {
+    "subAuth.manualTokenVerifySupported": async () => {
       // Liveness through the SAME missing-service contract as every relay
       // (throws `host.services.subscriptionAuth is unavailable` on older hosts
       // whose main half still resolves this method... it won't — the renderer
@@ -565,90 +699,104 @@ export function activate(host: AgentBackendHostApi): void {
       subAuth();
       return { supported: manualTokenVerifySupported };
     },
-    'subAuth.setClaudeManualToken': async (p) => {
+    "subAuth.setClaudeManualToken": async (p) => {
       const { accessToken, subscriptionLevel, label, verify } = asRecord(p);
       return (
         (await subAuth()?.setClaudeManualToken(
-          String(accessToken ?? ''),
-          subscriptionLevel as string | undefined,
+          String(accessToken ?? ""),
+          subscriptionLevel as HostClaudeSubscriptionLevel | undefined,
           label as string | undefined,
-          toVerifyOptions(verify)
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
-    'subAuth.setCodexManualToken': async (p) => {
+    "subAuth.setCodexManualToken": async (p) => {
       const { accessToken, label, verify } = asRecord(p);
       return (
         (await subAuth()?.setCodexManualToken(
-          String(accessToken ?? ''),
+          String(accessToken ?? ""),
           label as string | undefined,
-          toVerifyOptions(verify)
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
-    'subAuth.setGeminiManualToken': async (p) => {
+    "subAuth.setGeminiManualToken": async (p) => {
       const { accessToken, refreshToken, verify } = asRecord(p);
       return (
         (await subAuth()?.setGeminiManualToken(
-          String(accessToken ?? ''),
+          String(accessToken ?? ""),
           refreshToken as string | undefined,
-          toVerifyOptions(verify)
+          toVerifyOptions(verify),
         )) ?? subAuthMissing()
       );
     },
-    'subAuth.updateClaudeSubscriptionLevel': async (p) =>
-      (await subAuth()?.updateClaudeSubscriptionLevel(String(asRecord(p).level))) ??
-      subAuthMissing(),
+    "subAuth.updateClaudeSubscriptionLevel": async (p) =>
+      (await subAuth()?.updateClaudeSubscriptionLevel(
+        String(asRecord(p).level) as HostClaudeSubscriptionLevel,
+      )) ?? subAuthMissing(),
 
     // ══ AGENT-CONFIG (P2e) — cli sub-settings get/set over host.services.agentConfig ══
     // ONLY the 5 cli keys; the general `agentBackend` engine field is NOT exposed
     // (the port + adapter reject it). Guarded 3-line delegations.
-    'agentCfg.getCliBackendConfig': async () => (await agentCfg()?.getCliBackendConfig()) ?? {},
-    'agentCfg.setCliBackendConfig': async (p) =>
-      (await agentCfg()?.setCliBackendConfig(asRecord(p) as never)) ?? agentCfgMissing(),
+    "agentCfg.getCliBackendConfig": async () =>
+      (await agentCfg()?.getCliBackendConfig()) ?? {},
+    "agentCfg.setCliBackendConfig": async (p) =>
+      (await agentCfg()?.setCliBackendConfig(
+        asRecord(p) as HostCliBackendConfig,
+      )) ?? agentCfgMissing(),
 
     // ══ CLI-RUNTIME (P2e) — availability/install/launch over host.services.cliRuntime ══
     // NO-CREDENTIAL-ON-RETURN: `getAuthStatus` returns descriptors only; install/
     // launch are host-run actions returning `{ ok, error? }`. Guarded delegations.
-    'cliRt.getAuthStatus': async (p) =>
+    "cliRt.getAuthStatus": async (p) =>
       (await cliRt()?.getAuthStatus(asRecord(p) as { force?: boolean })) ?? [],
-    'cliRt.setEnabled': async (p) => {
+    "cliRt.setEnabled": async (p) => {
       const { backendId, enabled } = asRecord(p);
-      return (await cliRt()?.setEnabled(String(backendId), Boolean(enabled))) ?? cliRtMissing();
+      return (
+        (await cliRt()?.setEnabled(String(backendId), Boolean(enabled))) ??
+        cliRtMissing()
+      );
     },
-    'cliRt.install': async (p) =>
+    "cliRt.install": async (p) =>
       (await cliRt()?.install(String(asRecord(p).backendId))) ?? cliRtMissing(),
-    'cliRt.launchTerminal': async (p) =>
-      (await cliRt()?.launchTerminal(asRecord(p) as never)) ?? cliRtMissing(),
-    'cliRt.listBackends': async () => (await cliRt()?.listBackends()) ?? [],
-    // Feature-detect: the version probe (omnicross parity) exists only on hosts
-    // with host-API `cliRuntime.getVersions`; older hosts answer [] and the
-    // renderer degrades to its pre-probe rendering.
-    'cliRt.getVersions': async () => {
+    "cliRt.launchTerminal": async (p) =>
+      (await cliRt()?.launchTerminal(
+        asRecord(p) as unknown as HostCliLaunchTerminalInput,
+      )) ?? cliRtMissing(),
+    "cliRt.listBackends": async () => (await cliRt()?.listBackends()) ?? [],
+    // Host API 2 includes the CLI version probe in the public runtime contract.
+    "cliRt.getVersions": async () => {
       // cliRt() resolves the service SYNCHRONOUSLY (never await the service
       // itself — a thenable-looking proxy would hang the relay).
-      const port = cliRt() as { getVersions?: () => Promise<unknown[]> } | undefined;
-      return (await port?.getVersions?.()) ?? [];
+      return (await cliRt().getVersions()) ?? [];
     },
 
     // ══ OBJECT STORAGE — masked config + write-only credentials ══
-    'storage.listProviders': async () => (await storage()?.listProviders()) ?? [],
-    'storage.updateProvider': async (p) => {
+    "storage.listProviders": async () =>
+      (await storage()?.listProviders()) ?? [],
+    "storage.updateProvider": async (p) => {
       const { id, patch } = asRecord(p);
-      return (await storage()?.updateProvider(String(id), asRecord(patch))) ?? storageMissing();
-    },
-    'storage.setCredentials': async (p) => {
-      const { id, credentials } = asRecord(p);
       return (
-        (await storage()?.setCredentials(String(id), asRecord(credentials))) ?? storageMissing()
+        (await storage()?.updateProvider(String(id), asRecord(patch))) ??
+        storageMissing()
       );
     },
-    'storage.clearCredentials': async (p) =>
-      (await storage()?.clearCredentials(String(asRecord(p).id))) ?? storageMissing(),
-    'storage.setDefaultProvider': async (p) => {
+    "storage.setCredentials": async (p) => {
+      const { id, credentials } = asRecord(p);
+      return (
+        (await storage()?.setCredentials(String(id), asRecord(credentials))) ??
+        storageMissing()
+      );
+    },
+    "storage.clearCredentials": async (p) =>
+      (await storage()?.clearCredentials(String(asRecord(p).id))) ??
+      storageMissing(),
+    "storage.setDefaultProvider": async (p) => {
       const id = asRecord(p).id;
       return (
-        (await storage()?.setDefaultProvider(id === null ? null : String(id))) ?? storageMissing()
+        (await storage()?.setDefaultProvider(
+          id === null ? null : String(id),
+        )) ?? storageMissing()
       );
     },
 
@@ -659,20 +807,21 @@ export function activate(host: AgentBackendHostApi): void {
     // `.epack` blob, the plaintext keys/tokens, and the passphrase NEVER flow back
     // OUTWARD (no return field can carry them). DISTINCT from `host:secrets-write`
     // (this plugin never requests it). Guarded 3-line delegations.
-    'secretsPack.export': async (p) => {
+    "secretsPack.export": async (p) => {
       const { passphrase, password } = asRecord(p);
       return (
         (await secretsPack()?.export({
-          passphrase: String(passphrase ?? ''),
+          passphrase: String(passphrase ?? ""),
           password: password as string | undefined,
         })) ?? secretsPackMissing()
       );
     },
-    'secretsPack.import': async (p) => {
+    "secretsPack.import": async (p) => {
       const { passphrase } = asRecord(p);
       return (
-        (await secretsPack()?.import({ passphrase: String(passphrase ?? '') })) ??
-        secretsPackMissing()
+        (await secretsPack()?.import({
+          passphrase: String(passphrase ?? ""),
+        })) ?? secretsPackMissing()
       );
     },
 
@@ -683,9 +832,9 @@ export function activate(host: AgentBackendHostApi): void {
     // provider website links) relays here. The host validates http(s) only;
     // older hosts without the port resolve `{ ok: false }` (the renderer
     // surfaces the raw URL as selectable text instead).
-    'nativeOps.openExternal': async (p) => {
+    "nativeOps.openExternal": async (p) => {
       const raw = asRecord(p).url;
-      return externalLinks()(typeof raw === 'string' ? raw : '');
+      return externalLinks()(typeof raw === "string" ? raw : "");
     },
   });
 }

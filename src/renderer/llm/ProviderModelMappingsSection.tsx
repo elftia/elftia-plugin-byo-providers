@@ -1,7 +1,7 @@
 import { ArrowRight, ChevronDown, ChevronRight, Shuffle } from "lucide-react";
 import React, { useEffect, useId, useState } from "react";
 
-import type { HostProviderModelMappings } from "@byo/domain/plugin-types";
+import type { HostProviderModelMappings } from "@elftia/plugin-types";
 
 import { Badge, Button } from "../host/ui";
 import { useTranslation } from "../host/vendored/useTranslation";

@@ -1,1 +1,1 @@
-export type { HostCliAuthStatus as CliAuthStatus } from './plugin-types';
+export type { HostCliAuthStatus as CliAuthStatus } from "@elftia/plugin-types";

@@ -30,9 +30,9 @@ import type {
   HostSearchProviderConfigInput,
   HostSearchProvidersList,
   HostSearchValidateResult,
-} from '@byo/domain/plugin-types';
+} from "@elftia/plugin-types";
 
-import { getHost } from './host/hostBridge';
+import { getHost } from "./host/hostBridge";
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
@@ -46,33 +46,40 @@ function invoke<T>(method: string, payload?: unknown): Promise<T> {
 export const searchConfigClient = {
   /** The supported provider id lists (the plugin uses only `.api`). */
   getProviders(): Promise<HostSearchProvidersList> {
-    return invoke('search.getProviders');
+    return invoke("search.getProviders");
   },
   /** A provider's MASKED non-secret config, or `null` when unconfigured. */
-  getProviderConfig(providerId: string): Promise<HostMaskedSearchProviderConfig | null> {
-    return invoke('search.getProviderConfig', { providerId });
+  getProviderConfig(
+    providerId: string,
+  ): Promise<HostMaskedSearchProviderConfig | null> {
+    return invoke("search.getProviderConfig", { providerId });
   },
   /** Write a provider's NON-SECRET config (enabled/apiHost/basic-auth — NO apiKey). */
-  configureProvider(config: HostSearchProviderConfigInput): Promise<HostSearchKeyWriteResult> {
-    return invoke('search.configureProvider', { config });
+  configureProvider(
+    config: HostSearchProviderConfigInput,
+  ): Promise<HostSearchKeyWriteResult> {
+    return invoke("search.configureProvider", { config });
   },
   /** Bulk-configure providers (each carries no apiKey). */
   configureProviders(
     configs: readonly HostSearchProviderConfigInput[],
   ): Promise<HostSearchKeyWriteResult> {
-    return invoke('search.configureProviders', { configs });
+    return invoke("search.configureProviders", { configs });
   },
   /** Whether the provider is enabled (+ configured). */
   isProviderEnabled(providerId: string): Promise<boolean> {
-    return invoke('search.isProviderEnabled', { providerId });
+    return invoke("search.isProviderEnabled", { providerId });
   },
   /** Validate a provider via a host-side test search; status only, never a key. */
   validate(providerId: string): Promise<HostSearchValidateResult> {
-    return invoke('search.validate', { providerId });
+    return invoke("search.validate", { providerId });
   },
   /** Write (or clear, when empty) the provider key — the ONLY key-write path. */
-  setProviderKey(providerId: string, apiKey: string): Promise<HostSearchKeyWriteResult> {
-    return invoke('search.setProviderKey', { providerId, apiKey });
+  setProviderKey(
+    providerId: string,
+    apiKey: string,
+  ): Promise<HostSearchKeyWriteResult> {
+    return invoke("search.setProviderKey", { providerId, apiKey });
   },
 };
 
