@@ -4,14 +4,13 @@
  * Replaces the host `webSearchStore` `useWebSearchProviders()` the relocated
  * `ProviderPanel` consumed. The plugin owns its OWN per-provider masked-config
  * cache: the rendered provider id list is the plugin-local `getApiProviders()`
- * meta (the SSOT — the 7 `type:'api'` ids), and on mount it loads each provider's
+ * metadata, and on mount it loads each provider's
  * MASKED config (`getProviderConfig(id)`) + enabled flag, refetching after a
  * mutation.
  *
- * The plugin-local API metadata determines the rendered rows. The backend's
- * masked `configured` projection is authoritative when provided (including
- * DeepSeek's request-time official LLM key reuse). Older host configs keep the
- * existing non-null fallback; SearXNG is configured by its API host.
+ * The plugin-local metadata determines rows. Only the backend's masked
+ * `configured` projection determines readiness, including public-mode support
+ * and DeepSeek's request-time official LLM key reuse.
  *
  * @module byo-providers/renderer/useSearchProviders
  */
@@ -39,17 +38,11 @@ export interface SearchProvidersBag {
   readonly error: string | null;
   /** Force a refetch from the masked port (call after a mutation). */
   readonly refresh: () => Promise<void>;
-  /** Option-A "configured" signal: non-null masked config, or apiHost for searxng. */
+  /** Backend readiness projection; never inferred from a non-null config. */
   readonly isConfigured: (id: WebSearchProviderId) => boolean;
 }
 
-/** A masked config's non-secret `apiHost` (used for the searxng configured signal). */
-function configApiHost(
-  config: HostMaskedSearchProviderConfig | null,
-): string | undefined {
-  const v = (config as { apiHost?: unknown } | null)?.apiHost;
-  return typeof v === "string" ? v : undefined;
-}
+
 
 export function useSearchProviders(): SearchProvidersBag {
   const React = getHost().react.instance;
@@ -64,40 +57,40 @@ export function useSearchProviders(): SearchProvidersBag {
   >({});
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
+  const refreshGeneration = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     setLoading(true);
     setError(null);
     try {
       const loaded = await Promise.all(
         providerIds.map(async (id) => {
           const [config, enabled] = await Promise.all([
-            searchConfigClient.getProviderConfig(id).catch(() => null),
-            searchConfigClient.isProviderEnabled(id).catch(() => false),
+            searchConfigClient.getProviderConfig(id),
+            searchConfigClient.isProviderEnabled(id),
           ]);
           return [id, { id, config, enabled }] as const;
         }),
       );
-      setEntries(Object.fromEntries(loaded));
+      if (generation === refreshGeneration.current) setEntries(Object.fromEntries(loaded));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (generation === refreshGeneration.current) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      if (generation === refreshGeneration.current) setLoading(false);
     }
   }, [providerIds]);
 
   React.useEffect(() => {
     void refresh();
+    return () => { refreshGeneration.current += 1; };
   }, [refresh]);
 
   const isConfigured = React.useCallback(
     (id: WebSearchProviderId): boolean => {
       const entry = entries[id];
       if (!entry) return false;
-      if (id === "searxng") return Boolean(configApiHost(entry.config)?.trim());
-      return typeof entry.config?.configured === "boolean"
-        ? entry.config.configured
-        : entry.config !== null;
+      return entry.config?.configured === true;
     },
     [entries],
   );

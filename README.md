@@ -25,6 +25,23 @@ and page fetching. DeepSeek can reuse an enabled official LLM provider's key on
 the host; an independent search key takes precedence, and custom hosts require
 their own key. No reused key is returned to the plugin.
 
+Search settings support Tavily, Jina, SearXNG, Zhipu, Z.ai, DeepSeek, Exa,
+Parallel, Firecrawl, Brave, Kagi, Kimi, Synthetic, Ollama, TinyFish, Perplexity,
+Bocha, and Claude. Newly added providers are opt-in. Exa, Parallel, and Firecrawl
+offer explicit limited-public and keyed-API modes. Public mode ignores retained
+keys and custom endpoints without deleting them; entering a key does not switch
+an explicitly saved public mode. API-mode enablement requires a usable key.
+Only Claude exposes a model override; Perplexity uses its direct Search API.
+Search keys and SearXNG passwords are write-only: blank inputs preserve stored
+credentials, and clearing a credential requires its explicit clear action.
+Non-secret settings and enablement restore from the host after reopening.
+HTTP engines remain in Elftia's own search settings, with Bing and DuckDuckGo
+retaining their existing defaults and other engines requiring opt-in. Selection
+is a preference rather than a guarantee: fallback may use another enabled
+provider, including a billed API. Public access is limited, not unlimited or
+guaranteed free. Queries, credential resolution, and all upstream calls execute
+on the host, never in this plugin's renderer.
+
 Version 0.3.10 persists the LogJev enable switch immediately, with the same
 right-aligned switch and delete icon as other providers. Saving LogJev options
 preserves its current enable state. It shares provider keys across compatible
@@ -181,6 +198,11 @@ The project uses the vendored canonical public SDK
 `builtAgainst: "2.0.0"`, `requiredMajor: 2` and `requiredMinor: 0`; Host API 1.x
 is no longer supported. Host capability types come from `@elftia/plugin-types`,
 not local extensions of an older SDK or imports from host implementation code.
+
+Search authentication modes and masked credential-presence metadata use that
+canonical SDK. Search-provider catalog contracts are locked to the published
+registry package `@omnicross/contracts@0.7.1`; no local contracts tarball or
+local-to-registry fallback is used.
 
 React and React DOM are host-provided peer runtimes and remain external in the
 renderer build. The main entry is CommonJS, Node-targeted, and Electron-free.

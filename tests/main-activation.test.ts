@@ -881,10 +881,10 @@ describe("main activation", () => {
     }
   });
 
-  it("fails every invocation explicitly when its required host service is missing", async () => {
+  it('fails valid provider operations explicitly when their required host service is missing', async () => {
     const methods = captureMethods({});
-    for (const [name, handler] of Object.entries(methods)) {
-      await expect(handler({}), name).rejects.toThrow("host.services.");
+    for (const relay of RELAY_CASES) {
+      await expect(methods[relay.ipc](relay.payload), relay.ipc).rejects.toThrow('host.services.');
     }
   });
 

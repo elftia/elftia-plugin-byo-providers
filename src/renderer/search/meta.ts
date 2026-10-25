@@ -1,124 +1,63 @@
-/**
- * meta.ts — API-key web-search provider metadata (the `type:'api'` SUBSET copied
- * from the host `web-search-tab/meta.ts`, P2d design D1/D6).
- *
- * Plugin-local UI metadata for the API-key web-search providers
- * (tavily/jina/zhipu/deepseek/exa/bocha/searxng). The host's `local-*` +
- * `native` entries are DELIBERATELY NOT copied — those providers stay host-only
- * (they are not on the searchConfig port). `WebSearchProviderId` is therefore
- * narrowed to the api ids only; `WebSearchProvider` carries the form-state shape
- * the relocated `ProviderPanel` reads.
- *
- * @module byo-providers/renderer/search/meta
- */
-
-/** The API-key search provider ids the plugin section configures. */
+/** API search settings belong to the BYO producer; execution stays on the host. */
 export type WebSearchProviderId =
-  | 'jina'
-  | 'zhipu'
-  | 'tavily'
-  | 'exa'
-  | 'searxng'
-  | 'bocha'
-  | 'deepseek';
+  | 'tavily' | 'jina' | 'searxng' | 'zhipu' | 'z.ai' | 'deepseek'
+  | 'exa' | 'parallel' | 'firecrawl' | 'brave' | 'kagi' | 'kimi'
+  | 'synthetic' | 'ollama' | 'tinyfish' | 'perplexity' | 'bocha' | 'claude';
 
-/** Provider type classification (api-only in the plugin). */
 export type WebSearchProviderType = 'api';
 
-/** Renderer-local provider config (settings form state). */
 export interface WebSearchProvider {
   id: WebSearchProviderId;
   name: string;
   type: WebSearchProviderType;
   enabled: boolean;
-  apiKey?: string;
   apiHost?: string;
+  authMode?: 'public' | 'api';
+  model?: string;
   basicAuthUsername?: string;
   basicAuthPassword?: string;
 }
 
-/** Provider metadata for UI display. */
 export interface WebSearchProviderMeta {
   id: WebSearchProviderId;
   name: string;
   type: WebSearchProviderType;
   icon: string;
-  description: string;
   website?: string;
   requiresApiKey: boolean;
+  supportsPublic?: boolean;
+  modelPlaceholder?: string;
 }
 
-/**
- * Provider metadata registry — UI display data only, the `type:'api'` subset of
- * the host registry (copied verbatim for these ids).
- */
+function api(
+  id: WebSearchProviderId,
+  name: string,
+  website: string,
+  options: Partial<WebSearchProviderMeta> = {},
+): WebSearchProviderMeta {
+  return { id, name, website, type: 'api', icon: 'Search', requiresApiKey: true, ...options };
+}
+
 export const WEB_SEARCH_PROVIDER_META: Record<WebSearchProviderId, WebSearchProviderMeta> = {
-  jina: {
-    id: 'jina',
-    name: 'Jina',
-    type: 'api',
-    icon: 'Search',
-    description: 'AI-powered web search API',
-    website: 'https://jina.ai',
-    requiresApiKey: true,
-  },
-  zhipu: {
-    id: 'zhipu',
-    name: 'Zhipu',
-    type: 'api',
-    icon: 'Brain',
-    description: 'Zhipu AI search service',
-    website: 'https://zhipuai.cn',
-    requiresApiKey: true,
-  },
-  tavily: {
-    id: 'tavily',
-    name: 'Tavily',
-    type: 'api',
-    icon: 'Search',
-    description: 'AI-optimized search API',
-    website: 'https://tavily.com',
-    requiresApiKey: true,
-  },
-  exa: {
-    id: 'exa',
-    name: 'Exa',
-    type: 'api',
-    icon: 'Sparkles',
-    description: 'Neural search engine',
-    website: 'https://exa.ai',
-    requiresApiKey: true,
-  },
-  searxng: {
-    id: 'searxng',
-    name: 'Searxng',
-    type: 'api',
-    icon: 'Server',
-    description: 'Self-hosted search aggregator',
-    website: 'https://docs.searxng.org',
-    requiresApiKey: false,
-  },
-  bocha: {
-    id: 'bocha',
-    name: 'Bocha',
-    type: 'api',
-    icon: 'Search',
-    description: 'Chinese search API',
-    requiresApiKey: true,
-  },
-  deepseek: {
-    id: 'deepseek',
-    name: 'DeepSeek',
-    type: 'api',
-    icon: 'Search',
-    description: 'DeepSeek search and page fetch',
-    website: 'https://platform.deepseek.com',
-    requiresApiKey: true,
-  },
+  tavily: api('tavily', 'Tavily', 'https://tavily.com'),
+  jina: api('jina', 'Jina', 'https://jina.ai'),
+  searxng: api('searxng', 'SearXNG', 'https://docs.searxng.org', { requiresApiKey: false, icon: 'Server' }),
+  zhipu: api('zhipu', 'Zhipu', 'https://open.bigmodel.cn'),
+  'z.ai': api('z.ai', 'Z.ai', 'https://z.ai'),
+  deepseek: api('deepseek', 'DeepSeek', 'https://platform.deepseek.com'),
+  exa: api('exa', 'Exa', 'https://exa.ai', { supportsPublic: true }),
+  parallel: api('parallel', 'Parallel', 'https://parallel.ai', { supportsPublic: true }),
+  firecrawl: api('firecrawl', 'Firecrawl', 'https://firecrawl.dev', { supportsPublic: true }),
+  brave: api('brave', 'Brave', 'https://brave.com/search/api/'),
+  kagi: api('kagi', 'Kagi', 'https://kagi.com'),
+  kimi: api('kimi', 'Kimi', 'https://platform.moonshot.ai'),
+  synthetic: api('synthetic', 'Synthetic', 'https://synthetic.new'),
+  ollama: api('ollama', 'Ollama', 'https://ollama.com'),
+  tinyfish: api('tinyfish', 'TinyFish', 'https://tinyfish.ai'),
+  perplexity: api('perplexity', 'Perplexity', 'https://docs.perplexity.ai'),
+  bocha: api('bocha', 'Bocha', 'https://open.bochaai.com'),
+  claude: api('claude', 'Claude', 'https://console.anthropic.com', { modelPlaceholder: 'claude-opus-5-5' }),
 };
 
-/** Get all API providers (meta order). */
 export const getApiProviders = (): WebSearchProviderId[] =>
-  Object.values(WEB_SEARCH_PROVIDER_META)
-    .filter((p) => p.type === 'api')
-    .map((p) => p.id);
+  Object.values(WEB_SEARCH_PROVIDER_META).map((provider) => provider.id);

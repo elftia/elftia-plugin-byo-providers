@@ -10,12 +10,12 @@ voice, and object-storage settings without the old LLM selector/router relay.
 
 The SDK resolves from `vendor/elftia-plugin-types-2.0.0.tgz`, copied unchanged
 from the qualified clean source build at commit
-`1cddd18616112fc1db09d8e1da46f42d9fa1e7bc`, tree
-`281dba23cd35c37fc919353181fcfc8e43d0c45e`.
+`5697ec2acded2ee6b60475940f12d10828d099ce`, tree
+`c45c581e4add9be32c6f6ebe2442c561e5601997`.
 Its SHA-256 is
-`5616fcc5d741da1e782f5547ac1fb33e78c27de69c652f50679ef9bed81b9539`.
+`59c93adbb5d19ac9dde790394908637172c81e2f42b3555e041db07e466af2bb`.
 This is a local qualified package input, not a claim of an npm publication.
-`@elftia/agent-spec@1.25.0` and `@omnicross/contracts@0.6.9` remain separately
+`@elftia/agent-spec@1.25.0` and `@omnicross/contracts@0.7.1` remain separately
 locked registry inputs.
 
 ## Official producer gates

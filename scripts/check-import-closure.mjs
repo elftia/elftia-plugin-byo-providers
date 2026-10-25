@@ -138,7 +138,7 @@ const lock = JSON.parse(
 for (const [name, expected] of [
   ["@elftia/plugin-types", "2.0.0"],
   ["@elftia/agent-spec", "1.25.0"],
-  ["@omnicross/contracts", "0.6.9"],
+  ["@omnicross/contracts", "0.7.1"],
 ]) {
   const entry = lock.packages?.[`node_modules/${name}`];
   if (
