@@ -1,5 +1,20 @@
 # Elftia BYO Providers
 
+Version 0.4.0 requires Host API 2.0 for both plugin entries and uses the canonical
+public 2.0 SDK. LLM role selection belongs to Elftia's **Default Models** settings:
+default, background, vision, aliases, inheritance, follow behavior and thinking
+budgets share one backend revision. This plugin manages provider credentials and
+model availability, not a second writable router configuration. The unused
+legacy router relay and client have been removed. The renderer/main configuration
+bridge uses the public `getModelRoles`, `setModelRoles` and `previewModelRole`
+contracts; writes retain the caller's expected revision and distinguish omitted
+thinking from explicit `none`. Missing role capabilities fail explicitly rather
+than falling back to legacy routing, and conflicts propagate without retries.
+Role snapshots and previews contain references only, never provider credentials.
+Credential-pack import/export still transfers credentials only; it does not
+import or overwrite role bindings. Image, search, voice and storage settings are
+unchanged.
+
 Version 0.3.12 reports failed media-provider saves and isolates provider detail
 controls when switching providers. The matching Elftia host fix persists official
 and subscription provider switches independently across reloads.
@@ -116,10 +131,10 @@ Some optional chunk/asset directories may be absent when empty. Consumers must
 copy the complete `dist/byo-providers/` directory and must not import this
 repository's source or build configuration.
 
-For standalone distribution, the current `0.3.12` producer emits:
+For standalone distribution, the current `0.4.0` producer emits:
 
 ```text
-release/0.3.12/
+release/0.4.0/
   byo-providers.epkg
   byo-providers.json
 ```
@@ -178,19 +193,16 @@ optional write-only `host.clipboard.writeText` bridge (host API 1.112). A host
 without that bridge reports copy unavailable. Password setup/change/disable and
 destructive forgotten-password recovery belong to host Privacy settings.
 
-The project locks the released public SDK `@elftia/plugin-types@1.25.0`.
-Newer optional host members use narrow plugin-owned structural projections in
-`src/domain/plugin-types.ts`; no projection imports host source. This artifact
-requires host API **1.117** for explicit search authentication modes and masked
-credential-presence metadata, and records `builtAgainst: "1.117.0"`.
+The project uses the vendored canonical public SDK
+`file:vendor/elftia-plugin-types-2.0.0.tgz`. Both manifest contributions declare
+`builtAgainst: "2.0.0"`, `requiredMajor: 2` and `requiredMinor: 0`; Host API 1.x
+is no longer supported. Host capability types come from `@elftia/plugin-types`,
+not local extensions of an older SDK or imports from host implementation code.
 
-The current pre-release search integration uses the checked-in
-`vendor/omnicross-contracts-0.7.0.tgz`. Its source commit and SHA-512 are recorded
-in `vendor/omnicross-search-build.json`; the import-closure gate verifies both
-the archive bytes and local lock target. No sibling checkout is required.
-After Elftia testing and Omnicross publication, explicitly switch the contracts
-declaration/lock to the exact registry version and remove these two vendor
-inputs. There is no automatic local-to-registry fallback.
+Search authentication modes and masked credential-presence metadata use that
+canonical SDK. Search-provider catalog contracts are locked to the published
+registry package `@omnicross/contracts@0.7.1`; no local contracts tarball or
+local-to-registry fallback is used.
 
 React and React DOM are host-provided peer runtimes and remain external in the
 renderer build. The main entry is CommonJS, Node-targeted, and Electron-free.
@@ -199,6 +211,8 @@ renderer build. The main entry is CommonJS, Node-targeted, and Electron-free.
 
 The manifest declares exactly:
 
+- `host:object-storage-config`
+- `host:external-links`
 - `host:llm-config`
 - `host:media-config`
 - `host:search-config`
@@ -218,11 +232,14 @@ tokens and fails on undeclared, undetected, or generic secret-write access.
 
 ## Reproducibility
 
-`npm run check:reproducible` performs two clean builds from the **staged Git
-tree**, comparing the artifact, EPKG and sidecar byte-for-byte. Stage new source
-and local dependency inputs first. Refresh `verification/reproducibility.json`
-with `npm run check:reproducible -- --update` when the verified output changes;
-the temporary clean build trees are removed afterwards.
+`npm run check:reproducible` performs two isolated clean installs and builds
+from the staged Git index with canonical LF source bytes and exact vendored
+binaries. Stage authorized source changes before running it. The gate compares
+raw artifact trees, EPKG archives, and sidecars byte-for-byte against
+`verification/reproducibility.json`. To regenerate that record after an authorized
+source change, run `npm run check:reproducible -- --update`; the normal gate is
+read-only. Temporary builds are removed and the existing local `dist/` is not
+replaced.
 
 ## Ownership
 

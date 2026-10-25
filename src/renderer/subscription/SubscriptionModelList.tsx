@@ -1,15 +1,15 @@
-import { Check, X } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { Check, X } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 import type {
   HostSubscriptionModelInfo,
   HostSubscriptionProviderModels,
-} from '@byo/domain/plugin-types';
+} from "@elftia/plugin-types";
 
-import { Button, Input, Switch } from '../host/ui';
-import type { TranslateFn } from '../host/vendored/useTranslation';
+import { Button, Input, Switch } from "../host/ui";
+import type { TranslateFn } from "../host/vendored/useTranslation";
 
-type ModelKind = HostSubscriptionModelInfo['kind'];
+type ModelKind = HostSubscriptionModelInfo["kind"];
 
 export interface SubscriptionModelListProps {
   t: TranslateFn;
@@ -17,8 +17,15 @@ export interface SubscriptionModelListProps {
   /** Per-provider slice of the host view; absent provider = all lists empty. */
   models?: HostSubscriptionProviderModels;
   /** REPLACE the provider's whole extras list (the v1.70 host verb). */
-  onSetExtras: (providerId: string, extras: HostSubscriptionModelInfo[]) => Promise<void>;
-  onSetEnabled: (providerId: string, modelId: string, enabled: boolean) => Promise<void>;
+  onSetExtras: (
+    providerId: string,
+    extras: HostSubscriptionModelInfo[],
+  ) => Promise<void>;
+  onSetEnabled: (
+    providerId: string,
+    modelId: string,
+    enabled: boolean,
+  ) => Promise<void>;
   toggleSupported?: boolean;
 }
 
@@ -34,8 +41,8 @@ export const SubscriptionModelList = ({
   const effective = models?.effective ?? [];
 
   const [isAdding, setIsAdding] = useState(false);
-  const [draftId, setDraftId] = useState('');
-  const [draftKind, setDraftKind] = useState<ModelKind>('chat');
+  const [draftId, setDraftId] = useState("");
+  const [draftKind, setDraftKind] = useState<ModelKind>("chat");
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
@@ -44,15 +51,15 @@ export const SubscriptionModelList = ({
 
   const openAddForm = useCallback(() => {
     setNotice(null);
-    setDraftId('');
-    setDraftKind('chat');
+    setDraftId("");
+    setDraftKind("chat");
     setIsAdding(true);
   }, []);
 
   const closeAddForm = useCallback(() => {
     setIsAdding(false);
-    setDraftId('');
-    setDraftKind('chat');
+    setDraftId("");
+    setDraftKind("chat");
     setNotice(null);
   }, []);
 
@@ -62,11 +69,11 @@ export const SubscriptionModelList = ({
     if (pendingRef.current) return;
     const id = draftId.trim();
     if (!id) {
-      setNotice(t('settings.accountTokens.models.errorEmpty'));
+      setNotice(t("settings.accountTokens.models.errorEmpty"));
       return;
     }
     if (effective.some((model) => model.id === id)) {
-      setNotice(t('settings.accountTokens.models.errorDuplicate'));
+      setNotice(t("settings.accountTokens.models.errorDuplicate"));
       return;
     }
     setNotice(null);
@@ -79,13 +86,22 @@ export const SubscriptionModelList = ({
       setNotice(
         err instanceof Error && err.message
           ? err.message
-          : t('settings.accountTokens.models.errorSave'),
+          : t("settings.accountTokens.models.errorSave"),
       );
     } finally {
       pendingRef.current = false;
       setPending(false);
     }
-  }, [closeAddForm, draftId, draftKind, effective, extras, onSetExtras, providerId, t]);
+  }, [
+    closeAddForm,
+    draftId,
+    draftKind,
+    effective,
+    extras,
+    onSetExtras,
+    providerId,
+    t,
+  ]);
 
   const handleRemove = useCallback(
     async (modelId: string) => {
@@ -102,7 +118,7 @@ export const SubscriptionModelList = ({
         setNotice(
           err instanceof Error && err.message
             ? err.message
-            : t('settings.accountTokens.models.errorSave'),
+            : t("settings.accountTokens.models.errorSave"),
         );
       } finally {
         pendingRef.current = false;
@@ -112,22 +128,30 @@ export const SubscriptionModelList = ({
     [extras, onSetExtras, providerId, t],
   );
 
-  const handleToggle = useCallback(async (modelId: string, enabled: boolean) => {
-    if (pendingRef.current || !toggleSupported) return;
-    pendingRef.current = true;
-    setPending(true);
-    setNotice(null);
-    try {
-      await onSetEnabled(providerId, modelId, enabled);
-    } catch (err) {
-      setNotice(err instanceof Error && err.message === 'subscription-models-unsupported'
-        ? t('settings.accountTokens.models.toggleUnsupported')
-        : err instanceof Error && err.message ? err.message : t('settings.accountTokens.models.errorSave'));
-    } finally {
-      pendingRef.current = false;
-      setPending(false);
-    }
-  }, [onSetEnabled, providerId, t, toggleSupported]);
+  const handleToggle = useCallback(
+    async (modelId: string, enabled: boolean) => {
+      if (pendingRef.current || !toggleSupported) return;
+      pendingRef.current = true;
+      setPending(true);
+      setNotice(null);
+      try {
+        await onSetEnabled(providerId, modelId, enabled);
+      } catch (err) {
+        setNotice(
+          err instanceof Error &&
+            err.message === "subscription-models-unsupported"
+            ? t("settings.accountTokens.models.toggleUnsupported")
+            : err instanceof Error && err.message
+              ? err.message
+              : t("settings.accountTokens.models.errorSave"),
+        );
+      } finally {
+        pendingRef.current = false;
+        setPending(false);
+      }
+    },
+    [onSetEnabled, providerId, t, toggleSupported],
+  );
 
   return (
     <div
@@ -136,7 +160,7 @@ export const SubscriptionModelList = ({
       data-provider-id={providerId}
     >
       <div className="text-sm font-medium text-foreground">
-        {t('settings.accountTokens.models.title')}
+        {t("settings.accountTokens.models.title")}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {effective.map((model) => {
@@ -148,20 +172,26 @@ export const SubscriptionModelList = ({
               data-testid="settings-subscription-models-chip"
               data-model-id={model.id}
               data-model-kind={model.kind}
-              data-model-enabled={model.enabled !== false ? 'true' : 'false'}
+              data-model-enabled={model.enabled !== false ? "true" : "false"}
             >
               <span className="truncate">{model.id}</span>
-              {model.kind === 'image' ? (
+              {model.kind === "image" ? (
                 <span className="shrink-0 rounded bg-primary/15 px-1 py-px text-[10px] leading-4 text-primary">
-                  {t('settings.accountTokens.models.kindImage')}
+                  {t("settings.accountTokens.models.kindImage")}
                 </span>
               ) : null}
               <Switch
                 checked={model.enabled !== false}
-                onCheckedChange={(enabled) => void handleToggle(model.id, enabled)}
+                onCheckedChange={(enabled) =>
+                  void handleToggle(model.id, enabled)
+                }
                 disabled={pending || !toggleSupported}
-                aria-label={`${t('settings.accountTokens.models.enabled')}: ${model.id}`}
-                title={!toggleSupported ? t('settings.accountTokens.models.toggleUnsupported') : undefined}
+                aria-label={`${t("settings.accountTokens.models.enabled")}: ${model.id}`}
+                title={
+                  !toggleSupported
+                    ? t("settings.accountTokens.models.toggleUnsupported")
+                    : undefined
+                }
                 data-testid="settings-subscription-models-toggle"
                 data-model-id={model.id}
               />
@@ -169,8 +199,8 @@ export const SubscriptionModelList = ({
                 <button
                   type="button"
                   className="shrink-0 rounded-sm p-0.5 text-text-subtle hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label={t('settings.accountTokens.models.removeModel')}
-                  title={t('settings.accountTokens.models.removeModel')}
+                  aria-label={t("settings.accountTokens.models.removeModel")}
+                  title={t("settings.accountTokens.models.removeModel")}
                   disabled={pending}
                   onClick={() => void handleRemove(model.id)}
                   data-testid="settings-subscription-models-remove-btn"
@@ -189,7 +219,7 @@ export const SubscriptionModelList = ({
           onClick={openAddForm}
           data-testid="settings-subscription-models-add-btn"
         >
-          {t('settings.accountTokens.models.add')}
+          {t("settings.accountTokens.models.add")}
         </Button>
       </div>
       {isAdding ? (
@@ -200,8 +230,8 @@ export const SubscriptionModelList = ({
           <Input
             value={draftId}
             onChange={(event) => setDraftId(event.target.value)}
-            placeholder={t('settings.accountTokens.models.placeholder')}
-            aria-label={t('settings.accountTokens.models.title')}
+            placeholder={t("settings.accountTokens.models.placeholder")}
+            aria-label={t("settings.accountTokens.models.title")}
             disabled={pending}
             className="h-8 max-w-xs flex-1"
             data-testid="settings-subscription-models-input"
@@ -209,21 +239,21 @@ export const SubscriptionModelList = ({
           <div className="flex items-center gap-1">
             <Button
               size="xs"
-              variant={draftKind === 'chat' ? 'default' : 'outline'}
-              onClick={() => setDraftKind('chat')}
+              variant={draftKind === "chat" ? "default" : "outline"}
+              onClick={() => setDraftKind("chat")}
               disabled={pending}
               data-testid="settings-subscription-models-kind-chat"
             >
-              {t('settings.accountTokens.models.kindChat')}
+              {t("settings.accountTokens.models.kindChat")}
             </Button>
             <Button
               size="xs"
-              variant={draftKind === 'image' ? 'default' : 'outline'}
-              onClick={() => setDraftKind('image')}
+              variant={draftKind === "image" ? "default" : "outline"}
+              onClick={() => setDraftKind("image")}
               disabled={pending}
               data-testid="settings-subscription-models-kind-image"
             >
-              {t('settings.accountTokens.models.kindImage')}
+              {t("settings.accountTokens.models.kindImage")}
             </Button>
           </div>
           <Button
@@ -233,15 +263,23 @@ export const SubscriptionModelList = ({
             data-testid="settings-subscription-models-save-btn"
           >
             <Check className="h-3.5 w-3.5" />
-            {t('settings.accountTokens.models.save')}
+            {t("settings.accountTokens.models.save")}
           </Button>
-          <Button size="sm" variant="outline" onClick={closeAddForm} disabled={pending}>
-            {t('common.cancel')}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={closeAddForm}
+            disabled={pending}
+          >
+            {t("common.cancel")}
           </Button>
         </div>
       ) : null}
       {notice ? (
-        <p className="text-xs text-destructive" data-testid="settings-subscription-models-error">
+        <p
+          className="text-xs text-destructive"
+          data-testid="settings-subscription-models-error"
+        >
           {notice}
         </p>
       ) : null}

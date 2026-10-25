@@ -14,11 +14,11 @@
  *
  * @module byo-providers/renderer/useSearchProviders
  */
-import type { HostMaskedSearchProviderConfig } from '@byo/domain/plugin-types';
+import type { HostMaskedSearchProviderConfig } from "@elftia/plugin-types";
 
-import { getHost } from './host/hostBridge';
-import { getApiProviders, type WebSearchProviderId } from './search/meta';
-import { searchConfigClient } from './searchConfigClient';
+import { getHost } from "./host/hostBridge";
+import { getApiProviders, type WebSearchProviderId } from "./search/meta";
+import { searchConfigClient } from "./searchConfigClient";
 
 /** One API provider's loaded masked state (config-derived; never a key). */
 export interface SearchProviderEntry {
@@ -43,12 +43,18 @@ export interface SearchProvidersBag {
 }
 
 
+
 export function useSearchProviders(): SearchProvidersBag {
   const React = getHost().react.instance;
   // Metadata determines rows; backend projections determine credential availability.
-  const providerIds = React.useMemo<WebSearchProviderId[]>(() => getApiProviders(), []);
+  const providerIds = React.useMemo<WebSearchProviderId[]>(
+    () => getApiProviders(),
+    [],
+  );
 
-  const [entries, setEntries] = React.useState<Record<string, SearchProviderEntry>>({});
+  const [entries, setEntries] = React.useState<
+    Record<string, SearchProviderEntry>
+  >({});
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
   const refreshGeneration = React.useRef(0);

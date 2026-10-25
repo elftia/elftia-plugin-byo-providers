@@ -1,6 +1,6 @@
 {
   "name": "@elftia/plugin-byo-providers",
-  "version": "0.3.13",
+  "version": "0.4.0",
   "private": true,
   "description": "Standalone first-party BYO Providers app-extension for Elftia.",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "verify": "npm run typecheck && npm test && npm run check:imports && npm run check:terminology && npm run build && npm run check:reproducible && npm run verify:dist && npm run release"
   },
   "dependencies": {
-    "@omnicross/contracts": "file:vendor/omnicross-contracts-0.7.0.tgz",
+    "@omnicross/contracts": "0.7.1",
     "@radix-ui/react-dialog": "1.1.15",
     "clsx": "2.1.1",
     "lucide-react": "0.515.0",
@@ -47,7 +47,7 @@
   "devDependencies": {
     "@elftia/agent-spec": "1.25.0",
     "@elftia/plugin-kit": "0.2.1",
-    "@elftia/plugin-types": "1.25.0",
+    "@elftia/plugin-types": "file:vendor/elftia-plugin-types-2.0.0.tgz",
     "@types/node": "22.15.30",
     "@types/react": "18.2.43",
     "@types/react-dom": "18.2.17",

@@ -6,14 +6,14 @@
  * unavailable is an explicit label, never a measured 0%. Fetched once per
  * mount plus manual refresh — no background polling.
  */
-import { Loader2, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-import { Button } from '../host/ui';
-import { cn } from '../host/vendored/cn';
-import type { TranslateFn } from '../host/vendored/useTranslation';
-import type { HostProviderKeyQuota } from '@byo/domain/plugin-types';
-import { llmConfigClient } from '../llmConfigClient';
+import { Button } from "../host/ui";
+import { cn } from "../host/vendored/cn";
+import type { TranslateFn } from "../host/vendored/useTranslation";
+import type { HostProviderKeyQuota } from "@elftia/plugin-types";
+import { llmConfigClient } from "../llmConfigClient";
 
 export interface KeyQuotaBarsProps {
   t: TranslateFn;
@@ -46,10 +46,14 @@ export function KeyQuotaBars({ t, providerId, keyId }: KeyQuotaBarsProps) {
   if (quota && quota.supported === false) return null;
 
   return (
-    <div className="space-y-1" data-testid="provider-key-quota" data-key-id={keyId}>
+    <div
+      className="space-y-1"
+      data-testid="provider-key-quota"
+      data-key-id={keyId}
+    >
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-medium text-muted-foreground">
-          {t('providerSettings.apiKeyPool.quota.title')}
+          {t("providerSettings.apiKeyPool.quota.title")}
         </span>
         <Button
           size="sm"
@@ -57,7 +61,7 @@ export function KeyQuotaBars({ t, providerId, keyId }: KeyQuotaBarsProps) {
           disabled={loading}
           onClick={() => void load(true)}
           data-testid="provider-key-quota-refresh-btn"
-          aria-label={t('providerSettings.apiKeyPool.quota.refresh')}
+          aria-label={t("providerSettings.apiKeyPool.quota.refresh")}
         >
           {loading ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -69,20 +73,32 @@ export function KeyQuotaBars({ t, providerId, keyId }: KeyQuotaBarsProps) {
       {quota && quota.windows.length > 0 ? (
         <ul className="space-y-1">
           {quota.windows.map((window) => {
-            const measured = window.usedPercent !== null && window.usedPercent !== undefined;
-            const width = measured ? Math.min(100, Math.max(0, window.usedPercent ?? 0)) : 0;
+            const measured =
+              window.usedPercent !== null && window.usedPercent !== undefined;
+            const width = measured
+              ? Math.min(100, Math.max(0, window.usedPercent ?? 0))
+              : 0;
             const nearing = measured && (window.usedPercent ?? 0) >= 80;
             return (
-              <li key={window.id} className="space-y-0.5" data-testid="provider-key-quota-window">
+              <li
+                key={window.id}
+                className="space-y-0.5"
+                data-testid="provider-key-quota-window"
+              >
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="text-foreground">{window.label}</span>
                   {measured ? (
-                    <span className={cn('tabular-nums', nearing ? 'text-warning' : 'text-muted-foreground')}>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        nearing ? "text-warning" : "text-muted-foreground",
+                      )}
+                    >
                       {Math.round(window.usedPercent ?? 0)}%
                     </span>
                   ) : (
                     <span className="text-muted-foreground">
-                      {t('providerSettings.apiKeyPool.quota.stateUnavailable')}
+                      {t("providerSettings.apiKeyPool.quota.stateUnavailable")}
                     </span>
                   )}
                 </div>
@@ -96,7 +112,10 @@ export function KeyQuotaBars({ t, providerId, keyId }: KeyQuotaBarsProps) {
                     aria-label={window.label}
                   >
                     <div
-                      className={cn('h-full rounded-full', nearing ? 'bg-warning' : 'bg-primary')}
+                      className={cn(
+                        "h-full rounded-full",
+                        nearing ? "bg-warning" : "bg-primary",
+                      )}
                       style={{ width: `${width}%` }}
                     />
                   </div>
@@ -107,7 +126,7 @@ export function KeyQuotaBars({ t, providerId, keyId }: KeyQuotaBarsProps) {
         </ul>
       ) : (
         <p className="text-[10px] text-muted-foreground">
-          {t('providerSettings.apiKeyPool.quota.stateUnavailable')}
+          {t("providerSettings.apiKeyPool.quota.stateUnavailable")}
         </p>
       )}
     </div>

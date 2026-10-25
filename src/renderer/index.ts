@@ -29,17 +29,21 @@
  *
  * @module byo-providers/renderer/index
  */
-import type { AgentUiHostApi } from '@byo/domain/plugin-types';
+import type { AgentUiHostApi } from "@elftia/plugin-types";
 
-import { setHost } from './host/hostBridge';
-import { KeyViewingPrompt } from './shared/KeyViewingPrompt';
-import { ImperativeConfirmProvider } from './host/vendored/useImperativeConfirm';
-import { readLocale, registerLlmI18n, useTranslation } from './host/vendored/useTranslation';
+import { setHost } from "./host/hostBridge";
+import { KeyViewingPrompt } from "./shared/KeyViewingPrompt";
+import { ImperativeConfirmProvider } from "./host/vendored/useImperativeConfirm";
+import {
+  readLocale,
+  registerLlmI18n,
+  useTranslation,
+} from "./host/vendored/useTranslation";
 
-const SECTION_ID = 'model-services';
+const SECTION_ID = "model-services";
 
 /** The 5 media types in nav order, each its own section after the LLM section. */
-const MEDIA_TYPES = ['image', 'video', 'music', 'tts', 'asr'] as const;
+const MEDIA_TYPES = ["image", "video", "music", "tts", "asr"] as const;
 type MediaType = (typeof MEDIA_TYPES)[number];
 
 /**
@@ -63,14 +67,14 @@ export function activate(host: AgentUiHostApi): void {
   // pre-split `modelSelection: true` behavior). No `icon` (label-only parent —
   // keeps the diff small).
   const providersGroup = {
-    id: 'model-providers',
+    id: "model-providers",
     label: () => readProvidersGroupLabel(),
     opaqueFrame: {
       label: {
-        kind: 'plugin-i18n',
-        namespace: 'byo-providers',
-        key: 'navigation.providersGroup',
-        fallback: 'Model Services',
+        kind: "plugin-i18n",
+        namespace: "byo-providers",
+        key: "navigation.providersGroup",
+        fallback: "Model Services",
       },
     },
     order: 0,
@@ -79,32 +83,48 @@ export function activate(host: AgentUiHostApi): void {
   // The unified model-services page is lazy so the activate path stays small
   // (DS precedent) — the provider tree + subscription cards split off `activate`.
   const LazyModelServicesPage = React.lazy(() =>
-    import('./llm/ModelServicesPage').then((m) => ({ default: m.ModelServicesPage }))
+    import("./llm/ModelServicesPage").then((m) => ({
+      default: m.ModelServicesPage,
+    })),
   );
   const LazyDecisionModelsPage = React.lazy(() =>
-    import('./llm/DecisionModelsPage').then((m) => ({ default: m.DecisionModelsPage }))
+    import("./llm/DecisionModelsPage").then((m) => ({
+      default: m.DecisionModelsPage,
+    })),
   );
 
   // The media dispatch container (renders the per-type panel) is lazy too; each
   // panel + its model dialogs split into their own chunks behind it.
-  const LazyMediaProviderSettings = React.lazy(() => import('./media/MediaProviderSettings'));
+  const LazyMediaProviderSettings = React.lazy(
+    () => import("./media/MediaProviderSettings"),
+  );
 
   // The search api-provider mini-tab (sidebar + ProviderPanel) is lazy too (P2d).
-  const LazySearchProviderSettings = React.lazy(() => import('./search/SearchProviderSettings'));
-  const LazyObjectStorageSettings = React.lazy(() => import('./storage/ObjectStorageSettings'));
+  const LazySearchProviderSettings = React.lazy(
+    () => import("./search/SearchProviderSettings"),
+  );
+  const LazyObjectStorageSettings = React.lazy(
+    () => import("./storage/ObjectStorageSettings"),
+  );
 
   // P2e (`byo-p2-subscription`) — the Code CLI runtime tab, lazy (the heavy
   // card tree splits off `activate`). The subscription/OAuth UI itself moved
   // INTO the unified model-services section above.
   const LazyCodeCliTab = React.lazy(() =>
-    import('./cli/CodeCliTab').then((m) => ({ default: m.CodeCliTab }))
+    import("./cli/CodeCliTab").then((m) => ({ default: m.CodeCliTab })),
   );
 
   function ModelServicesSection() {
     return h(
       React.Suspense,
-      { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-      h(LazyModelServicesPage)
+      {
+        fallback: h(
+          "div",
+          { className: "p-4 text-sm text-muted-foreground" },
+          "…",
+        ),
+      },
+      h(LazyModelServicesPage),
     );
   }
 
@@ -117,31 +137,42 @@ export function activate(host: AgentUiHostApi): void {
     pinToTop: true,
     render: () =>
       h(
-        'div',
+        "div",
         {
-          className: 'h-full',
-          'data-testid': 'byo-providers-model-services-section',
+          className: "h-full",
+          "data-testid": "byo-providers-model-services-section",
         },
         h(ModelServicesSection),
-        h(KeyViewingPrompt)
+        h(KeyViewingPrompt),
       ),
   });
 
   host.settings.registerSection({
-    id: 'decision-models',
+    id: "decision-models",
     label: readDecisionModelsSectionLabel(),
     order: 105,
     group: providersGroup,
     pinToTop: true,
-    render: () => h(
-      'div',
-      { className: 'h-full', 'data-testid': 'byo-providers-decision-models-section' },
-      h(React.Suspense,
-        { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-        h(LazyDecisionModelsPage)
+    render: () =>
+      h(
+        "div",
+        {
+          className: "h-full",
+          "data-testid": "byo-providers-decision-models-section",
+        },
+        h(
+          React.Suspense,
+          {
+            fallback: h(
+              "div",
+              { className: "p-4 text-sm text-muted-foreground" },
+              "…",
+            ),
+          },
+          h(LazyDecisionModelsPage),
+        ),
+        h(KeyViewingPrompt),
       ),
-      h(KeyViewingPrompt)
-    ),
   });
 
   // ── Five media sections (P2c), ordered AFTER the LLM section ───────────────
@@ -154,23 +185,29 @@ export function activate(host: AgentUiHostApi): void {
       pinToTop: true,
       render: () =>
         h(
-          'div',
+          "div",
           {
-            className: 'h-full',
-            'data-testid': `byo-providers-media-${mediaType}-section`,
+            className: "h-full",
+            "data-testid": `byo-providers-media-${mediaType}-section`,
           },
           h(
             React.Suspense,
-            { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
+            {
+              fallback: h(
+                "div",
+                { className: "p-4 text-sm text-muted-foreground" },
+                "…",
+              ),
+            },
             // Mount the imperative-confirm provider at the section root so the
             // panel's `useConfirmDialog()` resolves (delete-provider flow).
             h(
               ImperativeConfirmProvider,
               null,
               h(LazyMediaProviderSettings, { mediaType }),
-              h(KeyViewingPrompt)
-            )
-          )
+              h(KeyViewingPrompt),
+            ),
+          ),
         ),
     });
   });
@@ -180,44 +217,59 @@ export function activate(host: AgentUiHostApi): void {
   // media's 5 independent types — so one section with an internal provider
   // selector (matching the host UX), not 7 per-provider sections.
   host.settings.registerSection({
-    id: 'search-providers',
+    id: "search-providers",
     label: readSearchSectionLabel(),
     order: 120,
     group: providersGroup,
     pinToTop: true,
     render: () =>
       h(
-        'div',
+        "div",
         {
-          className: 'h-full',
-          'data-testid': 'byo-providers-search-section',
+          className: "h-full",
+          "data-testid": "byo-providers-search-section",
         },
         h(
           React.Suspense,
-          { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
+          {
+            fallback: h(
+              "div",
+              { className: "p-4 text-sm text-muted-foreground" },
+              "…",
+            ),
+          },
           h(LazySearchProviderSettings),
-          h(KeyViewingPrompt)
-        )
+          h(KeyViewingPrompt),
+        ),
       ),
   });
 
   // Object storage is a file-delivery provider and lives beside the model,
   // media, and search providers in the shared provider group.
   host.settings.registerSection({
-    id: 'object-storage',
+    id: "object-storage",
     label: readObjectStorageSectionLabel(),
     order: 125,
     group: providersGroup,
     pinToTop: true,
     render: () =>
       h(
-        'div',
-        { className: 'h-full', 'data-testid': 'byo-providers-object-storage-section' },
+        "div",
+        {
+          className: "h-full",
+          "data-testid": "byo-providers-object-storage-section",
+        },
         h(
           React.Suspense,
-          { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-          h(LazyObjectStorageSettings)
-        )
+          {
+            fallback: h(
+              "div",
+              { className: "p-4 text-sm text-muted-foreground" },
+              "…",
+            ),
+          },
+          h(LazyObjectStorageSettings),
+        ),
       ),
   });
 
@@ -235,7 +287,7 @@ export function activate(host: AgentUiHostApi): void {
     // sectionId `code-cli` — the host AgentBackendSection gates the `cli` engine
     // option on THIS section's presence (OQ3). Do NOT rename without updating
     // `CLI_PLUGIN_SECTION_ID` in the host AgentBackendSection.
-    id: 'code-cli',
+    id: "code-cli",
     label: readCodeCliSectionLabel(),
     order: 131,
     // Grouped at the BOTTOM of the model-services group (below Language Models
@@ -244,13 +296,22 @@ export function activate(host: AgentUiHostApi): void {
     pinToTop: true,
     render: () =>
       h(
-        'div',
-        { className: 'h-full', 'data-testid': 'byo-providers-code-cli-section' },
+        "div",
+        {
+          className: "h-full",
+          "data-testid": "byo-providers-code-cli-section",
+        },
         h(
           React.Suspense,
-          { fallback: h('div', { className: 'p-4 text-sm text-muted-foreground' }, '…') },
-          h(CodeCliSectionPanel)
-        )
+          {
+            fallback: h(
+              "div",
+              { className: "p-4 text-sm text-muted-foreground" },
+              "…",
+            ),
+          },
+          h(CodeCliSectionPanel),
+        ),
       ),
   });
 }
@@ -263,20 +324,23 @@ export function activate(host: AgentUiHostApi): void {
  */
 function readModelServicesSectionLabel(): string {
   switch (readLocale()) {
-    case 'zh':
-      return '大语言模型';
-    case 'ja':
-      return '大規模言語モデル';
+    case "zh":
+      return "大语言模型";
+    case "ja":
+      return "大規模言語モデル";
     default:
-      return 'Language Models';
+      return "Language Models";
   }
 }
 
 function readDecisionModelsSectionLabel(): string {
   switch (readLocale()) {
-    case 'zh': return '决策模型';
-    case 'ja': return '意思決定モデル';
-    default: return 'Decision Models';
+    case "zh":
+      return "决策模型";
+    case "ja":
+      return "意思決定モデル";
+    default:
+      return "Decision Models";
   }
 }
 
@@ -289,62 +353,69 @@ function readDecisionModelsSectionLabel(): string {
  */
 function readProvidersGroupLabel(): string {
   switch (readLocale()) {
-    case 'zh':
-      return '模型服务';
-    case 'ja':
-      return 'モデルサービス';
+    case "zh":
+      return "模型服务";
+    case "ja":
+      return "モデルサービス";
     default:
-      return 'Model Services';
+      return "Model Services";
   }
 }
 
 /** Per-mediaType section nav labels (localized), inlined like the LLM label. */
-const MEDIA_SECTION_LABELS: Record<MediaType, Record<'en' | 'zh' | 'ja', string>> = {
-  image: { en: 'Image Models', zh: '图像模型', ja: '画像モデル' },
-  video: { en: 'Video Models', zh: '视频模型', ja: '動画モデル' },
-  music: { en: 'Music Models', zh: '音乐模型', ja: '音楽モデル' },
-  tts: { en: 'TTS Models', zh: '语音合成模型', ja: '音声合成モデル' },
-  asr: { en: 'ASR Models', zh: '语音识别模型', ja: '音声認識モデル' },
+const MEDIA_SECTION_LABELS: Record<
+  MediaType,
+  Record<"en" | "zh" | "ja", string>
+> = {
+  image: { en: "Image Models", zh: "图像模型", ja: "画像モデル" },
+  video: { en: "Video Models", zh: "视频模型", ja: "動画モデル" },
+  music: { en: "Music Models", zh: "音乐模型", ja: "音楽モデル" },
+  tts: { en: "TTS Models", zh: "语音合成模型", ja: "音声合成モデル" },
+  asr: { en: "ASR Models", zh: "语音识别模型", ja: "音声認識モデル" },
 };
 
 function readMediaSectionLabel(mediaType: MediaType): string {
   const locale = readLocale();
   const labels = MEDIA_SECTION_LABELS[mediaType];
-  return labels[(locale as 'en' | 'zh' | 'ja') in labels ? (locale as 'en' | 'zh' | 'ja') : 'en'];
+  return labels[
+    (locale as "en" | "zh" | "ja") in labels
+      ? (locale as "en" | "zh" | "ja")
+      : "en"
+  ];
 }
 
 /** The "Search Services" section label (localized), inlined like the others. */
 function readSearchSectionLabel(): string {
   switch (readLocale()) {
-    case 'zh':
-      return '搜索服务';
-    case 'ja':
-      return '検索サービス';
+    case "zh":
+      return "搜索服务";
+    case "ja":
+      return "検索サービス";
     default:
-      return 'Search Services';
+      return "Search Services";
   }
 }
 
 function readObjectStorageSectionLabel(): string {
   switch (readLocale()) {
-    case 'zh':
-      return '对象存储服务';
-    case 'ja':
-      return 'オブジェクトストレージサービス';
+    case "zh":
+      return "对象存储服务";
+    case "ja":
+      return "オブジェクトストレージサービス";
     default:
-      return 'Object Storage Services';
+      return "Object Storage Services";
   }
 }
 
 /** The "Code CLI" section label (localized), inlined like the others. */
 function readCodeCliSectionLabel(): string {
   switch (readLocale()) {
-    case 'zh':
-      return 'Code CLI';
-    case 'ja':
-      return 'Code CLI';
+    case "zh":
+      return "Code CLI";
+    case "ja":
+      return "Code CLI";
     default:
-      return 'Code CLI';
+      return "Code CLI";
   }
 }
 

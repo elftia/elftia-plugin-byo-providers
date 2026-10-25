@@ -8,14 +8,17 @@
  * visual width only. Fetching is parent-driven (expand + manual refresh); no
  * background polling, so hidden tabs cost nothing.
  */
-import { Loader2, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-import { Button } from '../host/ui';
-import { cn } from '../host/vendored/cn';
-import type { TranslateFn } from '../host/vendored/useTranslation';
-import type { HostAccountAllowanceSnapshot, HostAllowanceWindow } from '@byo/domain/plugin-types';
-import { subscriptionAuthClient } from '../subscriptionAuthClient';
+import { Button } from "../host/ui";
+import { cn } from "../host/vendored/cn";
+import type { TranslateFn } from "../host/vendored/useTranslation";
+import type {
+  HostAccountAllowanceSnapshot,
+  HostAllowanceWindow,
+} from "@elftia/plugin-types";
+import { subscriptionAuthClient } from "../subscriptionAuthClient";
 
 export interface AllowanceBarsProps {
   t: TranslateFn;
@@ -33,26 +36,34 @@ interface QuotaView {
 }
 
 const STATE_LABEL_KEYS: Record<string, string> = {
-  fresh: 'settings.accountTokens.allowance.stateFresh',
-  stale: 'settings.accountTokens.allowance.stateStale',
-  unavailable: 'settings.accountTokens.allowance.stateUnavailable',
-  unsupported: 'settings.accountTokens.allowance.stateUnsupported',
+  fresh: "settings.accountTokens.allowance.stateFresh",
+  stale: "settings.accountTokens.allowance.stateStale",
+  unavailable: "settings.accountTokens.allowance.stateUnavailable",
+  unsupported: "settings.accountTokens.allowance.stateUnsupported",
 };
 
 function stateLabel(t: TranslateFn, key: string): string {
-  return t(STATE_LABEL_KEYS[key] ?? 'settings.accountTokens.allowance.stateUnavailable');
+  return t(
+    STATE_LABEL_KEYS[key] ??
+      "settings.accountTokens.allowance.stateUnavailable",
+  );
 }
 
 function resetLabel(window: HostAllowanceWindow, t: TranslateFn): string {
-  if (!window.resetsAt) return '';
+  if (!window.resetsAt) return "";
   const resets = new Date(window.resetsAt);
-  if (Number.isNaN(resets.getTime())) return '';
-  return t('settings.accountTokens.allowance.resetsAt', {
+  if (Number.isNaN(resets.getTime())) return "";
+  return t("settings.accountTokens.allowance.resetsAt", {
     time: resets.toLocaleTimeString(),
   });
 }
 
-export function AllowanceBars({ t, providerId, accountId, testidScope = 'account' }: AllowanceBarsProps) {
+export function AllowanceBars({
+  t,
+  providerId,
+  accountId,
+  testidScope = "account",
+}: AllowanceBarsProps) {
   const [quota, setQuota] = useState<QuotaView | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -72,7 +83,7 @@ export function AllowanceBars({ t, providerId, accountId, testidScope = 'account
           observedAt: snapshot.observedAt,
         });
       } catch {
-        setQuota({ windows: [], lastErrorCode: 'quota-unavailable' });
+        setQuota({ windows: [], lastErrorCode: "quota-unavailable" });
       } finally {
         setLoading(false);
       }
@@ -87,10 +98,13 @@ export function AllowanceBars({ t, providerId, accountId, testidScope = 'account
   if (!providerId) return null;
 
   return (
-    <div className="space-y-1.5" data-testid={`settings-${testidScope}-allowance`}>
+    <div
+      className="space-y-1.5"
+      data-testid={`settings-${testidScope}-allowance`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-text-muted">
-          {t('settings.accountTokens.allowance.title')}
+          {t("settings.accountTokens.allowance.title")}
         </span>
         <Button
           size="sm"
@@ -98,7 +112,7 @@ export function AllowanceBars({ t, providerId, accountId, testidScope = 'account
           disabled={loading}
           onClick={() => void load(true)}
           data-testid={`settings-${testidScope}-allowance-refresh-btn`}
-          aria-label={t('settings.accountTokens.allowance.refresh')}
+          aria-label={t("settings.accountTokens.allowance.refresh")}
         >
           {loading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -110,8 +124,11 @@ export function AllowanceBars({ t, providerId, accountId, testidScope = 'account
       {quota && quota.windows.length > 0 ? (
         <ul className="space-y-1.5">
           {quota.windows.map((window) => {
-            const measured = window.usedPercent !== null && window.usedPercent !== undefined;
-            const width = measured ? Math.min(100, Math.max(0, window.usedPercent ?? 0)) : 0;
+            const measured =
+              window.usedPercent !== null && window.usedPercent !== undefined;
+            const width = measured
+              ? Math.min(100, Math.max(0, window.usedPercent ?? 0))
+              : 0;
             const nearing = measured && (window.usedPercent ?? 0) >= 80;
             return (
               <li
@@ -123,11 +140,18 @@ export function AllowanceBars({ t, providerId, accountId, testidScope = 'account
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-foreground">{window.label}</span>
                   {measured ? (
-                    <span className={cn('tabular-nums', nearing ? 'text-warning' : 'text-text-muted')}>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        nearing ? "text-warning" : "text-text-muted",
+                      )}
+                    >
                       {Math.round(window.usedPercent ?? 0)}%
                     </span>
                   ) : (
-                    <span className="text-text-muted">{stateLabel(t, window.state)}</span>
+                    <span className="text-text-muted">
+                      {stateLabel(t, window.state)}
+                    </span>
                   )}
                 </div>
                 {measured ? (
@@ -141,25 +165,31 @@ export function AllowanceBars({ t, providerId, accountId, testidScope = 'account
                   >
                     <div
                       className={cn(
-                        'h-full rounded-full',
-                        nearing ? 'bg-warning' : 'bg-primary',
+                        "h-full rounded-full",
+                        nearing ? "bg-warning" : "bg-primary",
                       )}
                       style={{ width: `${width}%` }}
                     />
                   </div>
                 ) : null}
                 {window.resetsAt && measured ? (
-                  <p className="text-[10px] text-text-subtle">{resetLabel(window, t)}</p>
+                  <p className="text-[10px] text-text-subtle">
+                    {resetLabel(window, t)}
+                  </p>
                 ) : null}
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="text-xs text-text-muted" data-testid={`settings-${testidScope}-allowance-empty`}>
-          {quota?.lastErrorCode && quota.lastErrorCode.endsWith('_unsupported_provider')
-            ? t('settings.accountTokens.allowance.stateUnsupported')
-            : t('settings.accountTokens.allowance.stateUnavailable')}
+        <p
+          className="text-xs text-text-muted"
+          data-testid={`settings-${testidScope}-allowance-empty`}
+        >
+          {quota?.lastErrorCode &&
+          quota.lastErrorCode.endsWith("_unsupported_provider")
+            ? t("settings.accountTokens.allowance.stateUnsupported")
+            : t("settings.accountTokens.allowance.stateUnavailable")}
         </p>
       )}
     </div>

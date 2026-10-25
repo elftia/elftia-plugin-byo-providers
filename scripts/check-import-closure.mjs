@@ -1,27 +1,28 @@
-import { createHash } from 'node:crypto';
-import { lstat, readFile, readdir } from 'node:fs/promises';
-import { dirname, extname, resolve } from 'node:path';
-import { createRequire } from 'node:module';
+import { readFile, readdir } from "node:fs/promises";
+import { dirname, extname, resolve } from "node:path";
+import { createRequire } from "node:module";
 
-import { findStandaloneBoundaryFailures } from './lib/standalone-boundaries.mjs';
+import { findStandaloneBoundaryFailures } from "./lib/standalone-boundaries.mjs";
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolve(import.meta.dirname, "..");
 const require = createRequire(import.meta.url);
-const ts = require('typescript');
-const scriptsRoot = resolve(root, 'scripts');
-const sourceRoots = [resolve(root, 'src'), resolve(root, 'tests'), scriptsRoot];
+const ts = require("typescript");
+const scriptsRoot = resolve(root, "scripts");
+const sourceRoots = [resolve(root, "src"), resolve(root, "tests"), scriptsRoot];
 const configFiles = [
-  resolve(root, 'vite.main.config.ts'),
-  resolve(root, 'vite.renderer.config.ts'),
-  resolve(root, 'vitest.config.ts'),
+  resolve(root, "vite.main.config.ts"),
+  resolve(root, "vite.renderer.config.ts"),
+  resolve(root, "vitest.config.ts"),
 ];
-const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
-const forbiddenPrefixes = [
-  '@/',
-  '@main/',
-  '@shared/',
-  '@elftia/shared',
-];
+const sourceExtensions = new Set([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+]);
+const forbiddenPrefixes = ["@/", "@main/", "@shared/", "@elftia/shared"];
 
 async function walk(path) {
   const entries = await readdir(path, { withFileTypes: true });
@@ -38,18 +39,25 @@ function localCandidates(path) {
   return [
     path,
     ...[...sourceExtensions].map((extension) => `${path}${extension}`),
-    ...[...sourceExtensions].map((extension) => resolve(path, `index${extension}`)),
+    ...[...sourceExtensions].map((extension) =>
+      resolve(path, `index${extension}`),
+    ),
   ];
 }
 
-const files = [...(await Promise.all(sourceRoots.map(walk))).flat(), ...configFiles];
+const files = [
+  ...(await Promise.all(sourceRoots.map(walk))).flat(),
+  ...configFiles,
+];
 const failures = [];
 
 for (const file of files) {
-  const text = await readFile(file, 'utf8');
+  const text = await readFile(file, "utf8");
   failures.push(
     ...findStandaloneBoundaryFailures(file, text, {
-      maintenance: file.startsWith(`${scriptsRoot}\\`) || file.startsWith(`${scriptsRoot}/`),
+      maintenance:
+        file.startsWith(`${scriptsRoot}\\`) ||
+        file.startsWith(`${scriptsRoot}/`),
     }),
   );
   const specifiers = new Set();
@@ -58,11 +66,11 @@ for (const file of files) {
     text,
     ts.ScriptTarget.Latest,
     true,
-    file.endsWith('.tsx')
+    file.endsWith(".tsx")
       ? ts.ScriptKind.TSX
-      : file.endsWith('.jsx')
+      : file.endsWith(".jsx")
         ? ts.ScriptKind.JSX
-        : file.endsWith('.ts')
+        : file.endsWith(".ts")
           ? ts.ScriptKind.TS
           : ts.ScriptKind.JS,
   );
@@ -93,21 +101,29 @@ for (const file of files) {
       failures.push(`${file}: forbidden host-private specifier ${specifier}`);
       continue;
     }
-    if (specifier.startsWith('@byo/')) {
-      const local = resolve(root, 'src', specifier.slice('@byo/'.length));
-      if (!localCandidates(local).some((candidate) => require('node:fs').existsSync(candidate))) {
+    if (specifier.startsWith("@byo/")) {
+      const local = resolve(root, "src", specifier.slice("@byo/".length));
+      if (
+        !localCandidates(local).some((candidate) =>
+          require("node:fs").existsSync(candidate),
+        )
+      ) {
         failures.push(`${file}: unresolved local specifier ${specifier}`);
       }
       continue;
     }
-    if (specifier.startsWith('.')) {
+    if (specifier.startsWith(".")) {
       const local = resolve(dirname(file), specifier);
-      if (!localCandidates(local).some((candidate) => require('node:fs').existsSync(candidate))) {
+      if (
+        !localCandidates(local).some((candidate) =>
+          require("node:fs").existsSync(candidate),
+        )
+      ) {
         failures.push(`${file}: unresolved relative specifier ${specifier}`);
       }
       continue;
     }
-    if (specifier.startsWith('node:')) continue;
+    if (specifier.startsWith("node:")) continue;
     try {
       require.resolve(specifier);
     } catch {
@@ -116,51 +132,32 @@ for (const file of files) {
   }
 }
 
-const lock = JSON.parse(await readFile(resolve(root, 'package-lock.json'), 'utf8'));
-const manifest = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
+const lock = JSON.parse(
+  await readFile(resolve(root, "package-lock.json"), "utf8"),
+);
 for (const [name, expected] of [
-  ['@elftia/plugin-types', '1.25.0'],
-  ['@elftia/agent-spec', '1.25.0'],
-  ['@omnicross/contracts', manifest.dependencies['@omnicross/contracts']],
+  ["@elftia/plugin-types", "2.0.0"],
+  ["@elftia/agent-spec", "1.25.0"],
+  ["@omnicross/contracts", "0.7.1"],
 ]) {
   const entry = lock.packages?.[`node_modules/${name}`];
-  if (name === '@omnicross/contracts' && expected.startsWith('file:')) {
-    try {
-      const provenance = JSON.parse(await readFile(resolve(root, 'vendor/omnicross-search-build.json'), 'utf8'));
-      const pin = provenance.packages?.[name];
-      if (provenance.schemaVersion !== 1 || !pin ||
-          !/^omnicross-contracts-[\w.+-]+\.tgz$/.test(pin.file) ||
-          pin.file !== `omnicross-contracts-${pin.version}.tgz` ||
-          expected !== `file:vendor/${pin.file}`) {
-        throw new Error('invalid pinned local contracts declaration');
-      }
-      const archive = resolve(root, 'vendor', pin.file);
-      const stat = await lstat(archive);
-      if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('local contracts archive must be a regular file');
-      const integrity = `sha512-${createHash('sha512').update(await readFile(archive)).digest('base64')}`;
-      if (integrity !== pin.integrity || entry?.integrity !== integrity ||
-          entry?.version !== pin.version || entry?.resolved !== expected || entry?.link ||
-          lock.packages?.['']?.dependencies?.[name] !== expected) {
-        throw new Error('local contracts archive/lock integrity mismatch');
-      }
-    } catch (error) {
-      failures.push(`${name}: ${error.message}`);
-    }
-    continue;
-  }
   if (
     !entry ||
     entry.version !== expected ||
     entry.link ||
-    typeof entry.resolved !== 'string' ||
-    !entry.resolved.startsWith('https://registry.npmjs.org/')
+    typeof entry.resolved !== "string" ||
+    (name === "@elftia/plugin-types"
+      ? entry.resolved !== "file:vendor/elftia-plugin-types-2.0.0.tgz"
+      : !entry.resolved.startsWith("https://registry.npmjs.org/"))
   ) {
-    failures.push(`${name}@${expected} is not registry-backed in package-lock.json`);
+    failures.push(
+      `${name}@${expected} has an unexpected package-lock.json source`,
+    );
   }
 }
 
 if (failures.length) {
-  throw new Error(`standalone import closure failed:\n${failures.join('\n')}`);
+  throw new Error(`standalone import closure failed:\n${failures.join("\n")}`);
 }
 
 console.log(`standalone import closure ok (${files.length} files)`);

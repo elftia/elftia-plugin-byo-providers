@@ -2,7 +2,7 @@ import React, { useLayoutEffect } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { HostProviderModelMappings } from "../src/domain/plugin-types";
+import type { HostProviderModelMappings } from "@elftia/plugin-types";
 
 const { getMappings } = vi.hoisted(() => ({ getMappings: vi.fn() }));
 vi.mock("../src/renderer/llmConfigClient", () => ({

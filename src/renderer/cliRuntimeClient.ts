@@ -15,9 +15,9 @@ import type {
   HostCliBackendInfo,
   HostCliLaunchTerminalInput,
   HostCliRuntimeResult,
-} from '@byo/domain/plugin-types';
+} from "@elftia/plugin-types";
 
-import { getHost } from './host/hostBridge';
+import { getHost } from "./host/hostBridge";
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
   return getHost().ipc.invoke<T>(method, payload);
@@ -26,28 +26,35 @@ function invoke<T>(method: string, payload?: unknown): Promise<T> {
 /** The Code CLI availability/install/launch client (no credential ever returned). */
 export const cliRuntimeClient = {
   /** Per-backend availability/auth DESCRIPTORS (no token). `force` busts the cache. */
-  getAuthStatus(options?: HostCliAuthStatusOptions): Promise<HostCliAuthStatus[]> {
-    return invoke('cliRt.getAuthStatus', options ?? {});
+  getAuthStatus(
+    options?: HostCliAuthStatusOptions,
+  ): Promise<HostCliAuthStatus[]> {
+    return invoke("cliRt.getAuthStatus", options ?? {});
   },
   /** Flip a backend's host-side enable toggle; status only. */
-  setEnabled(backendId: string, enabled: boolean): Promise<HostCliRuntimeResult> {
-    return invoke('cliRt.setEnabled', { backendId, enabled });
+  setEnabled(
+    backendId: string,
+    enabled: boolean,
+  ): Promise<HostCliRuntimeResult> {
+    return invoke("cliRt.setEnabled", { backendId, enabled });
   },
   /** Install a CLI backend host-side; status only. */
   install(backendId: string): Promise<HostCliRuntimeResult> {
-    return invoke('cliRt.install', { backendId });
+    return invoke("cliRt.install", { backendId });
   },
   /** Open a system terminal + start the CLI host-side; status only (no credential). */
-  launchTerminal(input: HostCliLaunchTerminalInput): Promise<HostCliRuntimeResult> {
-    return invoke('cliRt.launchTerminal', input);
+  launchTerminal(
+    input: HostCliLaunchTerminalInput,
+  ): Promise<HostCliRuntimeResult> {
+    return invoke("cliRt.launchTerminal", input);
   },
   /** List the registered CLI backends (display descriptors). */
   listBackends(): Promise<HostCliBackendInfo[]> {
-    return invoke('cliRt.listBackends');
+    return invoke("cliRt.listBackends");
   },
   /** Version probe (omnicross parity): `{ backendId → { installed?, latest? } }`. */
   getVersions(): Promise<unknown> {
-    return invoke('cliRt.getVersions');
+    return invoke("cliRt.getVersions");
   },
 };
 

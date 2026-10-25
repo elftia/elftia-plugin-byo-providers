@@ -21,10 +21,13 @@
  * @module byo-providers/renderer/llmConfigClient
  */
 import type {
+  HostModelRoleResolution,
+  HostModelRolesConfig,
+  HostModelRolesPatch,
   HostModelTestResult,
   HostProviderKeyQuota,
   HostProviderModelMappings,
-} from '@byo/domain/plugin-types';
+} from "@elftia/plugin-types";
 
 import type {
   ApiKeyEntry,
@@ -32,14 +35,17 @@ import type {
   KeyHealthMap,
   LLMProvider,
   ProviderModelDiscoveryResult,
-  RouterConfig,
-} from '@byo/domain/llm';
+} from "@byo/domain/llm";
 
-import { getHost } from './host/hostBridge';
-import { requestKeyViewing } from './shared/keyViewingRequest';
+import { getHost } from "./host/hostBridge";
+import { requestKeyViewing } from "./shared/keyViewingRequest";
 
 type OpResult = { success: boolean; message?: string };
-type ProviderResult = { success: boolean; provider?: LLMProvider; message?: string };
+type ProviderResult = {
+  success: boolean;
+  provider?: LLMProvider;
+  message?: string;
+};
 type KeyResult = { success: boolean; entry?: ApiKeyEntry; message?: string };
 
 function invoke<T>(method: string, payload?: unknown): Promise<T> {
@@ -66,8 +72,11 @@ function invoke<T>(method: string, payload?: unknown): Promise<T> {
  */
 function notifyHostProvidersChanged(): void {
   try {
-    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-      window.dispatchEvent(new CustomEvent('llm-providers-updated'));
+    if (
+      typeof window !== "undefined" &&
+      typeof window.dispatchEvent === "function"
+    ) {
+      window.dispatchEvent(new CustomEvent("llm-providers-updated"));
     }
   } catch {
     // best-effort cross-cache sync — a notify failure never fails the op
@@ -80,7 +89,10 @@ function notifyHostProvidersChanged(): void {
  * a `{ success: false }` resolution still notifies (harmless — the host just
  * re-reads the unchanged list). The provider object/result is returned verbatim.
  */
-async function mutateProviders<T>(method: string, payload?: unknown): Promise<T> {
+async function mutateProviders<T>(
+  method: string,
+  payload?: unknown,
+): Promise<T> {
   const result = await invoke<T>(method, payload);
   notifyHostProvidersChanged();
   return result;
@@ -89,72 +101,95 @@ async function mutateProviders<T>(method: string, payload?: unknown): Promise<T>
 /** The masked-port LLM-config client (mirrors `agent.llmConfig`). */
 export const llmConfigClient = {
   // ── Providers ────────────────────────────────────────────────────────────
-  getProviders: (): Promise<LLMProvider[]> => invoke('llm.getProviders'),
-  getProvider: (id: string): Promise<LLMProvider | null> => invoke('llm.getProvider', { id }),
+  getProviders: (): Promise<LLMProvider[]> => invoke("llm.getProviders"),
+  getProvider: (id: string): Promise<LLMProvider | null> =>
+    invoke("llm.getProvider", { id }),
   addProvider: (
-    payload: Omit<LLMProvider, 'id' | 'createdAt' | 'updatedAt'>
-  ): Promise<ProviderResult> => mutateProviders('llm.addProvider', payload),
-  updateProvider: (payload: Partial<LLMProvider> & { id: string }): Promise<ProviderResult> =>
-    mutateProviders('llm.updateProvider', payload),
-  deleteProvider: (id: string): Promise<OpResult> => mutateProviders('llm.deleteProvider', { id }),
+    payload: Omit<LLMProvider, "id" | "createdAt" | "updatedAt">,
+  ): Promise<ProviderResult> => mutateProviders("llm.addProvider", payload),
+  updateProvider: (
+    payload: Partial<LLMProvider> & { id: string },
+  ): Promise<ProviderResult> => mutateProviders("llm.updateProvider", payload),
+  deleteProvider: (id: string): Promise<OpResult> =>
+    mutateProviders("llm.deleteProvider", { id }),
   toggleProvider: (id: string, enabled: boolean): Promise<ProviderResult> =>
-    mutateProviders('llm.toggleProvider', { id, enabled }),
+    mutateProviders("llm.toggleProvider", { id, enabled }),
   reorderProviders: (orderedIds: string[]): Promise<OpResult> =>
-    mutateProviders('llm.reorderProviders', { orderedIds }),
+    mutateProviders("llm.reorderProviders", { orderedIds }),
   resetProvider: (id: string): Promise<ProviderResult> =>
-    mutateProviders('llm.resetProvider', { id }),
+    mutateProviders("llm.resetProvider", { id }),
   discoverModels: (
     id: string,
-    options?: { forceRefresh?: boolean }
-  ): Promise<ProviderModelDiscoveryResult> => invoke('llm.discoverModels', { id, options }),
+    options?: { forceRefresh?: boolean },
+  ): Promise<ProviderModelDiscoveryResult> =>
+    invoke("llm.discoverModels", { id, options }),
   /**
    * P2b-2 (`byo-p2-llm-2`) — probe a provider/model for reachability. A
    * connectivity DIAGNOSTIC (`{ success, message, response?, model, durationMs? }`);
    * NO secret crosses in or out (the host probes with the host-resolved key).
    */
-  testModel: (providerId: string, modelId: string): Promise<HostModelTestResult> =>
-    invoke('llm.testModel', { providerId, modelId }),
+  testModel: (
+    providerId: string,
+    modelId: string,
+  ): Promise<HostModelTestResult> =>
+    invoke("llm.testModel", { providerId, modelId }),
   /**
    * v1.50 (provider-key-reveal) — the ONE deliberate outward secret exception:
    * fetch the stored key for USER-INITIATED display (the settings eye icon).
    * Plain invoke (NOT `mutateProviders`) — a reveal is a read, it must not
    * trigger provider-cache refresh churn.
    */
-  revealProviderKey: (id: string): Promise<{ success: boolean; value?: string; error?: string }> =>
-    requestKeyViewing((password) => invoke('llm.revealProviderKey', { id, password })),
-  getProviderModelMappings: (providerId: string): Promise<HostProviderModelMappings> =>
-    invoke('llm.getProviderModelMappings', { providerId }),
+  revealProviderKey: (
+    id: string,
+  ): Promise<{ success: boolean; value?: string; error?: string }> =>
+    requestKeyViewing((password) =>
+      invoke("llm.revealProviderKey", { id, password }),
+    ),
+  getProviderModelMappings: (
+    providerId: string,
+  ): Promise<HostProviderModelMappings> =>
+    invoke("llm.getProviderModelMappings", { providerId }),
 
   // ── Presets ──────────────────────────────────────────────────────────────
-  getProviderPresets: (): Promise<unknown> => invoke('llm.getProviderPresets'),
-  addFromPreset: (payload: { presetId: string; apiKey?: string }): Promise<ProviderResult> =>
-    mutateProviders('llm.addFromPreset', payload),
+  getProviderPresets: (): Promise<unknown> => invoke("llm.getProviderPresets"),
+  addFromPreset: (payload: {
+    presetId: string;
+    apiKey?: string;
+  }): Promise<ProviderResult> => mutateProviders("llm.addFromPreset", payload),
 
   // ── Key pool ───────────────────────────────────────────────────────────────
   getApiKeys: (providerId: string): Promise<ApiKeyEntry[]> =>
-    invoke('llm.getApiKeys', { providerId }),
-  addApiKey: (input: ApiKeyEntryInput): Promise<KeyResult> => invoke('llm.addApiKey', input),
+    invoke("llm.getApiKeys", { providerId }),
+  addApiKey: (input: ApiKeyEntryInput): Promise<KeyResult> =>
+    invoke("llm.addApiKey", input),
   updateApiKey: (
     id: string,
-    updates: Partial<Pick<ApiKeyEntry, 'label' | 'weight' | 'enabled' | 'apiKey'>>
-  ): Promise<KeyResult> => invoke('llm.updateApiKey', { id, ...updates }),
-  deleteApiKey: (id: string): Promise<OpResult> => invoke('llm.deleteApiKey', { id }),
+    updates: Partial<
+      Pick<ApiKeyEntry, "label" | "weight" | "enabled" | "apiKey">
+    >,
+  ): Promise<KeyResult> => invoke("llm.updateApiKey", { id, ...updates }),
+  deleteApiKey: (id: string): Promise<OpResult> =>
+    invoke("llm.deleteApiKey", { id }),
   toggleApiKey: (id: string, enabled: boolean): Promise<OpResult> =>
-    invoke('llm.toggleApiKey', { id, enabled }),
+    invoke("llm.toggleApiKey", { id, enabled }),
   getKeyHealth: (providerId: string): Promise<KeyHealthMap> =>
-    invoke('llm.getKeyHealth', { providerId }),
+    invoke("llm.getKeyHealth", { providerId }),
   getKeyQuota: (
     providerId: string,
     keyId: string,
-    force?: boolean
-  ): Promise<HostProviderKeyQuota> => invoke('llm.getKeyQuota', { providerId, keyId, force }),
+    force?: boolean,
+  ): Promise<HostProviderKeyQuota> =>
+    invoke("llm.getKeyQuota", { providerId, keyId, force }),
 
-  // ── Default model (router config) ───────────────────────────────────────────
-  getRouterConfig: (): Promise<RouterConfig> => invoke('llm.getRouterConfig'),
-  setRouterConfig: (
-    payload: Partial<RouterConfig>
-  ): Promise<{ success: boolean; router?: RouterConfig; message?: string }> =>
-    invoke('llm.setRouterConfig', payload),
+  // Role edits use the caller's snapshot revision, without retrying conflicts or
+  // filling in absent thinking levels (omission is distinct from explicit none).
+  getModelRoles: (): Promise<HostModelRolesConfig> =>
+    invoke("llm.getModelRoles"),
+  setModelRoles: (patch: HostModelRolesPatch): Promise<HostModelRolesConfig> =>
+    invoke("llm.setModelRoles", patch),
+  previewModelRole: (input: {
+    roleId: string;
+  }): Promise<HostModelRoleResolution> => invoke("llm.previewModelRole", input),
 };
 
 export type LlmConfigClient = typeof llmConfigClient;
