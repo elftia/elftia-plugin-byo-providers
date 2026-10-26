@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 
 import { findStandaloneBoundaryFailures } from './lib/standalone-boundaries.mjs';
 
@@ -117,7 +118,6 @@ for (const file of files) {
 
 const lock = JSON.parse(await readFile(resolve(root, 'package-lock.json'), 'utf8'));
 for (const [name, expected] of [
-  ['@elftia/plugin-types', '1.25.0'],
   ['@elftia/agent-spec', '1.25.0'],
   ['@omnicross/contracts', '0.6.9'],
 ]) {
@@ -131,6 +131,14 @@ for (const [name, expected] of [
   ) {
     failures.push(`${name}@${expected} is not registry-backed in package-lock.json`);
   }
+}
+
+// Consume the same immutable SDK archive as the Host 2.1 release, never sibling sources.
+const sdk = lock.packages?.['node_modules/@elftia/plugin-types'];
+const sdkArchive = 'vendor/elftia-plugin-types-2.1.0.tgz';
+const sdkIntegrity = `sha512-${createHash('sha512').update(await readFile(resolve(root, sdkArchive))).digest('base64')}`;
+if (sdk?.version !== '2.1.0' || sdk.link || sdk.resolved !== `file:${sdkArchive}` || sdk.integrity !== sdkIntegrity) {
+  failures.push('@elftia/plugin-types must match the checked-in SDK 2.1.0 archive and integrity');
 }
 
 if (failures.length) {

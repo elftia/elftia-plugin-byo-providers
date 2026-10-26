@@ -389,40 +389,8 @@ export interface HostSubscriptionAuthLike extends SdkHostSubscriptionAuthLike {
     accountId: string,
     force?: boolean,
   ): Promise<HostAccountAllowanceSnapshot>;
-  /** v1.63 — Kimi RFC 8628 device flow (optional; feature-detected). */
-  startKimiDeviceFlow?(): Promise<HostKimiDeviceFlowView>;
-  pollKimiDeviceFlow?(sessionId: string): Promise<HostKimiDeviceFlowView>;
-  cancelKimiDeviceFlow?(sessionId: string): Promise<void>;
-  refreshKimiToken?(): Promise<boolean>;
-  /** v1.65 — Grok RFC 8628 device flow (optional; feature-detected). */
-  startGrokDeviceFlow?(): Promise<HostDeviceFlowView>;
-  pollGrokDeviceFlow?(sessionId: string): Promise<HostDeviceFlowView>;
-  cancelGrokDeviceFlow?(sessionId: string): Promise<void>;
-  refreshGrokToken?(): Promise<boolean>;
-  /**
-   * v1.65 — GitHub Copilot RFC 8628 device flow (optional; feature-detected).
-   * `enterpriseUrl` (bare host or full URL) routes the chain onto a GitHub
-   * Enterprise host; normalized + validated HOST-side.
-   */
-  startCopilotDeviceFlow?(enterpriseUrl?: string): Promise<HostDeviceFlowView>;
-  pollCopilotDeviceFlow?(sessionId: string): Promise<HostDeviceFlowView>;
-  cancelCopilotDeviceFlow?(sessionId: string): Promise<void>;
-  /** v1.65 — local no-op restamp (ghu_ tokens have no exchange endpoint). */
-  refreshCopilotToken?(): Promise<boolean>;
-  /**
-   * v1.67 — codex loopback sign-in (auto-complete via 127.0.0.1:1455; no code
-   * paste). Local structural mirror — this plugin pins an older SDK.
-   */
-  startCodexLoopbackLogin?(): Promise<
-    | { ok: true; authUrl: string; sessionId: string }
-    | { ok: false; error: string }
-  >;
-  pollCodexLoopbackLogin?(sessionId: string): Promise<{
-    sessionId: string;
-    state: 'pending' | 'done' | 'error';
-    error?: string;
-  }>;
-  cancelCodexLoopbackLogin?(sessionId: string): Promise<void>;
+  // Device-flow and loopback methods are required by the current SDK; inherit
+  // their exact contracts instead of weakening them through old optional mirrors.
   /**
    * v1.70 — subscription model lists (defaults + user extras; optional;
    * feature-detected). `setSubscriptionExtraModels` REPLACES the provider's

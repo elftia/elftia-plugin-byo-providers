@@ -161,14 +161,13 @@ optional write-only `host.clipboard.writeText` bridge (host API 1.112). A host
 without that bridge reports copy unavailable. Password setup/change/disable and
 destructive forgotten-password recovery belong to host Privacy settings.
 
-The project locks the newest released public SDK,
-`@elftia/plugin-types@1.25.0`, and records `builtAgainst: "1.25.0"` in both
-manifest contributions. The public 1.25 SDK covers the base UI/backend API and
-the LLM, media, search, and subscription ports. The additive host 1.26–1.27
-agent-config, CLI-runtime, secrets-pack, model-test, and manual-token members
-are represented by narrow plugin-owned structural projections in
-`src/domain/plugin-types.ts`; the manifest still requires host minor 27 for the
-main contribution. No projection imports host source.
+The project locks the self-contained SDK archive
+`vendor/elftia-plugin-types-2.1.0.tgz`. Both contributions require Host API 2.1
+and record `builtAgainst: "2.1.0"`; the lockfile and import-closure check verify
+the archive integrity. Device-flow and loopback contracts are inherited from
+the current SDK. Remaining plugin-owned projections live in
+`src/domain/plugin-types.ts`; none imports Host source. Version 0.4.0 supersedes
+the Host API 1.x package so normal version-based installation can update it.
 
 React and React DOM are host-provided peer runtimes and remain external in the
 renderer build. The main entry is CommonJS, Node-targeted, and Electron-free.

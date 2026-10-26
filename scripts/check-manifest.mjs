@@ -44,6 +44,11 @@ assert(
   builtMajor === sdkMajor && builtMinor >= manifest.contributes.main.requiredMinor,
   'manifest builtAgainst must share the locked SDK major and cover requiredMinor',
 );
+for (const contribution of ['main', 'renderer']) {
+  const declared = manifest.contributes[contribution];
+  assert(declared.requiredMajor === sdkMajor, `${contribution} must require the locked SDK major`);
+  assert(declared.requiredMinor <= builtMinor, `${contribution} requires an unbuilt Host minor`);
+}
 assert(
   manifest.contributes.renderer.entry === 'index.mjs',
   'renderer contribution must be index.mjs',
