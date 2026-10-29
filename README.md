@@ -1,5 +1,11 @@
 # Elftia BYO Providers
 
+Version 0.4.1 adds music provider templates for ElevenLabs (Eleven Music 2.5/2),
+Google Lyria (3.5, 3 Pro Preview, 3 Clip Preview), Mureka (9.5/9/O2), and Suno
+(v6/v5.5/v5). Suno and Suno Compatible use the CometAPI/new-api submit-and-poll
+protocol; the default Suno endpoint is CometAPI and requires a relay API key.
+The settings and composer catalogs share one source within this plugin.
+
 Version 0.4.0 requires Host API 2.0 for both plugin entries and uses the canonical
 public 2.0 SDK. LLM role selection belongs to Elftia's **Default Models** settings:
 default, background, vision, aliases, inheritance, follow behavior and thinking
