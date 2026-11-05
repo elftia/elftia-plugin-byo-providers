@@ -1,7 +1,7 @@
 import type {
   HostObjectStorageMutationResult,
   HostObjectStorageProvider,
-  HostObjectStorageProviderConfig,
+  HostObjectStorageProviderPatch,
 } from "@elftia/plugin-types";
 
 import { getHost } from "./host/hostBridge";
@@ -14,9 +14,18 @@ export const objectStorageConfigClient = {
   listProviders(): Promise<readonly HostObjectStorageProvider[]> {
     return invoke("storage.listProviders");
   },
+  addProvider(
+    templateId: string,
+    name?: string,
+  ): Promise<HostObjectStorageMutationResult> {
+    return invoke("storage.addProvider", { templateId, name });
+  },
+  deleteProvider(id: string): Promise<HostObjectStorageMutationResult> {
+    return invoke("storage.deleteProvider", { id });
+  },
   updateProvider(
     id: string,
-    patch: Partial<HostObjectStorageProviderConfig>,
+    patch: HostObjectStorageProviderPatch,
   ): Promise<HostObjectStorageMutationResult> {
     return invoke("storage.updateProvider", { id, patch });
   },

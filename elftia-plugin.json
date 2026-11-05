@@ -1,6 +1,6 @@
 {
   "name": "byo-providers",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "kind": "app-extension",
   "permissions": [
     "host:llm-config",
@@ -20,14 +20,16 @@
       "entry": "index.mjs",
       "execution": "opaque-frame-v1",
       "requiredMajor": 2,
-      "requiredMinor": 0,
-      "builtAgainst": "2.0.0"
+      "requiredMinor": 6,
+      "builtAgainst": "2.6.0",
+      "checksum": "sha512-yFvrFcyq9kq70xEsBZT5XFl2zqUajp8YxfaOEL0dinLeGlUg6lNzv6ke5XkFPcNeJWyicoZDtM4mNl4Csy9ZZQ=="
     },
     "main": {
       "entry": "index.cjs",
       "requiredMajor": 2,
-      "requiredMinor": 0,
-      "builtAgainst": "2.0.0"
+      "requiredMinor": 6,
+      "builtAgainst": "2.6.0",
+      "checksum": "sha512-xWt2nqA8aL8A3OG70EzSFyE8Qi6AQIbc+GXG/M3LffXv6wMhXlBT6a9hGLO95F9JQoR/BlryF34hf5HPbzAx3A=="
     }
   },
   "minElftiaVersion": "0.2.8"

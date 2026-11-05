@@ -775,6 +775,18 @@ export function activate(host: AgentBackendHostApi): void {
     // ══ OBJECT STORAGE — masked config + write-only credentials ══
     "storage.listProviders": async () =>
       (await storage()?.listProviders()) ?? [],
+    "storage.addProvider": async (p) => {
+      const { templateId, name } = asRecord(p);
+      return (
+        (await storage()?.addProvider(
+          String(templateId),
+          name === undefined || name === null ? undefined : String(name),
+        )) ?? storageMissing()
+      );
+    },
+    "storage.deleteProvider": async (p) =>
+      (await storage()?.deleteProvider(String(asRecord(p).id))) ??
+      storageMissing(),
     "storage.updateProvider": async (p) => {
       const { id, patch } = asRecord(p);
       return (

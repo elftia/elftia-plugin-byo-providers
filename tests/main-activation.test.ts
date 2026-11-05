@@ -702,6 +702,13 @@ const RELAY_CASES: RelayCase[] = [
     args: [],
   },
   {
+    ipc: "storage.addProvider",
+    service: "objectStorageConfig",
+    method: "addProvider",
+    payload: { templateId: "cloudflare-r2", name: "R2 备用桶" },
+    args: ["cloudflare-r2", "R2 备用桶"],
+  },
+  {
     ipc: "storage.updateProvider",
     service: "objectStorageConfig",
     method: "updateProvider",
@@ -709,11 +716,18 @@ const RELAY_CASES: RelayCase[] = [
     args: ["601", { bucket: "media" }],
   },
   {
+    ipc: "storage.deleteProvider",
+    service: "objectStorageConfig",
+    method: "deleteProvider",
+    payload: { id: "cloudflare-r2~ab12cd" },
+    args: ["cloudflare-r2~ab12cd"],
+  },
+  {
     ipc: "storage.setCredentials",
     service: "objectStorageConfig",
     method: "setCredentials",
-    payload: { id: "aws-s3", credentials: { accessKeyId: "inward-ak" } },
-    args: ["aws-s3", { accessKeyId: "inward-ak" }],
+    payload: { id: "aws-s3~ab12cd", credentials: { accessKeyId: "inward-ak" } },
+    args: ["aws-s3~ab12cd", { accessKeyId: "inward-ak" }],
   },
   {
     ipc: "storage.clearCredentials",
@@ -726,8 +740,8 @@ const RELAY_CASES: RelayCase[] = [
     ipc: "storage.setDefaultProvider",
     service: "objectStorageConfig",
     method: "setDefaultProvider",
-    payload: { id: "cloudflare-r2" },
-    args: ["cloudflare-r2"],
+    payload: { id: "cloudflare-r2~ab12cd" },
+    args: ["cloudflare-r2~ab12cd"],
   },
 
   {
